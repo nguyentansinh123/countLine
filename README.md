@@ -17,4 +17,10 @@ chat GpT
 
 To understand git/github:
 https://www.youtube.com/watch?v=RGOj5yH7evk
+https://docs.github.com/en/get-started/start-your-journey/hello-world
 chat gpt
+
+
+express js:
+https://expressjs.com/en/starter/installing.html
+https://www.youtube.com/watch?v=H9M02of22z4
