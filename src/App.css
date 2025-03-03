@@ -1,0 +1,9 @@
+.app{
+    display: flex;
+}
+
+.contents{
+margin-left: 350;
+    padding:20;
+ width: 100%;
+}
