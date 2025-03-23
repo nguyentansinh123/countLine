@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import React from 'react'
-
-function projects() {
-  return (
-    <div>projects</div>
-  )
-}
-
-export default projects;
-=======
 import { Button, Card, Dropdown, List, Menu } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import React, { useState } from 'react';
@@ -154,4 +143,3 @@ function Projects() {
 }
 
 export default Projects;
->>>>>>> develop

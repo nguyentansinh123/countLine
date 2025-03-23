@@ -1,12 +1,3 @@
-<<<<<<< HEAD
-import React from "react";
-
-function AboutUs() {
-  return <div>about</div>;
-}
-
-export default AboutUs;
-=======
 import React from "react";
 import "./AboutUs.css";
 
@@ -66,4 +57,3 @@ const About: React.FC = () => {
 };
 
 export default About;
->>>>>>> develop

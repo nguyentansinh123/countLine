@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import React from 'react'
-
-function overview() {
-  return (
-    <div>overview</div>
-  )
-}
-
-export default  overview;
-=======
 import React, { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Button } from "antd";
@@ -85,4 +74,3 @@ const Overview: React.FC = () => {
 };
 
 export default Overview;
->>>>>>> develop

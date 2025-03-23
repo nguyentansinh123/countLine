@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import React from 'react'
-
-function users() {
-  return (
-    <div>users</div>
-  )
-}
-
-export default users
-=======
 import React, { useState } from 'react';
 import {
   Card,
@@ -318,4 +307,3 @@ function UserPage() {
 }
 
 export default UserPage;
->>>>>>> develop

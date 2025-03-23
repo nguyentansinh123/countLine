@@ -1,15 +1,3 @@
-<<<<<<< HEAD
-import React from 'react'
-
-function teams() {
-  return (
-    <div>teams</div>
-  )
-}
-
-
-export default  teams;
-=======
 import { Button, Card, Collapse, Dropdown, List, Menu } from 'antd';
 import React, { useState, useEffect } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
@@ -213,4 +201,3 @@ function Teams() {
 }
 
 export default Teams;
->>>>>>> develop

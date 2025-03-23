@@ -4,7 +4,7 @@ import { s3Client } from '../lib/s3'
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import {docClient} from '../lib/dynamoClient'
-import { GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, UpdateCommand, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
 import { ScanCommand } from "@aws-sdk/client-dynamodb";
 
 export const uploadFileToS3 = async (req: Request, res: Response): Promise<void> => {
@@ -114,3 +114,43 @@ export const getSingleTask = async (req: Request, res: Response) => {
       res.status(500).json({ success: false, message });
   }
 };
+
+export const SendFileToAUser = async (req: Request, res: Response) => {
+    try {
+        const { IdOfUser } = req.params; 
+        const { documentId } = req.body; 
+
+        if (!documentId) {
+            res.status(400).json({ success: false, message: "Document ID is required" });
+            return
+        }
+
+        const params: UpdateCommandInput = {
+            TableName: "Users", 
+            Key: {
+                user_id: IdOfUser, 
+            },
+            UpdateExpression: "SET documents = list_append(if_not_exists(documents, :empty_list), :documentId)", // Add the documentId to the documents array
+            ExpressionAttributeValues: {
+                ":documentId": [documentId], 
+                ":empty_list": [], 
+            },
+            ReturnValues: "UPDATED_NEW", 
+        };
+
+        const { Attributes } = await docClient.send(new UpdateCommand(params));
+
+        res.status(200).json({
+            success: true,
+            message: "File sent to user successfully",
+            documents: Attributes?.documents, 
+        });
+    } catch (error) {
+        let message = 'Unknown Error';
+        if (error instanceof Error) message = error.message;
+
+        console.error("Error in SendFileToAUser:", message);
+        res.status(500).json({ success: false, message });
+    }
+};
+

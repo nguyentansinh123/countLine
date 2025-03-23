@@ -1,11 +1,3 @@
-<<<<<<< HEAD
-import React from "react";
-
-function NDA() {
-  return <div>nda</div>;
-}
-export default NDA;
-=======
 import React, { useState } from 'react';
 import { Button, Dropdown, Menu, message } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
@@ -207,4 +199,3 @@ const NDA: React.FC = () => {
 
 
 export default NDA;
->>>>>>> develop
