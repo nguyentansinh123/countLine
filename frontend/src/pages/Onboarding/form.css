@@ -1,0 +1,143 @@
+/* Container for onboarding section */
+
+.onboarding-container {
+    display: flex;
+    flex-direction: column;
+    align-items: top;
+    justify-content: top;
+    padding: 0 60px;
+  }
+  
+  /* Branding Text */
+  .onboarding-heading {
+    margin-top: 0%;
+    text-align:start;
+    margin-bottom: 16px;
+  }
+  
+  .onboarding-heading h4 {
+    color: darkblue;
+    font-size: 20px;
+    margin: 0;
+  }
+  
+  .onboarding-heading h2 {
+    color: darkblue;
+    font-size: 28px;
+    margin: 4px 0 16px;
+  }
+  
+  /* Form Card */
+  .form-card {
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+  }
+  
+
+  .ant-tabs {
+    width: 100%;
+    min-width: 560px;
+    
+  }
+  
+  .ant-tabs-nav {
+    margin-bottom: 16px !important;
+  }
+  
+  .ant-tabs-tab {
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .ant-tabs-tab-active {
+    font-weight: bold;
+    color: #1890ff !important;
+  }
+  
+  /* Form Items */
+  .form .ant-form-item {
+    margin-bottom: 16px;
+  }
+  
+  .form-buttons {
+    display: flex;
+    flex-direction: column;
+    margin: 40px;
+  }
+  
+  .form-button {
+    width: 100%;
+    height: 40px;
+    margin: 5px;
+  }
+  
+  .form-button[type="submit"] {
+    background-color: #1890ff;
+    border-color: #1890ff;
+    color: white;
+  }
+  
+  .form-button[type="button"] {
+    background-color: #fff;
+    border-color: #d9d9d9;
+  }
+  
+  /* Checkbox styling */
+  .ant-checkbox-wrapper {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  
+  .ant-checkbox-wrapper a {
+    color: #1890ff;
+  }
+  
+  /* Divider */
+  .form-divider {
+    margin: 16px 0;
+  }
+  .form {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  
+  .form .ant-form-item {
+    width: 100%;
+  }
+  
+  .form .ant-input,
+  .form .ant-input-password,
+  .form .ant-checkbox-wrapper {
+    width: 100%;
+  }
+  
+  .form-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  
+  .form-button {
+    width: 48%;
+  }
+  
+  
+  /* Responsive tweaks */
+  @media screen and (max-width: 480px) {
+    .form-card {
+      width: 100%;
+      padding: 20px;
+    }
+  
+    .ant-tabs {
+      max-width: 100%;
+    }
+  }
+  

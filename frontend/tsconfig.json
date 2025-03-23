@@ -12,7 +12,12 @@
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,
+<<<<<<< HEAD
     "forceConsistentCasingInFileNames": true
+=======
+    "forceConsistentCasingInFileNames": true,
+    "types": ["pdfjs-dist"]
+>>>>>>> develop
   },
   "include": ["src"]
 }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React from 'react'
 
 const notification = () => {
@@ -7,3 +8,12 @@ const notification = () => {
 }
 
 export default notification
+=======
+import React from 'react';
+
+const notification = () => {
+  return <div>notification</div>;
+};
+
+export default notification;
+>>>>>>> develop
