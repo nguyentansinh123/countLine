@@ -1,0 +1,3 @@
+// filepath: /e:/Projects/csit/client/frontend/.prettierignore
+node_modules/
+dist/

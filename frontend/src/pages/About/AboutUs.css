@@ -1,0 +1,68 @@
+.AboutContainer_headerText{
+    margin-bottom: 64px;
+}
+.AboutContainer_headerText_h1{
+    color: #00004C;
+    font-weight: bold;
+    font-size: 30px;
+    line-height: 30px;
+}
+
+.About_textBlock_Header_h2{
+    color: #1313D1;
+    font-weight: 500;
+    font-size: 19px;
+    line-height: 28px;
+    letter-spacing: 15px;
+}
+
+.About_textBlock_Header_blockHeader_h1{
+    font-weight: 700;
+    font-size: 83px;
+    line-height: 83px;
+    color:#444444 ;
+    margin-bottom: 50px;
+    margin-top: 20px;
+}
+
+.About_textBlock_Header_paragraph_p{
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 28px;
+    color: #6C6C6C;
+    width: 425px;
+}
+
+.About_textBlock{
+    display: flex;
+    flex-direction: column;
+    margin-left: 163px;
+}
+
+.About_textBlock_image_block {
+    width: 470px;
+    height: 570px;
+    background: #ececec;
+    position: relative;
+    display: flex;  /* Use flexbox for centering */
+    justify-content: center;  /* Center horizontally */
+    align-items: center;  /* Center vertically */
+    border-radius: 10px;
+    /* margin-left: 120px; */
+}
+
+.About_textBlock_image {
+    width: 450px;
+    height: 550px;
+    object-fit: cover;  /* Ensures the image covers the whole area without stretching */
+}
+
+.About_gridContainer{
+    display: flex;
+    justify-content: space-evenly;
+}
+
+.About_textBlockRight{
+    margin-top: 450px;
+    margin-left: 120px;
+}

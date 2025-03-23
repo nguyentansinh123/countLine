@@ -1,0 +1,302 @@
+.contactContainer {
+  margin-top: 0;
+
+  width: 100%;
+  height: 100%;
+}
+.contactHeader {
+  padding-left: 36px;
+}
+.contactHeader_h1 {
+  color: #00004c;
+  font-weight: semibold;
+  font-size: 30px;
+  line-height: 38px;
+}
+
+.contactHeader_p {
+  color: #717171;
+  font-weight: 500;
+  font-size: 18px;
+  margin-top: 0%;
+  font-family: Popins;
+  line-height: 27px;
+}
+
+.contactDetails {
+  padding-left: 36px;
+  margin-top: 30px;
+  color: white;
+}
+.contactDetails_left_gapleft {
+  padding-left: 40px;
+  padding-top: 40px;
+}
+.contactDetails_left {
+  height: 600px;
+  width: 750px;
+  background-color: #00004c;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.contactDetails_left_text {
+  margin-bottom: 111px;
+}
+
+.contactDeatials_left_text_h1 {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 42px;
+}
+.contactDeatials_left_text_p {
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 5px;
+  color: #c9c9c9;
+}
+
+.contactDetails_left_information_details {
+  display: flex;
+  flex-direction: row;
+  gap: 28px;
+  width: 300px;
+  align-items: center;
+}
+
+.contactDetails_left_text_p {
+  color: #c9c9c9;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 0;
+}
+
+.contactDetails_left_socialMedia {
+  display: flex;
+  gap: 10px;
+  margin-top: 160px;
+}
+
+.contactDetails_left_socialMedia_box {
+  width: 30px;
+  height: 30px;
+  background-color: #1b1b1b;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition:
+    background-color 0.3s ease,
+    transform 0.3s ease;
+}
+
+.contactDetails_left_socialMedia_box:hover {
+  background-color: #fff;
+  transform: scale(1.1);
+}
+
+.contactDetails_left_socialMedia_icon {
+  font-size: 16px;
+  color: #fff;
+  transition: color 0.3s ease;
+}
+
+.contactDetails_left_socialMedia_box:hover
+  .contactDetails_left_socialMedia_icon {
+  color: #1b1b1b;
+}
+
+.ball {
+  position: absolute;
+  z-index: 0;
+}
+
+.contactDetails_left_ball1 {
+  width: 140px;
+  height: 140px;
+  background-color: #484848;
+  border-radius: 50%;
+  bottom: 100px;
+  right: 100px;
+  opacity: 0.5;
+}
+
+.contactDetails_left_ball2 {
+  width: 270px;
+  height: 270px;
+  background-color: #1a1a1a;
+  border-radius: 50%;
+  bottom: -80px;
+  right: -80px;
+  opacity: 0.8;
+}
+
+.contactDetails {
+  display: flex;
+  flex-direction: row;
+  gap: 50px;
+}
+
+.contactDetails_right_Form {
+  display: flex;
+  flex-wrap: wrap; /* Allow items to wrap onto the next line */
+  gap: 20px; /* Add space between the items */
+  width: 100%; /* Ensure full width of the container */
+}
+
+.contactDetails_right_Form_Area {
+  width: 48%; /* Set each form field to take up approximately 50% of the container's width */
+}
+
+.contactDetails_right_Form_Area_p {
+  color: #8d8d8d;
+  font-weight: bold;
+  font-size: 12px;
+  line-height: 20px;
+  transition: color 0.3s ease;
+}
+
+.contactDetails_right_Form_Area_input {
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid #8d8d8d;
+  padding-right: 200px;
+  outline: none;
+  transition:
+    border-bottom 0.3s ease,
+    color 0.3s ease;
+}
+
+.contactDetails_right_Form_Area_input::placeholder {
+  color: #8d8d8d;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  transition: color 0.3s ease;
+}
+
+.contactDetails_right_Form_Area_input:focus {
+  border-bottom: 2px solid #00004c;
+  color: #00004c;
+}
+
+.contactDetails_right_Form_Area_input:focus::placeholder {
+  color: #00004c;
+}
+
+.contactDetails_right_Form_Area:focus-within .contactDetails_right_Form_Area_p {
+  color: #00004c;
+}
+
+.dropdown-container {
+  position: relative;
+  display: inline-block;
+  margin-top: 45px;
+}
+
+/* Dropdown button styling */
+
+.dropdownlogo {
+  font-size: 10px;
+  margin-bottom: 10px;
+  color: black;
+}
+
+.dropdown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  border-bottom: 1px solid black;
+  width: 200px;
+  margin-top: 45px;
+}
+
+.dropdown-btn .anticon {
+  margin-left: 8px;
+}
+
+/* Dropdown menu container */
+.dropdown-menu {
+  position: absolute;
+  top: 100%; /* Position the dropdown directly below the button */
+  left: 0;
+  background-color: #fff;
+  border-radius: 5px;
+  width: 100%; /* Make the dropdown the same width as the button */
+  box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  margin-top: 5px; /* Add slight gap between the button and the menu */
+}
+
+/* Styling for dropdown items */
+.dropdown-item {
+  list-style: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: #333;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.dropdown-item:hover {
+  background-color: #ddd;
+}
+
+/* Optional: Styling for the dropdown label text */
+.dropdown-container_text {
+  font-weight: bold;
+  font-size: 14px;
+  color: #00004c;
+  margin-bottom: 10px; /* Space between text and button */
+}
+
+.right_colMsg {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.right_colMsg_p {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 20px;
+  color: #8d8d8d;
+  margin-top: 36px;
+}
+
+.right_colMsg_input {
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid #8d8d8d;
+  padding-bottom: 8px; /* This will create space between the placeholder and the underline */
+  padding-right: 200px;
+  outline: none;
+  transition:
+    border-bottom 0.3s ease,
+    color 0.3s ease;
+  width: 62%;
+}
+
+.right_colMsg_submit {
+  width: 214px;
+  height: 54px;
+  background: #00004c;
+  color: white;
+  padding: 15px 48px 15px 48px;
+  gap: 10px;
+  margin-top: 45px;
+  border-radius: 5px;
+  margin-left: 61%;
+  cursor: pointer;
+}
+
+.right_colMsg_input::placeholder {
+  color: #8d8d8d;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  transition: color 0.3s ease;
+}
