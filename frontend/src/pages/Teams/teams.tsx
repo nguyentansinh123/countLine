@@ -1,8 +1,10 @@
-import { Button, Card, Collapse, Dropdown, List, Menu } from 'antd';
+import { Button, Card, Collapse, Dropdown, List, Menu, MenuProps } from 'antd';
 import React, { useState, useEffect } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import TeamConst from '../Teams/const/TeamsConst';
+import GeneralLayout from '../../components/General_Layout/GeneralLayout';
+import CollapsableComponent from '../../components/CollapsableComponent/CollapsableComponent';
 
 function Teams() {
   const navigate = useNavigate();
@@ -18,12 +20,22 @@ function Teams() {
     }
   };
 
-  const menuItems = (teamId: string) => (
-    <Menu onClick={({ key }) => handleMenuClick(key, teamId)}>
-      <Menu.Item key="edit">Edit</Menu.Item>
-      <Menu.Item key="delete">Delete</Menu.Item>
-    </Menu>
-  );
+const menuItems = (item: any): MenuProps => {
+    return {
+      items: [
+        {
+          key: 'edit',
+          label: 'Edit',
+          onClick: () => handleMenuClick('edit', item),
+        },
+        {
+          key: 'delete',
+          label: 'Delete',
+          onClick: () => handleMenuClick('delete', item),
+        },
+      ],
+    };
+  };
 
   useEffect(() => {
     setTeams(TeamConst);
@@ -74,7 +86,7 @@ function Teams() {
             </div>
           </div>
           <Dropdown
-            overlay={menuItems(item.teamId.toString())}
+            menu={menuItems(item.teamId.toString())}
             placement="bottomRight"
           >
             <Button style={{ color: '#156CC9', border: 'solid 1px #156CC9' }}>
@@ -125,36 +137,12 @@ function Teams() {
 
   return (
     <>
-      <div
-        style={{ display: 'flex', justifyContent: 'space-between', margin: 1 }}
-      >
-        <h2 style={{ color: '#00004C', margin: '0px 40px 10px 10px' }}>
-          Teams
-        </h2>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          shape="round"
-          size="large"
-          style={{
-            backgroundColor: '#335DFF',
-            border: 'none',
-            margin: '0px 40px 10px 10px',
-          }}
-          onClick={() => navigate('/addteam')}
-        >
-          Add New Team
-        </Button>
-      </div>
-      <Card
-        style={{
-          width: '98%',
-          maxWidth: '98%',
-          height: '80vh',
-          border: 'solid 1px',
-          margin: '0 0 0 10px',
-        }}
-      >
+     <GeneralLayout 
+  title="Teams" 
+  buttonLabel="Add New Team" 
+  navigateLocation="/addteams" 
+>
+
         <div
           style={{
             display: 'flex',
@@ -195,7 +183,8 @@ function Teams() {
             }}
           />
         </div>
-      </Card>
+        <CollapsableComponent column={['Team','Members','Date','Status']} data={teams} menu={menuItems}/>
+      </GeneralLayout>
     </>
   );
 }

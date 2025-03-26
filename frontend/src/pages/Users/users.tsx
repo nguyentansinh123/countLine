@@ -9,11 +9,14 @@ import {
   Collapse,
   Menu,
   message,
+  MenuProps,
 } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+
 import clientUserConst from './const/clientUserConst';
 import systemUsersConst from './const/systemUserConst';
 import { useNavigate } from 'react-router-dom';
+import ListComponents from '../../components/listComponents/listComponents';
+import GeneralLayout from '../../components/General_Layout/GeneralLayout';
 
 function UserPage() {
   const [activeTab, setActiveTab] = useState('Client');
@@ -45,38 +48,24 @@ function UserPage() {
   };
 
   // Dropdown menu generator
-  const renderUserMenu = (user: any, type: 'client' | 'system') => (
-    <Menu onClick={({ key }) => handleMenuClick(key, user, type)}>
-      <Menu.Item key="edit">Edit</Menu.Item>
-      <Menu.Item key="delete">Delete</Menu.Item>
-    </Menu>
-  );
+  const renderUserMenu = (user: any, type: 'client' | 'system'): MenuProps => ({
+    items: [
+      {
+        key: 'edit',
+        label: 'Edit',
+        onClick: () => handleMenuClick('edit', user, type),
+      },
+      {
+        key: 'delete',
+        label: 'Delete',
+        onClick: () => handleMenuClick('delete', user, type),
+      },
+    ],
+  });
 
   return (
     <>
-      <div
-        style={{ display: 'flex', justifyContent: 'space-between', margin: 1 }}
-      >
-        <h2 style={{ color: '#00004C', margin: '0px 40px 10px 10px' }}>
-          Users
-        </h2>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          shape="round"
-          size="large"
-          style={{
-            backgroundColor: '#335DFF',
-            border: 'none',
-            marginTop: 10,
-            marginRight: 40,
-          }}
-          onClick={() => navigate('/adduser')}
-        >
-          Add New User
-        </Button>
-      </div>
-
+<GeneralLayout title='Users' buttonLabel='Add Users' navigateLocation='/adduser'>
       <Tabs
         defaultActiveKey="Client"
         onChange={setActiveTab}
@@ -141,7 +130,7 @@ function UserPage() {
                           <span>{item.type || 'N/A'}</span>
                           <span>{item.date || 'N/A'}</span>
                           <Dropdown
-                            overlay={renderUserMenu(item, 'client')}
+                            menu={renderUserMenu(item, 'client')}
                             placement="bottomRight"
                           >
                             <Button
@@ -214,94 +203,10 @@ function UserPage() {
 
         {/* System Users Tab */}
         <TabPane tab="System Users" key="System">
-          {systemUsers.length > 0 ? (
-            <Card
-              style={{
-                width: '98%',
-                maxWidth: '98%',
-                height: '70vh',
-                border: 'solid 1px',
-                marginTop: 0,
-              }}
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1.5fr 2fr 1.5fr 1fr',
-                  fontWeight: 'bold',
-                  paddingBottom: 8,
-                  borderBottom: '1px solid #ccc',
-                }}
-              >
-                <span>Username</span>
-                <span>Privileges</span>
-                <span>Date</span>
-              </div>
-              <div
-                style={{
-                  height: '60vh',
-                  padding: 5,
-                  overflowY: 'auto',
-                  paddingRight: 10,
-                }}
-              >
-                <List
-                  dataSource={systemUsers}
-                  renderItem={(item) => (
-                    <List.Item
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        width: '100%',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1.5fr 2fr 1.5fr 1fr',
-                          flex: 1,
-                        }}
-                      >
-                        <span>
-                          <strong>{item.name}</strong>
-                          <br />
-                          <small style={{ color: '#888' }}>{item.type}</small>
-                        </span>
-                        <span>
-                          {'privileges' in item && item.privileges
-                            ? item.privileges
-                                .map((priv) => priv.name)
-                                .join(', ')
-                            : 'No Privileges'}
-                        </span>
-                        <span style={{ fontWeight: 'bold' }}>
-                          {item.date || 'N/A'}
-                        </span>
-                      </div>
-                      <Dropdown
-                        overlay={renderUserMenu(item, 'system')}
-                        placement="bottomRight"
-                      >
-                        <Button
-                          style={{
-                            color: '#156CC9',
-                            border: 'solid 1px #156CC9',
-                          }}
-                        >
-                          ...
-                        </Button>
-                      </Dropdown>
-                    </List.Item>
-                  )}
-                />
-              </div>
-            </Card>
-          ) : (
-            <Empty description="No matching users found" />
-          )}
+          <ListComponents column={['Name', 'Privileges', 'Date']} data={systemUsers} menu={(item: any) => renderUserMenu(item, 'system')} />
         </TabPane>
       </Tabs>
+      </GeneralLayout>
     </>
   );
 }

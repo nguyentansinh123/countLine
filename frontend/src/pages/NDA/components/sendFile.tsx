@@ -56,6 +56,7 @@ const SendFile: React.FC = () => {
 
                 const lines: string[] = [];
                 let currentLine = '';
+                
                 let lastYPosition = -1;
 
                 content.items.forEach((item: any) => {

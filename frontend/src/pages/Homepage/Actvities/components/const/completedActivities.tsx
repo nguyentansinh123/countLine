@@ -1,6 +1,8 @@
 const completedActivities = [
   {
     username: 'John Wick',
+    userID:"1",
+    documentId:"doc_NDA_1",
     project: 'White Knight',
     document: 'Intern N.D.A (Unpaid)',
     date: '12/08/2024',

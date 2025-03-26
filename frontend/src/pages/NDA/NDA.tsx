@@ -6,6 +6,7 @@ import ndaDocuments from './const/ndaDocuments';
 import legalDocuments from './const/legalDocuments';
 import executiveDocumentTemplates from './const/executiveDocuments';
 import ipAgreements from './const/ipDocuments';
+import GeneralLayout from '../../components/General_Layout/GeneralLayout';
 
 const NDA: React.FC = () => {
   const navigate = useNavigate();
@@ -194,6 +195,7 @@ const NDA: React.FC = () => {
         ))}
       </div>
     </div>
+    
   );
 };
 
