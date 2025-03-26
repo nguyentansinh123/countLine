@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { ScanCommand,QueryCommand, GetCommand, BatchGetCommand } from "@aws-sdk/lib-dynamodb";
+import { ScanCommand,QueryCommand, GetCommand, BatchGetCommand, UpdateCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from '../lib/dynamoClient';
+import { v2 } from "../lib/cloudinary";
 
 
 const getAllUser = async (req: Request, res:Response) => {
@@ -162,4 +163,125 @@ const getAllUser = async (req: Request, res:Response) => {
 
   }
 
-export {getAllUser,getSingleUser,getAllUserDocuments,getSingleUserDocument} ;
+  const updateProfilePic = async (req: Request, res: Response) => {
+    try {
+        const { user_id } = req.body;
+        const { profilePicture } = req.body;
+
+        if (!profilePicture) {
+            res.status(400).json({
+                success: false,
+                message: 'Profile picture is required'
+            });
+            return
+        }
+
+        const uploadResponse = await v2.uploader.upload(profilePicture, {
+            folder: 'profile-pictures',
+            transformation: { width: 500, height: 500, crop: 'fill' }
+        });
+
+        const params = {
+            TableName: 'Users',
+            Key: { user_id },
+            UpdateExpression: 'SET profilePicture = :profilePicture',
+            ExpressionAttributeValues: {
+                ':profilePicture': uploadResponse.secure_url,
+            },
+            ReturnValues: 'ALL_NEW' as const
+        };
+
+        const { Attributes: updatedUser } = await docClient.send(new UpdateCommand(params));
+
+        if (!updatedUser) {
+            res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+            return
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Profile picture updated successfully',
+            user: {
+                profilePicture: updatedUser.profilePicture
+            }
+        });
+
+    } catch (error) {
+        let message = 'Unknown Error';
+        if (error instanceof Error) message = error.message;
+
+        console.error("Error updating profile picture:", message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to update profile picture',
+            error: message 
+        });
+    }
+};
+
+const deleteUser = async (req: Request, res: Response) => {
+  try {
+      const { user_id } = req.body;
+
+      if (!user_id) {
+          res.status(400).json({
+              success: false,
+              message: 'user_id is required'
+          });
+          return
+      }
+
+      const getUserParams = {
+          TableName: 'Users',
+          Key: { user_id }
+      };
+      
+      const userData = await docClient.send(new GetCommand(getUserParams));
+      
+      if (!userData.Item) {
+          res.status(404).json({
+              success: false,
+              message: 'User not found'
+          });
+          return
+      }
+
+      if (userData.Item.profilePicture) {
+          try {
+              const urlParts = userData.Item.profilePicture.split('/');
+              const publicId = urlParts[urlParts.length - 1].split('.')[0];
+              
+              await v2.uploader.destroy(publicId);
+          } catch (cloudinaryError) {
+              console.warn('Cloudinary cleanup warning:', cloudinaryError);
+          }
+      }
+
+      const deleteParams = {
+          TableName: 'Users',
+          Key: { user_id }
+      };
+
+      await docClient.send(new DeleteCommand(deleteParams));
+
+      res.clearCookie('tdToken');
+
+      res.status(200).json({
+          success: true,
+          message: 'User account deleted successfully'
+      });
+
+  } catch (error) {
+      console.error('User deletion error:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to delete user account',
+          error: error instanceof Error ? error.message : 'Unknown error'
+      });
+  }
+};
+
+export {getAllUser,getSingleUser,getAllUserDocuments,getSingleUserDocument,updateProfilePic,deleteUser} ;
