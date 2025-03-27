@@ -7,6 +7,7 @@ import ndaDocuments from '../../pages/NDA/const/ndaDocuments';
 import legalDocuments from '../../pages/NDA/const/legalDocuments';
 import executiveDocumentTemplates from '../../pages/NDA/const/executiveDocuments';
 import ipAgreements from '../../pages/NDA/const/ipDocuments';
+import GeneralLayout from '../General_Layout/GeneralLayout';
 
 // Set the worker to use the imported worker
 pdfjsLib.GlobalWorkerOptions.workerPort = new pdfjsWorker();
@@ -133,14 +134,7 @@ const ViewDocument: React.FC = () => {
     <div style={{ padding: '20px' }}>
       {file && (
         <>
-          <h2 style={{ color: '#00004C' }}>View Document</h2>
-          <Card
-            style={{
-              border: '1px solid #00004C',
-              color: '#00004C',
-              height: '80vh',
-            }}
-          >
+         <GeneralLayout title='View Document'>
             <div style={{display:'flex'}}>
               <div style={{display:'flex', width:'100%', padding:10}}>
               <p style={{width:100}}>File Name</p>
@@ -169,7 +163,7 @@ const ViewDocument: React.FC = () => {
             ) : (
               <Alert message={error || 'File not found'} type="error" />
             )}
-          </Card>
+          </GeneralLayout>
         </>
       )}
     </div>

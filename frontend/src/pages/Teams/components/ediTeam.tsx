@@ -16,7 +16,7 @@ function EditTeam() {
   const navigate = useNavigate();
   const [team, setTeam] = useState<{
     teamId: number;
-    teamName: string;
+    team: string;
     date: string;
     status: string;
     description: string;
@@ -33,7 +33,7 @@ function EditTeam() {
       const foundTeam = teamsData.find((t) => t.teamId === Number(teamId));
       if (foundTeam) {
         setTeam(foundTeam);
-        setTeamName(foundTeam.teamName);
+        setTeamName(foundTeam.team);
         setStartDate(formatDateForInput(foundTeam.date));
         setTeamStatus(foundTeam.status);
         setDescription(foundTeam.description);
@@ -153,7 +153,7 @@ function EditTeam() {
           <p>Team not found</p>
         )}
         <div
-          style={{ display: 'flex', gap: 20, padding: 10, marginTop: '30%' }}
+          style={{ display: 'flex', gap: 20, padding: 10, marginTop: '10%' }}
         >
           <Button
             style={{
