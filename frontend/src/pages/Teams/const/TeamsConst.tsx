@@ -1,7 +1,7 @@
 const teamsData = [
   {
     teamId: 1,
-    teamName: 'Alpha Squad',
+    team: 'Alpha Squad',
     date: '22/07/2022',
     status: 'Active',
     description:
@@ -16,7 +16,7 @@ const teamsData = [
   },
   {
     teamId: 2,
-    teamName: 'Beta Force',
+    team: 'Beta Force',
     date: '22/07/2022',
     status: 'In Progress',
     description: 'Focused on AI and machine learning research projects.',
@@ -30,7 +30,7 @@ const teamsData = [
   },
   {
     teamId: 3,
-    teamName: 'Gamma Titans',
+    team: 'Gamma Titans',
     date: '22/07/2022',
     status: 'Inactive',
     description: 'Expertise in data analysis and visualization.',
@@ -43,7 +43,7 @@ const teamsData = [
   },
   {
     teamId: 4,
-    teamName: 'Delta Warriors',
+    team: 'Delta Warriors',
     date: '22/07/2022',
     status: 'Active',
     description:
@@ -58,7 +58,7 @@ const teamsData = [
   },
   {
     teamId: 5,
-    teamName: 'Epsilon Strikers',
+    team: 'Epsilon Strikers',
     date: '22/07/2022',
     status: 'In Progress',
     description:
@@ -72,7 +72,7 @@ const teamsData = [
   },
   {
     teamId: 6,
-    teamName: 'Zeta Guardians',
+    team: 'Zeta Guardians',
     date: '22/07/2022',
     status: 'Inactive',
     description: 'A team specializing in IoT and smart home automation.',
@@ -85,7 +85,7 @@ const teamsData = [
   },
   {
     teamId: 7,
-    teamName: 'Omega Legends',
+    team: 'Omega Legends',
     date: '22/07/2022',
     status: 'Active',
     description:
@@ -99,7 +99,7 @@ const teamsData = [
   },
   {
     teamId: 8,
-    teamName: 'Sigma Blazers',
+    team: 'Sigma Blazers',
     date: '22/07/2022',
     status: 'In Progress',
     description: 'Experts in mobile app development and UX/UI design.',
@@ -112,7 +112,7 @@ const teamsData = [
   },
   {
     teamId: 9,
-    teamName: 'Theta Strikers',
+    team: 'Theta Strikers',
     date: '22/07/2022',
     status: 'Active',
     description:
@@ -127,7 +127,7 @@ const teamsData = [
   },
   {
     teamId: 10,
-    teamName: 'Lambda Knights',
+    team: 'Lambda Knights',
     date: '22/07/2022',
     status: 'Inactive',
     description: 'A team focusing on cloud computing and DevOps practices.',

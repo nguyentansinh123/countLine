@@ -26,8 +26,6 @@ const clientUserConst = [
       { name: 'Intern NDA' },
       { name: 'Project Proposal' },
       { name: 'Contract' },
-      { name: 'Security Compliance' },
-      { name: 'Confidentiality' },
     ],
   },
   {

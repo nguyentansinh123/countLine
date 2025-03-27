@@ -63,7 +63,7 @@ const menuItems = (item: any): MenuProps => {
             }}
           >
             <div style={{ flex: 1 }}>
-              <strong>{item.teamName}</strong>
+              <strong>{item.team}</strong>
             </div>
             <div style={{ flex: 1, textAlign: 'center' }}>
               {item.members ? item.members.length : 0}
@@ -143,47 +143,12 @@ const menuItems = (item: any): MenuProps => {
   navigateLocation="/addteams" 
 >
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 70,
-            fontWeight: 'bold',
-            width: '100%',
-            margin: '0 auto',
-            paddingBottom: 8,
-            borderBottom: '1px solid #ccc',
-          }}
-        >
-          <div style={{ flex: 1, textAlign: 'left', marginLeft: 40 }}>
-            Username
-          </div>
-          <div style={{ flex: 1, textAlign: 'center' }}>Team</div>
-          <div style={{ flex: 1, textAlign: 'center' }}>Date</div>
-          <div style={{ flex: 1, textAlign: 'center', marginRight: 100 }}>
-            Status
-          </div>
-        </div>
+<CollapsableComponent 
+  column={['Team', 'Members', 'Date', 'Status']} 
+  data={teams} 
+  menu={(item) => menuItems(item.teamId)}
+/>
 
-        <div
-          style={{
-            height: '70vh',
-            padding: 5,
-            overflowY: 'auto',
-            paddingRight: 10,
-          }}
-        >
-          <Collapse
-            expandIcon={() => null}
-            items={collapseItem}
-            style={{
-              marginTop: 0,
-              backgroundColor: 'transparent',
-              border: 'none',
-            }}
-          />
-        </div>
-        <CollapsableComponent column={['Team','Members','Date','Status']} data={teams} menu={menuItems}/>
       </GeneralLayout>
     </>
   );
