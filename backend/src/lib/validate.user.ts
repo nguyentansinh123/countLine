@@ -16,6 +16,20 @@ export const validateUser = (user: any) => {
     errors.push("Invalid role");
   }
 
+  if (user.recentSearches) {
+    if (!Array.isArray(user.recentSearches)) {
+      errors.push("recentSearches must be an array");
+    } else {
+      user.recentSearches.forEach((search: any, index: number) => {
+        if (!search.userId) errors.push(`recentSearches[${index}].userId is required`);
+        if (!search.name) errors.push(`recentSearches[${index}].name is required`);
+        if (search.timestamp && typeof search.timestamp !== 'number') {
+          errors.push(`recentSearches[${index}].timestamp must be a number`);
+        }
+      });
+    }
+  }
+
   if (errors.length > 0) {
     throw new Error(`Validation failed: ${errors.join(", ")}`);
   }
@@ -35,5 +49,6 @@ export const validateUser = (user: any) => {
     teams: user.teams || [], 
     profilePicture: user.profilePicture || '', 
     created_at: new Date().toISOString(), 
+    recentSearches: user.recentSearches || [],
   };
 };

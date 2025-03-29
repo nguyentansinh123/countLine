@@ -52,4 +52,14 @@ export const UserSchema = {
     type: String,
     default: '', 
   },
+  recentSearches: {
+    type: [{
+      userId: String,
+      name: String,
+      profilePicture: String,
+      timestamp: Number
+    }],
+    default: [],
+    maxLength: 3 
+  },
 };

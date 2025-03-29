@@ -7,6 +7,8 @@ import { docClient } from './lib/dynamoClient';
 import {router as AuthRoute} from './routes/auth.route'
 import {router as UserRoute} from './routes/users.route'
 import {router as DocumentRoute} from './routes/document.route'
+import {router as TeamRoute} from './routes/team.route'
+import {router as ProjectRoute} from './routes/project.route'
 
 dotenv.config();
 
@@ -23,27 +25,10 @@ app.use(cookieParser());
 app.use('/api/auth', AuthRoute)
 app.use('/api/users', UserRoute)
 app.use('/api/document', DocumentRoute)
+app.use('/api/team', TeamRoute)
+app.use('/api/project', ProjectRoute)
 
-app.post('/users', async (req, res) => {
-  const { user_id, name, age } = req.body;
 
-  const params = {
-    TableName: 'Users',
-    Item: {
-      user_id, 
-      name,   
-      age
-    }
-  };
-
-  try {
-    const data = await docClient.send(new PutCommand(params));
-    res.status(200).json({ message: "User inserted successfully", data });
-  } catch (err) {
-    console.error("Error inserting user:", err);
-    res.status(500).json({ error: "Error inserting user" });
-  }
-});
 
 
 app.listen(PORT, () => {
