@@ -6,10 +6,13 @@ import {
     getProject, 
     updateProject, 
     deleteProject, 
-    listProjects 
+    getAllProject,
+    addTeamToProject
 } from '../controller/project.controller';
 
-router.post('/', userAuth, createProject); // havent test yet
+router.post('/', userAuth, createProject); 
+
+router.get('/GetallProject', userAuth, getAllProject);
 
 router.get('/:projectId', userAuth, getProject);
 
@@ -17,4 +20,5 @@ router.put('/:projectId', userAuth, updateProject);
 
 router.delete('/:projectId', userAuth, deleteProject);
 
-router.get('/', userAuth, listProjects);
+
+router.post('/addTeamToProject', userAuth,addTeamToProject)
