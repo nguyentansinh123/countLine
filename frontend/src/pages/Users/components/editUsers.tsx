@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import systemUsersConst from '../const/systemUserConst';
 import clientUserConst from '../const/clientUserConst';
+import ClientComponents from './contents/UserForm';
+import UserForm from './contents/UserForm';
 
 function EditUsers() {
   const { userId } = useParams();
@@ -134,124 +136,41 @@ function EditUsers() {
       key: '1',
       label: 'Client User',
       children: (
-        <div
-          style={{
-            padding: 10,
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 10,
-          }}
-        >
-          <div>
-            <h3>Name</h3>
-            <Input
-              value={Name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter name"
-            />
-          </div>
-          <div>
-            <h3>Mail</h3>
-            <Input
-              value={mail}
-              onChange={(e) => setMail(e.target.value)}
-              placeholder="Enter mail"
-            />
-          </div>
-          <div>
-            <h3>Type</h3>
-            <Input
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              placeholder="Type"
-            />
-          </div>
-          <div />
-          <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
-            <Button
-              onClick={() => navigate('/users')}
-              style={{ border: '1px solid #156CC9', color: '#156CC9' }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleClientUserSave}
-              style={{ backgroundColor: '#156CC9', color: '#fff' }}
-            >
-              {userId && category === 'Client' ? 'Update User' : 'Add User'}
-            </Button>
-          </div>
-        </div>
+        <UserForm
+        name={Name}
+        mail={mail}
+        type={type}
+        category="Client"
+        userId={userId}
+        onNameChange={(value) => setName(value)}
+        onMailChange={(value) => setMail(value)}
+        onTypeChange={(value) => setType(value)}
+        onSave={handleClientUserSave}
+        onCancel={() => navigate('/users')}
+      />
+      
       ),
     },
     {
       key: '2',
       label: 'System User',
       children: (
-        <div
-          style={{
-            padding: 10,
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 10,
-          }}
-        >
-          <div>
-            <h3>Name</h3>
-            <Input
-              value={Name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter name"
-            />
-          </div>
-          <div>
-            <h3>Mail</h3>
-            <Input
-              value={mail}
-              onChange={(e) => setMail(e.target.value)}
-              placeholder="Enter mail"
-            />
-          </div>
-          <div>
-            <h3>Type</h3>
-            <Input
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              placeholder="Type"
-            />
-          </div>
-          <div>
-            <h3>Privileges</h3>
-            <Select
-              mode="multiple"
-              value={privileges}
-              onChange={(value) => setPrivileges(value)}
-              placeholder="Select privileges"
-              style={{ width: '100%' }}
-            >
-              {privilegesData.map((item) => (
-                <Select.Option key={item.value} value={item.value}>
-                  {item.label}
-                </Select.Option>
-              ))}
-            </Select>
-          </div>
-          <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
-            <Button
-              onClick={() => navigate('/users')}
-              style={{ border: '1px solid #156CC9', color: '#156CC9' }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSystemUserSave}
-              style={{ backgroundColor: '#156CC9', color: '#fff' }}
-            >
-              {userId && category === 'System' ? 'Update User' : 'Add User'}
-            </Button>
-          </div>
-        </div>
-      ),
+        <UserForm
+        name={Name}
+        mail={mail}
+        type={type}
+        privileges={privileges}
+        privilegesData={privilegesData}
+        category="System"
+        userId={userId}
+        onNameChange={(value) => setName(value)}
+        onMailChange={(value) => setMail(value)}
+        onTypeChange={(value) => setType(value)}
+        onPrivilegesChange={(value) => setPrivileges(value)}
+        onSave={handleSystemUserSave}
+        onCancel={() => navigate('/users')}
+      />
+      )
     },
   ];
 

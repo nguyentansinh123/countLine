@@ -25,7 +25,15 @@ const ndaDocuments = [
     status: 'Signed',
     fileType: 'PDF',
     location: 'https://csit321bucket.s3.ap-southeast-2.amazonaws.com/Non-Disclosure+Agreement+for+Employees.pdf',
-  },
+  }, {
+  id: 'doc-nda-004',
+  title: 'Non-Disclosure Agreement formatted',
+  uploadedBy: 'Emily Chan',
+  uploadedAt: '2025-03-05',
+  status: 'Signed',
+  fileType: 'PDF',
+  location:'https://csit321bucket.s3.ap-southeast-2.amazonaws.com/FOR+ATHUL-1.pdf',
+},
 ];
 
 export default ndaDocuments;

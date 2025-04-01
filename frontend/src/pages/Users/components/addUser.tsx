@@ -1,17 +1,9 @@
-import {
-  Button,
-  Card,
-  Input,
-  InputNumber,
-  Select,
-  Tabs,
-  TabsProps,
-} from 'antd';
-import React, { use, useState } from 'react';
-
+import { Button, Card, Input, Select, Tabs, TabsProps } from 'antd';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import systemUsersConst from '../const/systemUserConst';
 import clientUserConst from '../const/clientUserConst';
+import UserForm from './contents/UserForm';
 
 function AddUser() {
   const privilegesData = [
@@ -38,7 +30,8 @@ function AddUser() {
   const [type, setType] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const [privileges, setPrivileges] = useState('');
+  // Update privileges to be an array of strings
+  const [privileges, setPrivileges] = useState<string[]>([]);
 
   const handleClientAddUser = () => {
     if (!Name || !mail || !type) {
@@ -58,12 +51,12 @@ function AddUser() {
       documents: [],
     };
     clientUserConst.push(newUser);
-    console.log('New System User:', newUser);
+    console.log('New Client User:', newUser);
     navigate('/users');
   };
 
   const handleSystemAddUser = () => {
-    if (!Name || !mail || !type || !privileges) {
+    if (!Name || !mail || !type || privileges.length === 0) {
       alert('Please fill in all fields');
       return;
     }
@@ -77,13 +70,12 @@ function AddUser() {
       type: type,
       category: 'System',
       date: date,
-      privileges: [{ name: privileges }],
+      privileges: privileges.map((privilege) => ({ name: privilege })),
     };
     systemUsersConst.push(newUser);
 
     console.log('New System User:', newUser);
     navigate('/users');
-    return;
   };
 
   const items: TabsProps['items'] = [
@@ -91,175 +83,39 @@ function AddUser() {
       key: '1',
       label: 'Client User',
       children: (
-        <div>
-          <div
-            style={{
-              maxWidth: '100%',
-              padding: 10,
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 10,
-            }}
-          >
-            <div>
-              <h3>Name</h3>
-              <Input
-                value={Name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter  name"
-                type="text"
-              />
-            </div>
-            <div>
-              <h3>mail</h3>
-              <Input
-                value={mail}
-                onChange={(e) => setMail(e.target.value)}
-                placeholder="Enter mail"
-                type="mail"
-              />
-            </div>
-            <div style={{}}>
-              <h3> Type</h3>
-              <Input
-                value={type}
-                placeholder="Type"
-                onChange={(e) => setType(e.target.value)}
-                style={{ width: '100%' }}
-              ></Input>
-            </div>
-            <div></div>
-            <div
-              style={{
-                display: 'flex',
-                gap: 20,
-                padding: 10,
-                marginTop: '30%',
-              }}
-            >
-              <Button
-                style={{
-                  padding: 10,
-                  margin: 10,
-                  border: 'solid 1px #156CC9',
-                  color: '#156CC9',
-                  width: 200,
-                }}
-                onClick={() => navigate('/users')}
-              >
-                Cancel
-              </Button>
-              <Button
-                style={{
-                  padding: 10,
-                  margin: 10,
-                  backgroundColor: '#156CC9',
-                  border: 'none',
-                  color: 'white',
-                  width: 200,
-                }}
-                onClick={handleClientAddUser}
-              >
-                Add User
-              </Button>
-            </div>
-          </div>
-        </div>
+        <UserForm
+          name={Name}
+          mail={mail}
+          type={type}
+          category="Client"
+          userId=""
+          onNameChange={(value) => setName(value)}
+          onMailChange={(value) => setMail(value)}
+          onTypeChange={(value) => setType(value)}
+          onSave={handleClientAddUser}
+          onCancel={() => navigate('/users')}
+        />
       ),
     },
     {
       key: '2',
       label: 'System User',
       children: (
-        <div>
-          <div
-            style={{
-              maxWidth: '100%',
-              padding: 10,
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 10,
-            }}
-          >
-            <div>
-              <h3>Name</h3>
-              <Input
-                value={Name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter  name"
-                type="text"
-              />
-            </div>
-            <div>
-              <h3>mail</h3>
-              <Input
-                value={mail}
-                onChange={(e) => setMail(e.target.value)}
-                placeholder="Enter mail"
-                type="mail"
-              />
-            </div>
-            <div>
-              <h3> Type</h3>
-              <Input
-                value={type}
-                placeholder="Type"
-                onChange={(e) => setType(e.target.value)}
-                style={{ width: '100%' }}
-              ></Input>
-            </div>
-            <div>
-              <h3> Privilges</h3>
-              <Select
-                mode="multiple"
-                value={privileges}
-                onChange={(value) => setPrivileges(value)}
-                placeholder="Select privileges"
-                style={{ width: '100%' }}
-              >
-                {privilegesData.map((item) => (
-                  <Select.Option key={item.value} value={item.value}>
-                    {item.label}
-                  </Select.Option>
-                ))}
-              </Select>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                gap: 20,
-                padding: 10,
-                marginTop: '30%',
-              }}
-            >
-              <Button
-                style={{
-                  padding: 10,
-                  margin: 10,
-                  border: 'solid 1px #156CC9',
-                  color: '#156CC9',
-                  width: 200,
-                }}
-                onClick={() => navigate('/users')}
-              >
-                Cancel
-              </Button>
-              <Button
-                style={{
-                  padding: 10,
-                  margin: 10,
-                  backgroundColor: '#156CC9',
-                  border: 'none',
-                  color: 'white',
-                  width: 200,
-                }}
-                onClick={handleSystemAddUser}
-              >
-                Add User
-              </Button>
-            </div>
-          </div>
-        </div>
+        <UserForm
+          name={Name}
+          mail={mail}
+          type={type}
+          privileges={privileges}
+          privilegesData={privilegesData}
+          category="System"
+          userId=""
+          onNameChange={(value) => setName(value)}
+          onMailChange={(value) => setMail(value)}
+          onTypeChange={(value) => setType(value)}
+          onPrivilegesChange={(value) => setPrivileges(value)} // Pass the updated privileges array
+          onSave={handleSystemAddUser}
+          onCancel={() => navigate('/users')}
+        />
       ),
     },
   ];
