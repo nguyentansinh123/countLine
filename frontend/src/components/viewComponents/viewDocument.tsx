@@ -1,5 +1,9 @@
-import React from 'react';
+// src/components/ViewDocument.tsx
+import React, { useState, useEffect } from 'react';
+import { Spin, Alert, Card, Input } from 'antd';
 import { useParams } from 'react-router-dom';
+import { fetchPdfFile } from '../../utils/fetchFile'
+import { extractTextFromPDF } from '../../utils/extracttextFromPdf';
 import ndaDocuments from '../../pages/NDA/const/ndaDocuments';
 import legalDocuments from '../../pages/NDA/const/legalDocuments';
 import executiveDocumentTemplates from '../../pages/NDA/const/executiveDocuments';
@@ -9,11 +13,13 @@ import PdfViewer from '../Editor/PdfViewer';
 
 const ViewDocument: React.FC = () => {
   const { category, file_id } = useParams<{ category: string; file_id: string }>();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [txtContent, setTxtContent] = useState<string | null>(null);
 
   const decodedCategory = decodeURIComponent(category || '');
   let fileData: any[] = [];
 
-  // Determine the category and select the appropriate documents array
   if (decodedCategory === 'NDA Documents') {
     fileData = ndaDocuments;
   } else if (decodedCategory === 'IP Agreements') {
@@ -24,28 +30,57 @@ const ViewDocument: React.FC = () => {
     fileData = legalDocuments;
   }
 
-  // Find the file based on the file_id
   const file = fileData.find(f => f.id === file_id);
 
-  // Log the file URL to the console
-  if (file) {
-    console.log('File URL:', file.url);
-  }
+  useEffect(() => {
+    if (!file) {
+      setError('File not found.');
+      setLoading(false);
+      return;
+    }
 
-  if (!file) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <h3>Document not found</h3>
-      </div>
-    );
+    const fetchAndExtractText = async () => {
+      try {
+        setLoading(true); // Start loading
+        const fileUrl = file.location;
+        
+        const fetchedFile = await fetchPdfFile(fileUrl); // Fetch file
+        if (!fetchedFile) {
+          setError('File not found.');
+          setLoading(false);
+          return;
+        }
+
+        const text = await extractTextFromPDF(fetchedFile); // Extract text
+        setTxtContent(text);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load PDF file');
+        setLoading(false); // Stop loading if there's an error
+      }
+    };
+
+    fetchAndExtractText();
+  }, [file]);
+
+  if (error) {
+    return <Alert message={error} type="error" />;
   }
 
   return (
     <div style={{ padding: '20px' }}>
-      <GeneralLayout title="View Document">
-        <PdfViewer fileUrl={file.location} />
-      </GeneralLayout>
+      {file && (
+        <>
+          <GeneralLayout title='View Document'>
+          <PdfViewer fileUrl={file.location}/>
+          </GeneralLayout>
+        </>
+      )}
+      
+      
+      
     </div>
+    
   );
 };
 

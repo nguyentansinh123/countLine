@@ -51,7 +51,7 @@ const Step1: React.FC<Step1Props> = ({
   }, [selectedTeamId]);
 
   const handleTeamChange = (teamName: string) => {
-    const selectedTeam = teamsData.find((team) => team.teamName === teamName);
+    const selectedTeam = teamsData.find((team) => team.team === teamName);
     if (selectedTeam) {
       setSelectedTeamId(selectedTeam.teamId);
     }
@@ -129,8 +129,8 @@ const Step1: React.FC<Step1Props> = ({
             <h4>Team</h4>
             <Select style={{ width: 200 }} onChange={handleTeamChange}>
               {teamsData.map((team) => (
-                <Select.Option key={team.teamId.toString()} value={team.teamName}>
-                  {team.teamName}
+                <Select.Option key={team.teamId.toString()} value={team.team}>
+                  {team.team}
                 </Select.Option>
               ))}
             </Select>

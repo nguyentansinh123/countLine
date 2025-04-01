@@ -11,7 +11,7 @@ export interface TeamMember {
   
   export interface Team {
     teamId:number;
-    teamName: string;
+    team: string;
     date:string;
     status:string;
     description:string;
