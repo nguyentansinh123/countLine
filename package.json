@@ -1,6 +1,9 @@
 {
   "dependencies": {
     "@aws-sdk/lib-dynamodb": "^3.774.0",
+    "@tiptap/core": "^2.11.7",
+    "@types/axios": "^0.9.36",
+    "axios": "^1.8.4",
     "react-pdf": "^9.2.1"
   },
   "devDependencies": {

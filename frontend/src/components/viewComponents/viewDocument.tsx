@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Spin, Alert, Card, Input } from 'antd';
 import { useParams } from 'react-router-dom';
 import { fetchPdfFile } from '../../utils/fetchFile'
-import { extractTextFromPDF } from '../../utils/extracttextFromPdf';
+import  extractTextFromPDF  from '../../utils/extracttextFromPdf';
 import ndaDocuments from '../../pages/NDA/const/ndaDocuments';
 import legalDocuments from '../../pages/NDA/const/legalDocuments';
 import executiveDocumentTemplates from '../../pages/NDA/const/executiveDocuments';
@@ -32,40 +32,6 @@ const ViewDocument: React.FC = () => {
 
   const file = fileData.find(f => f.id === file_id);
 
-  useEffect(() => {
-    if (!file) {
-      setError('File not found.');
-      setLoading(false);
-      return;
-    }
-
-    const fetchAndExtractText = async () => {
-      try {
-        setLoading(true); // Start loading
-        const fileUrl = file.location;
-        
-        const fetchedFile = await fetchPdfFile(fileUrl); // Fetch file
-        if (!fetchedFile) {
-          setError('File not found.');
-          setLoading(false);
-          return;
-        }
-
-        const text = await extractTextFromPDF(fetchedFile); // Extract text
-        setTxtContent(text);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to load PDF file');
-        setLoading(false); // Stop loading if there's an error
-      }
-    };
-
-    fetchAndExtractText();
-  }, [file]);
-
-  if (error) {
-    return <Alert message={error} type="error" />;
-  }
 
   return (
     <div style={{ padding: '20px' }}>
