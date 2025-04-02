@@ -65,7 +65,7 @@ const Register = async (req: Request, res: Response) => {
       throw new Error("JWT_SECRET is not defined in environment variables");
     }
     const token = jwt.sign(
-      { id: validatedUser.user_id },
+      { id: validatedUser.userId },
       process.env.JWT_SECRET,
       { expiresIn: "2d" }
     );
@@ -78,7 +78,7 @@ const Register = async (req: Request, res: Response) => {
 
     const { html } = mjml2html(welcomeEmailTemplate(name));
     const mailOptions = {
-      from: process.env.SENDER_EMAIL,
+      from: process.env.EMAIL_USER,
       to: email,
       subject: "Welcome to Our App",
       html: html,
@@ -90,7 +90,7 @@ const Register = async (req: Request, res: Response) => {
       success: true,
       message: "User registered successfully",
       data: {
-        user_id: validatedUser.user_id,
+        userId: validatedUser.userId,
         name: validatedUser.name,
         email: validatedUser.email,
       },
