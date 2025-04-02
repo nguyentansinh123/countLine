@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from "uuid";
+import { v4 as uuidv4 } from 'uuid';
 
 export const validateUser = (user: any) => {
   const errors: string[] = [];
@@ -11,7 +11,7 @@ export const validateUser = (user: any) => {
     errors.push("Invalid email format");
   }
 
-  const allowedRoles = ["employee", "client", "intern", "admin", "user"];
+  const allowedRoles = ['employee', 'client', 'intern', 'admin', 'user'];
   if (user.role && !allowedRoles.includes(user.role)) {
     errors.push("Invalid role");
   }
@@ -21,11 +21,9 @@ export const validateUser = (user: any) => {
       errors.push("recentSearches must be an array");
     } else {
       user.recentSearches.forEach((search: any, index: number) => {
-        if (!search.userId)
-          errors.push(`recentSearches[${index}].userId is required`);
-        if (!search.name)
-          errors.push(`recentSearches[${index}].name is required`);
-        if (search.timestamp && typeof search.timestamp !== "number") {
+        if (!search.userId) errors.push(`recentSearches[${index}].userId is required`);
+        if (!search.name) errors.push(`recentSearches[${index}].name is required`);
+        if (search.timestamp && typeof search.timestamp !== 'number') {
           errors.push(`recentSearches[${index}].timestamp must be a number`);
         }
       });
@@ -37,20 +35,20 @@ export const validateUser = (user: any) => {
   }
 
   return {
-    userId: uuidv4(),
+    user_id: uuidv4(), 
     name: user.name,
     email: user.email,
     password: user.password,
-    verifyOTP: user.verifyOTP || "",
+    verifyOTP: user.verifyOTP || '',
     verifyOTPExpiredAt: user.verifyOTPExpiredAt || 0,
     isAccountVerified: user.isAccountVerified || false,
-    resetOTP: user.resetOTP || "",
+    resetOTP: user.resetOTP || '',
     resetOTPExpireAt: user.resetOTPExpireAt || 0,
-    role: user.role || "user",
-    documents: user.documents || [],
-    teams: user.teams || [],
-    profilePicture: user.profilePicture || "",
-    created_at: new Date().toISOString(),
+    role: user.role || 'user', 
+    documents: user.documents || [], 
+    teams: user.teams || [], 
+    profilePicture: user.profilePicture || '', 
+    created_at: new Date().toISOString(), 
     recentSearches: user.recentSearches || [],
   };
 };
