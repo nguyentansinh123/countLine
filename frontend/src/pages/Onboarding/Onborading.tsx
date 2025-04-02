@@ -1,13 +1,13 @@
 // src/pages/Onboarding.tsx
-import React, { useState } from 'react'
-import { Card, Tabs } from 'antd'
-import { useNavigate } from 'react-router-dom'
-import SignupForm from './components/SignupForm'
-import LoginForm from './components/LoginForm'
-import './form.css'
+import React, { useState } from 'react';
+import { Card, Tabs } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import SignupForm from './components/SignupForm';
+import LoginForm from './components/LoginForm';
+import './form.css';
 
 const Onboarding: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('1')
+  const [activeTab, setActiveTab] = useState<string>('1');
 
   return (
     <div className="onboarding-container">
@@ -16,7 +16,9 @@ const Onboarding: React.FC = () => {
         <h2>WHITE KNIGHT</h2>
       </div>
 
-      <Card style={{ minHeight: '80vh', display: 'flex', alignContent: 'start' }}>
+      <Card
+        style={{ minHeight: '80vh', display: 'flex', alignContent: 'start' }}
+      >
         <Tabs
           style={{
             backgroundColor: '#f9f9f9',
@@ -41,7 +43,7 @@ const Onboarding: React.FC = () => {
         />
       </Card>
     </div>
-  )
-}
+  );
+};
 
-export default Onboarding
+export default Onboarding;
