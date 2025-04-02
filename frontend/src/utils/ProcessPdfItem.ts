@@ -1,6 +1,12 @@
 // src/utils/processPdfItem.ts
 import * as pdfjsLib from 'pdfjs-dist';
 
+// Helper to convert an array of characters into a string
+const convertGlyphsToText = (glyphs: any[]): string => {
+  return glyphs.map((glyph) => glyph.unicode || glyph.fontChar).join('');
+};
+
+
 // Helper to check if a string might be a bullet point
 const isBulletPoint = (text: string) => /^[•\-\u2022]/.test(text);
 
@@ -21,15 +27,6 @@ export const processPdfItem = async (fn: any, args: any, page: any): Promise<str
     content += "</span>"; // End of text span
   }
 
-  // Process Images (Handle image rendering)
-  if (fn === pdfjsLib.OPS.paintImageXObject || fn === pdfjsLib.OPS.paintXObject) {
-    const img = await page.objs.get(args[0]);
-    if (img) {
-      const imgUrl = URL.createObjectURL(new Blob([img.data], { type: "image/png" }));
-      content += `<img src="${imgUrl}" style="max-width: 100%; margin: 5px;" />`; // Image
-    }
-  }
-
   // Process Text (line by line for formatting)
   if (fn === 'text') {
     const { str, transform, fontName } = args;
@@ -42,6 +39,25 @@ export const processPdfItem = async (fn: any, args: any, page: any): Promise<str
     } else {
       const style = `font-family: ${fontName}; color: rgb(0, 0, 0);`;
       content += `<span style="${style}">${str}</span>`; // Normal text
+    }
+  }
+
+  // Handling Glyph Data (each glyph represents a character in the text)
+  if (Array.isArray(args)) {
+    args.forEach((item: any) => {
+      if (Array.isArray(item)) {
+        const textContent = convertGlyphsToText(item); // Convert glyphs to text
+        content += `<span>${textContent}</span>`; // Render as text
+      }
+    });
+  }
+
+  // Process Images (Handle image rendering)
+  if (fn === pdfjsLib.OPS.paintImageXObject || fn === pdfjsLib.OPS.paintXObject) {
+    const img = await page.objs.get(args[0]);
+    if (img) {
+      const imgUrl = URL.createObjectURL(new Blob([img.data], { type: "image/png" }));
+      content += `<img src="${imgUrl}" style="max-width: 100%; margin: 5px;" />`; // Image
     }
   }
 
