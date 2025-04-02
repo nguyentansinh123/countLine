@@ -1,31 +1,62 @@
 // src/components/SignupForm.tsx
-import React from 'react'
-import { Button, Checkbox, Divider, Form, Input, Typography } from 'antd'
-import { EyeTwoTone, EyeInvisibleOutlined } from '@ant-design/icons'
-import '../form.css'
+import React, { useState } from 'react';
+import {
+  Button,
+  Checkbox,
+  Divider,
+  Form,
+  Input,
+  Typography,
+  message,
+} from 'antd';
+import { EyeTwoTone, EyeInvisibleOutlined } from '@ant-design/icons';
+import '../form.css';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
-const { Title } = Typography
+const { Title } = Typography;
 
 interface SignupFormValues {
-  name: string
-  email: string
-  password: string
-  confirmPassword: string
-  termsAndConditions: boolean
-  privacyPolicy: boolean
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  termsAndConditions: boolean;
+  privacyPolicy: boolean;
 }
 
 interface SignupFormProps {
-  switchTab: () => void
+  switchTab: () => void;
 }
 
 const SignupForm: React.FC<SignupFormProps> = ({ switchTab }) => {
-  const [form] = Form.useForm<SignupFormValues>()
-
-  const onFinish = (values: SignupFormValues): void => {
-    console.log('Signup form values:', values)
-    // You can handle the signup logic here
-  }
+  const [form] = Form.useForm<SignupFormValues>();
+  const [successMessage, setSuccessMessage] = useState('');
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const onFinish = async (values: SignupFormValues): Promise<void> => {
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        'http://localhost:5001/api/auth/register',
+        {
+          name: values.name,
+          email: values.email,
+          password: values.password,
+        }
+      );
+      setSuccessMessage('✅ Account created successfully!');
+      setTimeout(() => {
+        navigate('/home');
+      }, 3000);
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      message.error(error?.response?.data?.message || 'something went wrong');
+    } finally {
+      setLoading(false);
+    }
+    console.log('Signup form values:', values);
+  };
 
   return (
     <div className="form-card">
@@ -80,9 +111,11 @@ const SignupForm: React.FC<SignupFormProps> = ({ switchTab }) => {
             ({ getFieldValue }) => ({
               validator(_, value) {
                 if (!value || getFieldValue('password') === value) {
-                  return Promise.resolve()
+                  return Promise.resolve();
                 }
-                return Promise.reject(new Error('The two passwords do not match!'))
+                return Promise.reject(
+                  new Error('The two passwords do not match!')
+                );
               },
             }),
           ]}
@@ -133,16 +166,36 @@ const SignupForm: React.FC<SignupFormProps> = ({ switchTab }) => {
         </Form.Item>
 
         <Form.Item className="form-buttons">
-          <Button type="primary" htmlType="submit" className="form-button">
-            Sign Up
+          <Button
+            type="primary"
+            htmlType="submit"
+            className="form-button"
+            loading={loading}
+          >
+            {loading ? 'Signing up...' : 'Sign up'}
           </Button>
           <Button htmlType="button" className="form-button" onClick={switchTab}>
             Cancel
           </Button>
         </Form.Item>
       </Form>
+      {successMessage && (
+        <div
+          style={{
+            marginTop: '16px',
+            padding: '12px 16px',
+            border: '1px solid green',
+            borderRadius: '8px',
+            backgroundColor: '#e6ffed',
+            color: '#2c662d',
+            fontWeight: 'bold',
+          }}
+        >
+          {successMessage}
+        </div>
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default SignupForm
+export default SignupForm;
