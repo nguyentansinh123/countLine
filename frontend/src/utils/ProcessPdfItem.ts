@@ -1,79 +1,79 @@
+import determineHtmlElementType from "./determineHtmlElementsType";
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Helper to convert an array of characters into a string
-const convertGlyphsToText = (glyphs: any[]): string => {
-  return glyphs.map((glyph) => glyph.unicode || glyph.fontChar).join('');
-};
 
-// Helper to check if a string might be a bullet point
-const isBulletPoint = (text: string) => /^[•\-\u2022]/.test(text);
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 
-// Helper to check if the text is empty (blank line)
-const isBlankLine = (text: string) => !text.trim();
-
-export const processPdfItem = async (fn: any, args: any, page: any): Promise<string> => {
-  let content = "";
-
-  console.log("Processing PDF Item:", fn, args); // Log the operator and arguments to see what's being processed
-
-  // Process Text (e.g., rendering text, handles fonts, and styles)
-  if (fn === pdfjsLib.OPS.beginText) {
-    content += "<span>"; // Start of text span
-    console.log("Begin Text Span");
-  } else if (fn === pdfjsLib.OPS.showText || fn === pdfjsLib.OPS.showSpacedText) {
-    const text = args[0]; // Get the actual text string
-    const style = `font-family: ${args[1]}; color: rgb(0, 0, 0);`; // Assuming args[1] is the font name
-    content += `<span style="${style}">${text}</span>`; // Text
-    console.log("Show Text:", text); // Log the text being processed
-  } else if (fn === pdfjsLib.OPS.endText) {
-    content += "</span>"; // End of text span
-    console.log("End Text Span");
-  }
-
-  // Process Text (line by line for formatting)
-  if (fn === 'text') {
-    const { str, transform, fontName } = args;
-
-    // Handling blank lines, bullet points, etc.
-    if (isBlankLine(str)) {
-      content += "<br />"; // Blank line
-      console.log("Blank Line");
-    } else if (isBulletPoint(str)) {
-      content += `<ul><li>${str}</li></ul>`; // Bullet point (list item)
-      console.log("Bullet Point:", str);
-    } else {
-      const style = `font-family: ${fontName}; color: rgb(0, 0, 0);`;
-      content += `<span style="${style}">${str}</span>`; // Normal text
-      console.log("Normal Text:", str);
+// Process a single PDF item (could be text, image, etc.)
+export const processPdfItem = async (fn: any, args: any[], page: any): Promise<string> => {
+    let result = "";
+  
+    // Filter out irrelevant operations
+    const relevantFns = [pdfjsLib.OPS.showText, pdfjsLib.OPS.paintImageXObject];
+  
+    if (!relevantFns.includes(fn)) {
+      return ""; // Ignore non-relevant operations
     }
-  }
-
-  // Handling Glyph Data (each glyph represents a character in the text)
-  if (Array.isArray(args)) {
-    args.forEach((item: any) => {
-      if (Array.isArray(item)) {
-        const textContent = convertGlyphsToText(item); // Convert glyphs to text
-        content += `<span>${textContent}</span>`; // Render as text
-        console.log("Glyphs as Text:", textContent);
+  
+    for (let i = 0; i < args.length; i++) {
+      const blob = args[i];
+      const elementType = determineHtmlElementType(blob); 
+  
+      switch (elementType) {
+        case "img":
+          result += await processImage(blob); 
+          break;
+        case "text":
+          result += processText(blob); 
+          break;
+        case "span":
+          result += processSpan(blob); 
+          break;
+        case "ul":
+          result += processList(blob); 
+          break;
+        case "div":
+          result += processObject(blob); 
+          break;
+        case "new line":
+          result += "<br>"; 
+          break;
+        default:
+          result += `<div>Unsupported content: ${JSON.stringify(blob)}</div>`;
+          break;
       }
-    });
-  }
-
-  // Process Images (Handle image rendering)
-  if (fn === pdfjsLib.OPS.paintImageXObject || fn === pdfjsLib.OPS.paintXObject) {
-    const img = await page.objs.get(args[0]);
-    if (img) {
-      const imgUrl = URL.createObjectURL(new Blob([img.data], { type: "image/png" }));
-      content += `<img src="${imgUrl}" style="max-width: 100%; margin: 5px;" />`; // Image
-      console.log("Image Processed:", imgUrl); // Log the image URL
     }
-  }
+  
+    return result;
+  };
+  
 
-  // If args is an object, ensure to extract necessary data, avoid `[object Object]`
-  if (args && typeof args === 'object') {
-    content += `<pre>${JSON.stringify(args)}</pre>`; // Debugging: Convert object to string
-    console.log("Object Args:", JSON.stringify(args)); // Log the object arguments
-  }
-
-  return content;
+// Process image data into HTML <img> tag
+const processImage = async (imageData: Uint8Array): Promise<string> => {
+  const blob = new Blob([imageData], { type: "image/png" }); // Assuming PNG format
+  const url = URL.createObjectURL(blob);
+  return `<img src="${url}" alt="Embedded Image" />`; // Return image as <img> tag
 };
+
+// Process text into HTML <p> tag
+const processText = (text: string): string => {
+  return `<p>${text}</p>`; // Wrap text in paragraph tag
+};
+
+// Process span (inline content)
+const processSpan = (data: string): string => {
+  return `<span>${data}</span>`; // Wrap inline content in <span> tag
+};
+
+// Process unordered list
+const processList = (items: any[]): string => {
+  let listItems = items.map((item) => `<li>${item}</li>`).join('');
+  return `<ul>${listItems}</ul>`; // Wrap items in unordered list
+};
+
+// Process complex object (fallback for unknown content)
+const processObject = (object: any): string => {
+  return `<div>${JSON.stringify(object, null, 2)}</div>`; // General fallback for objects
+};
+
+export { processImage, processText, processSpan, processList, processObject };

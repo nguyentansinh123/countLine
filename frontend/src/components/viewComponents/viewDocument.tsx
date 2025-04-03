@@ -1,21 +1,16 @@
 // src/components/ViewDocument.tsx
 import React, { useState, useEffect } from 'react';
-import { Spin, Alert, Card, Input } from 'antd';
 import { useParams } from 'react-router-dom';
-import { fetchPdfFile } from '../../utils/fetchFile'
-import  extractTextFromPDF  from '../../utils/extracttextFromPdf';
 import ndaDocuments from '../../pages/NDA/const/ndaDocuments';
 import legalDocuments from '../../pages/NDA/const/legalDocuments';
 import executiveDocumentTemplates from '../../pages/NDA/const/executiveDocuments';
 import ipAgreements from '../../pages/NDA/const/ipDocuments';
 import GeneralLayout from '../General_Layout/GeneralLayout';
 import PdfViewer from '../Editor/PdfViewer';
+import { Input, Select } from 'antd';
 
 const ViewDocument: React.FC = () => {
   const { category, file_id } = useParams<{ category: string; file_id: string }>();
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [txtContent, setTxtContent] = useState<string | null>(null);
 
   const decodedCategory = decodeURIComponent(category || '');
   let fileData: any[] = [];
@@ -34,10 +29,27 @@ const ViewDocument: React.FC = () => {
 
 
   return (
+    
     <div style={{ padding: '20px' }}>
+    
       {file && (
         <>
           <GeneralLayout title='View Document'>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '20px',
+            }}
+          >
+            <Input
+              value={file?.title || ''}
+              style={{ marginRight: '10px' }}
+              placeholder="Enter file content"
+            />
+            <Select value={decodedCategory} style={{ width: '150px' }}/>
+             
+          </div>
           <PdfViewer fileUrl={file.location}/>
           </GeneralLayout>
         </>

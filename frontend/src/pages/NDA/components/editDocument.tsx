@@ -57,9 +57,7 @@ const EditDocument: React.FC = () => {
     loadPdf();
   }, [file]);
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+
 
   if (error) {
     return <Alert message={error} type="error" />;
@@ -94,7 +92,6 @@ const EditDocument: React.FC = () => {
             </Select>
           </div>
 
-          {/* Pass the fetched PDF Blob to PdfEditor */}
           {pdfBlob && <PdfEditor pdfBlob={pdfBlob} />}
           
           <div style={{ marginTop: '20px' }}>
