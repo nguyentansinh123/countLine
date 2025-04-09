@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Dropdown, Menu, message } from 'antd';
+import { Button, Dropdown, Menu, MenuProps, message } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import ndaDocuments from './const/ndaDocuments';
@@ -92,19 +92,27 @@ const NDA: React.FC = () => {
     }
   };
 
-  const menu = (file: File, category: string) => (
-    <Menu>
-      <Menu.Item key="view" onClick={() => handleView(file.id, category)}>
-        View
-      </Menu.Item>
-      <Menu.Item key="edit" onClick={() => handleEdit(file.id, category)}>
-        Edit
-      </Menu.Item>
-      <Menu.Item key="delete" onClick={() => handleDeleteFile(file.id)}>
-        Delete
-      </Menu.Item>
-    </Menu>
-  );
+  const menu = (file: File, category: string): MenuProps => {
+    return {
+      items: [
+        {
+          key: 'view',
+          label: 'View',
+          onClick: () => handleView(file.id, category),
+        },
+        {
+          key: 'edit',
+          label: 'Edit',
+          onClick: () => handleEdit(file.id, category),
+        },
+        {
+          key: 'delete',
+          label: 'Delete',
+          onClick: () => handleDeleteFile(file.id),
+        },
+      ],
+    };
+  };
 
   const handleDocumentClick = (file: File) => {
     // Select the document when clicked
@@ -177,9 +185,9 @@ const NDA: React.FC = () => {
                 >
                   {file.title}
                   <Dropdown
-                    overlay={menu(file, category)}
+                    menu={menu(file, category)}
                     trigger={['click']}
-                    onVisibleChange={(visible) => {
+                    onOpenChange={(visible) => {
                       if (!visible) return;
                       document.addEventListener('click', (e) => e.stopPropagation(), { once: true });
                     }} // Prevent click event from propagating to document selection

@@ -68,6 +68,7 @@ const EditDocument: React.FC = () => {
   }
 
   return (
+    <>
     <GeneralLayout title="Edit Document">
       <div style={{ display: 'flex' }}>
         <div style={{ flexGrow: 1, paddingLeft: '20px' }}>
@@ -102,6 +103,8 @@ const EditDocument: React.FC = () => {
         </div>
       </div>
     </GeneralLayout>
+  
+    </>
   );
 };
 

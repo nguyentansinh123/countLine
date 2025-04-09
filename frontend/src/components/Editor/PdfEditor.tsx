@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import SunEditor from "suneditor-react";
 import "suneditor/dist/css/suneditor.min.css";
-import extractTextAndImagesFromPDF from "../../utils/extractTextFromPdf";
+import extractContentsFromPDF from "../../utils/extractContentsFromPdf";
 
 interface PDFEditorProps {
   pdfBlob: Blob | null;
@@ -10,37 +10,52 @@ interface PDFEditorProps {
 const PDFEditor: React.FC<PDFEditorProps> = ({ pdfBlob }) => {
   const [editorContent, setEditorContent] = useState<string>("");
 
-  // Function to update content with extracted text and images
+  // Function to update the editor content
   const updateContent = async (pdfBlob: Blob) => {
-    console.log(pdfBlob); // Log the object to ensure it is a Blob
+    console.log(pdfBlob);
     try {
-      const content = await extractTextAndImagesFromPDF(pdfBlob);
-      setEditorContent(content); // Update the editor with the extracted content
+      const content = await extractContentsFromPDF(pdfBlob);
+      setEditorContent(content); // Update the content with extracted text/images
     } catch (error) {
       console.error("Error updating content:", error);
     }
   };
 
-  // useEffect to trigger content update when pdfBlob changes
+  // Effect to run when pdfBlob changes
   useEffect(() => {
     if (pdfBlob) {
-      updateContent(pdfBlob); // Call updateContent when pdfBlob is available
+      updateContent(pdfBlob);
     }
-  }, [pdfBlob]); // Trigger whenever pdfBlob changes
+  }, [pdfBlob]);
 
   return (
-    <div style={{ height: "55vh", overflow: "auto" }}>
-      <SunEditor
-        setOptions={{
-          buttonList: [
-            ["bold", "italic", "underline", "strike", "subscript", "superscript"],
-            ["font", "fontSize", "formatBlock"],
-            ["align", "horizontalRule", "list", "outdent", "indent"],
-            ["image"],
-          ],
+    <div>
+      {/* SunEditor section */}
+      <div style={{ height: "55vh", overflow: "auto", marginBottom: "2rem" }}>
+        <SunEditor
+          setOptions={{
+            buttonList: [
+              ["bold", "italic", "underline", "strike", "subscript", "superscript"],
+              ["font", "fontSize", "formatBlock"],
+              ["align", "horizontalRule", "list", "outdent", "indent"],
+              ["image"],
+            ],
+          }}
+          setContents={editorContent}  // Pass the HTML content (with images) here
+          onChange={setEditorContent}   // Update the editor content on change
+        />
+      </div>
+
+      {/* Raw HTML Preview */}
+      <div
+        style={{
+          padding: "1rem",
+          border: "1px solid #ddd",
+          background: "#f9f9f9",
+          display: "flex",
+          flexDirection: "column"
         }}
-        setContents={editorContent}
-        onChange={setEditorContent}
+        dangerouslySetInnerHTML={{ __html: editorContent }}  // Render HTML directly
       />
     </div>
   );
