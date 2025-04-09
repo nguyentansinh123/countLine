@@ -36,7 +36,7 @@ function AddTeam() {
 
     const newTeam = {
       teamId: TeamConst.length + 1,
-      teamName: teamName,
+      team: teamName,
       date: startDate,
       status: teamStatus,
       description: '',

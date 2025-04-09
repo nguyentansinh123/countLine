@@ -30,7 +30,7 @@ function EditProject() {
         setProjectName(foundProject.project);
         setStartDate(formatDateForInput(foundProject.date));
         setProjectStatus(foundProject.status);
-        setProjectTeam(foundProject.Team);
+        setProjectTeam(foundProject.team);
       }
     }
   }, [projectId]);
@@ -49,7 +49,7 @@ function EditProject() {
       project: projectName,
       date: startDate.split('-').reverse().join('/'),
       status: projectStatus,
-      Team: projectTeam,
+      team: projectTeam,
     };
 
     console.log('Updated Project:', updatedProject);

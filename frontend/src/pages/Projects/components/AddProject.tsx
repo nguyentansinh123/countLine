@@ -33,7 +33,7 @@ function AddProject() {
       project: projectName,
       date: startDate,
       status: projectStatus,
-      Team: projectTeam,
+      team: projectTeam,
     };
 
     // Log new project for testing
@@ -117,8 +117,8 @@ function AddProject() {
               style={{ width: '100%' }}
             >
               {teamsData.map((item) => (
-                <Select.Option key={item.teamName} value={item.teamName}>
-                  {item.teamName}
+                <Select.Option key={item.team} value={item.team}>
+                  {item.team}
                 </Select.Option>
               ))}
             </Select>

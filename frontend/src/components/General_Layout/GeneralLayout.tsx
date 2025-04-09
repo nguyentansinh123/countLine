@@ -47,7 +47,7 @@ function GeneralLayout(props: GeneralLayoutProps) {
         style={{
           width: '98%',
           maxWidth: '98%',
-          height: '80vh',
+          height: '75vh',
           border: 'solid 1px',
           margin: '0 0 0 10px',
         }}
