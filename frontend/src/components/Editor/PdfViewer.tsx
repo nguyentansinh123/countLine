@@ -1,91 +1,92 @@
-import React, { useEffect, useState, useRef } from 'react';
+// PdfViewer.tsx
+import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 
 interface PdfViewerProps {
   fileUrl: string;
+  onPageRender?: (pageNum: number, pageWrapper: HTMLDivElement) => void;
+  height: string;
+  width: string;
 }
 
-function PdfViewer(props: PdfViewerProps) {
-  const [loading, setLoading] = useState<boolean>(false);
+const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, onPageRender, height, width }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLDivElement>(null); // Reference for the container
+  const hasFetchedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const fetchAndRenderPdf = async () => {
+    if (hasFetchedRef.current === fileUrl) return;
+    hasFetchedRef.current = fileUrl;
+
+    const fetchAndRender = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const fileUrl = props.fileUrl;
-        
-        // Fetch the file using your utility
-        const fetchedFile = await fetch(fileUrl);
+        const fetched = await fetch(fileUrl);
+        if (!fetched.ok) throw new Error('Failed to fetch PDF');
+        const arrayBuffer = await fetched.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-        if (!fetchedFile.ok) {
-          setError('Failed to fetch the PDF file');
-          setLoading(false);
-          return;
+        if (containerRef.current) containerRef.current.innerHTML = '';
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const viewport = page.getViewport({ scale: 1.25 });
+
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) continue;
+
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+
+          await page.render({ canvasContext: ctx, viewport }).promise;
+
+          const pageWrapper = document.createElement('div');
+          Object.assign(pageWrapper.style, {
+            position: 'relative',
+            margin: '10px 0',
+            display: 'block',
+            width: `${canvas.width}px`,
+            height: `${canvas.height}px`,
+          });
+          pageWrapper.className = 'pageWrapper';
+          pageWrapper.appendChild(canvas);
+          containerRef.current?.appendChild(pageWrapper);
+
+          if (onPageRender) onPageRender(pageNum, pageWrapper);
         }
 
-        const arrayBuffer = await fetchedFile.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-
-        console.log('Number of pages in PDF:', pdf.numPages); // Debug: Check the number of pages
-
-        if (canvasRef.current) {
-  
-          canvasRef.current.innerHTML = '';
-
-          // Render each page
-          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 2});
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-
-            if (context) {
-              canvas.width = viewport.width +600;
-              canvas.height = viewport.height;
-
-              const renderContext = {
-                canvasContext: context,
-                viewport: viewport,
-              };
-              page.render(renderContext); // Render the page onto the canvas
-              canvasRef.current.appendChild(canvas); // Append the canvas to the container
-              setLoading(false);
-            }
-          }
-        }
+        setLoading(false);
       } catch (err) {
-        console.error('Error loading PDF:', err);
-        setError('An error occurred while rendering the PDF.');
+        console.error(err);
+        setError('Failed to load PDF.');
+        setLoading(false);
       }
     };
 
-    fetchAndRenderPdf();
-  }, [props.fileUrl]); // Run effect only when `fileUrl` changes
+    fetchAndRender();
+  }, [fileUrl, onPageRender]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {/* Display loading and error messages */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {loading && <p>Loading...</p>}
       {error && <p style={{ color: 'red' }}>{error}</p>}
-
-      {/* PDF rendered on canvas */}
-      <div 
-        ref={canvasRef}
+      <div
+        ref={containerRef}
         style={{
-          display: 'flex',
-          flexDirection: 'column',  
-          width: '50%',
-          height: '60vh',
+          height,
+          width,
           overflowY: 'scroll',
+          background: '#f9f9f9',
           padding: '10px',
+          border: '1px solid #ccc',
         }}
       />
     </div>
   );
-}
+};
 
 export default PdfViewer;
