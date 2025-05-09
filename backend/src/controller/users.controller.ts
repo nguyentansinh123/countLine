@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { ScanCommand,QueryCommand, GetCommand, BatchGetCommand, UpdateCommand, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from '../lib/dynamoClient';
 import { v2 } from "../lib/cloudinary";
+import { logUserActivity } from "./activity.controller"; 
+
 
 
 const getAllUser = async (req: Request, res:Response) => {
@@ -13,6 +15,11 @@ const getAllUser = async (req: Request, res:Response) => {
         const moreSecuredData = data.Items?.map(user => {
             const { password, ...moreSecuredData } = user; 
             return moreSecuredData;
+          });
+
+          await logUserActivity({
+            userId: req.body.user_id,
+            action: "get_all_users"
           });
 
         res.status(200).json({
@@ -49,6 +56,12 @@ const getAllUser = async (req: Request, res:Response) => {
           }
           const user = result.Items[0];
           const { password, ...userWithoutPassword } = user;
+
+            await logUserActivity({
+                userId: req.body.user_id,
+                action: "get_single_user",
+                targetId: id
+            });
           
           res.status(200).json({
             success: true,
@@ -91,6 +104,13 @@ const getAllUser = async (req: Request, res:Response) => {
       const documentIds = user.documents || [];
 
       if (documentIds.length === 0) {
+
+        await logUserActivity({
+          userId: req.body.user_id,
+          action: "get_all_user_documents",
+          targetId: user_id
+      });
+
         res.status(200).json({
             success: true,
             message: "No documents found for this user",
@@ -147,6 +167,12 @@ const getAllUser = async (req: Request, res:Response) => {
         return
     }
 
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "get_single_user_document",
+      targetId: documentID
+  });
+
       res.status(200).json({
         success: true,
         message: "Document fetched successfully",
@@ -200,6 +226,12 @@ const getAllUser = async (req: Request, res:Response) => {
             });
             return
         }
+
+        await logUserActivity({
+          userId: req.body.user_id,
+          action: "update_profile_picture",
+          targetId: user_id
+      });
 
         res.status(200).json({
             success: true,
@@ -266,6 +298,12 @@ const deleteUser = async (req: Request, res: Response): Promise<void> => {
       };
 
       await docClient.send(new DeleteCommand(deleteParams));
+
+      await logUserActivity({
+        userId: req.body.user_id,
+        action: "delete_user",
+        targetId: user_id
+    });
 
       res.status(200).json({
           success: true,
@@ -503,6 +541,104 @@ const getRecentSearches = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+const reassignUserRole = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { userId, newRole } = req.body;
+    const { user_id } = req.body; 
+    
+    if (!userId || !newRole) {
+      res.status(400).json({
+        success: false,
+        message: 'User ID and new role are required'
+      });
+      return;
+    }
+    
+    const allowedRoles = ['employee', 'client', 'intern', 'admin', 'user'];
+    if (!allowedRoles.includes(newRole)) {
+      res.status(400).json({
+        success: false,
+        message: `Invalid role. Allowed roles are: ${allowedRoles.join(', ')}`
+      });
+      return;
+    }
+
+    const getUserParams = {
+      TableName: 'Users',
+      Key: { user_id: userId }
+    };
+    
+    const userData = await docClient.send(new GetCommand(getUserParams));
+    
+    if (!userData.Item) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+      return;
+    }
+
+    console.log(`Role change requested by Admin (${user_id}) - Changing ${userId} from ${userData.Item.role} to ${newRole}`);
+    
+    if (userId === user_id) {
+      res.status(403).json({
+        success: false,
+        message: 'You cannot change your own role'
+      });
+      return;
+    }
+
+    const updateParams = {
+      TableName: 'Users',
+      Key: { user_id: userId },
+      UpdateExpression: 'SET #role = :newRole',
+      ExpressionAttributeNames: {
+        '#role': 'role'
+      },
+      ExpressionAttributeValues: {
+        ':newRole': newRole
+      },
+      ReturnValues: 'ALL_NEW' as const
+    };
+
+    const { Attributes: updatedUser } = await docClient.send(new UpdateCommand(updateParams));
+
+    if (!updatedUser) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update user role'
+      });
+      return;
+    }
+
+    const { password, ...userWithoutPassword } = updatedUser;
+
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "reassign_user_role",
+      targetId: userId,
+      details: { newRole }
+    });
+
+    console.log(`Role successfully changed for user ${userId} to ${newRole}`);
+    
+    res.status(200).json({
+      success: true,
+      message: `User role updated to ${newRole} successfully`,
+      data: userWithoutPassword
+    });
+
+  } catch (error) {
+    console.error('Error reassigning user role:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reassign user role',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+
 export {getAllUser,getSingleUser,getAllUserDocuments,
   getSingleUserDocument,updateProfilePic,deleteUser,
-  getUserByName,searchUsersByName, getRecentSearches, addRecentSearch} ;
+  getUserByName,searchUsersByName, getRecentSearches, addRecentSearch, reassignUserRole} ;
