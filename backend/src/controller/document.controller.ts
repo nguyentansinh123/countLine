@@ -1,4 +1,8 @@
-import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { upload } from "../lib/multerconfig";
 import { s3Client } from "../lib/s3";
 import { Request, Response } from "express";
@@ -15,6 +19,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
 import { DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { logUserActivity } from "./activity.controller";
+import { createNotification } from "./notification.controller";
+import { getIO } from "../lib/socket";
 
 export const uploadFileToS3 = async (
   req: Request,
@@ -112,11 +118,21 @@ export const uploadFileToS3 = async (
     });
     await docClient.send(putCommand);
 
+    const notification = await createNotification(
+      document.uploadedBy,
+      "document_upload",
+      `Your document "${file.originalname}" was uploaded successfully.`,
+      { documentId: document.documentId }
+    );
+    if (document.uploadedBy) {
+      getIO().to(document.uploadedBy).emit("notification", notification);
+    }
+
     await logUserActivity({
       userId: req.body.user_id,
       action: "upload_document",
       targetId: document.documentId,
-      details: { filename: file.originalname, documentType }
+      details: { filename: file.originalname, documentType },
     });
 
     res.status(200).json({
@@ -147,7 +163,7 @@ export const getAllTask = async (req: Request, res: Response) => {
 
     await logUserActivity({
       userId: req.body.user_id,
-      action: "get_all_tasks"
+      action: "get_all_tasks",
     });
 
     res.status(200).json({
@@ -183,9 +199,8 @@ export const getSingleTask = async (req: Request, res: Response) => {
     await logUserActivity({
       userId: req.body.user_id,
       action: "get_single_task",
-      targetId: id
+      targetId: id,
     });
-
 
     res.status(200).json({
       success: true,
@@ -228,11 +243,22 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
 
     const { Attributes } = await docClient.send(new UpdateCommand(params));
 
+    const notification = await createNotification(
+      IdOfUser,
+      "file_sent",
+      `A file was sent to you.`,
+      { documentId }
+    );
+
+    if (IdOfUser) {
+      getIO().to(IdOfUser).emit("notification", notification);
+    }
+
     await logUserActivity({
       userId: req.body.user_id,
       action: "send_file_to_user",
       targetId: IdOfUser,
-      details: { documentId }
+      details: { documentId },
     });
 
     res.status(200).json({
@@ -272,7 +298,7 @@ export const downloadFile = async (
       userId: req.body.user_id,
       action: "download_document",
       targetId: documentId,
-      details: { filename: document.filename }
+      details: { filename: document.filename },
     });
 
     const urlParts = document.fileUrl.split(".amazonaws.com/");
@@ -370,210 +396,216 @@ export const getPresignedUrl = async (
 };
 
 export const getMyDocuments = async (req: Request, res: Response) => {
-    // @ts-ignore
-    const userId = req.user.id;
-    try {
-      const params = {
-        TableName: "Documents",
-        FilterExpression: "uploadedBy = :uid",
-        ExpressionAttributeValues: { ":uid": userId },
-      };
-      const data = await docClient.send(new ScanCommand(params));
-      res.status(200).json({ success: true, data: data.Items });
-    } catch (error) {
-      console.error("getMyDocuments error:", error);
-      res
-        .status(500)
-        .json({ success: false, message: "Failed to fetch your documents" });
-    }
+  // @ts-ignore
+  const userId = req.user.id;
+  try {
+    const params = {
+      TableName: "Documents",
+      FilterExpression: "uploadedBy = :uid",
+      ExpressionAttributeValues: { ":uid": userId },
+    };
+    const data = await docClient.send(new ScanCommand(params));
+    res.status(200).json({ success: true, data: data.Items });
+  } catch (error) {
+    console.error("getMyDocuments error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch your documents" });
+  }
 };
 
 export const deleteDocument = async (req: Request, res: Response) => {
-    const { documentId } = req.params;
-    // @ts-ignore
-    const user = req.user;
-    try {
-      const { Item: document } = await docClient.send(
-        new GetCommand({
-          TableName: "Documents",
-          Key: { documentId },
-        })
-      );
-      if (!document) {
-        res.status(404).json({ success: false, message: "Document not found" });
-        return;
-      }
-      if (document.uploadedBy !== user.id && user.role !== "admin") {
-        res.status(403).json({ success: false, message: "Access denied" });
-        return;
-      }
-      await docClient.send(
-        new UpdateCommand({
-          TableName: "Documents",
-          Key: { documentId },
-          UpdateExpression: "set isDeleted = :d",
-          ExpressionAttributeValues: { ":d": true },
-        })
-      );
-  
-      const usersWithDoc = await docClient.send(
-        new ScanCommand({
-          TableName: "Users",
-          FilterExpression: "contains(documents, :docId)",
-          ExpressionAttributeValues: { ":docId": documentId },
-        })
-      );
-  
-      for (const userItem of usersWithDoc.Items || []) {
-        const docIndex = (userItem.documents || []).indexOf(documentId);
-        if (docIndex > -1) {
-          await docClient.send(
-            new UpdateCommand({
-              TableName: "Users",
-              Key: { user_id: userItem.user_id },
-              UpdateExpression: `REMOVE documents[${docIndex}]`,
-            })
-          );
-        }
-      }
-  
-      res.status(200).json({ success: true, message: "Document soft deleted and references removed" });
-    } catch (error) {
-      res
-        .status(500)
-        .json({ success: false, message: "Failed to delete document" });
+  const { documentId } = req.params;
+  // @ts-ignore
+  const user = req.user;
+  try {
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId },
+      })
+    );
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
     }
-  };
+    if (document.uploadedBy !== user.id && user.role !== "admin") {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression: "set isDeleted = :d",
+        ExpressionAttributeValues: { ":d": true },
+      })
+    );
 
+    const usersWithDoc = await docClient.send(
+      new ScanCommand({
+        TableName: "Users",
+        FilterExpression: "contains(documents, :docId)",
+        ExpressionAttributeValues: { ":docId": documentId },
+      })
+    );
+
+    for (const userItem of usersWithDoc.Items || []) {
+      const docIndex = (userItem.documents || []).indexOf(documentId);
+      if (docIndex > -1) {
+        await docClient.send(
+          new UpdateCommand({
+            TableName: "Users",
+            Key: { user_id: userItem.user_id },
+            UpdateExpression: `REMOVE documents[${docIndex}]`,
+          })
+        );
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Document soft deleted and references removed",
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to delete document" });
+  }
+};
 
 export const hardDelete = async (req: Request, res: Response) => {
-    const { documentId } = req.params;
-    // @ts-ignore
-    const user = req.user;
-    try {
-      const { Item: document } = await docClient.send(
-        new GetCommand({
-          TableName: "Documents",
-          Key: { documentId },
-        })
-      );
-      if (!document) {
-        res.status(404).json({ success: false, message: "Document not found" });
-        return;
-      }
-      if (document.uploadedBy !== user.id && user.role !== "admin") {
-        res.status(403).json({ success: false, message: "Access denied" });
-        return;
-      }
-  
-      await docClient.send(
-        new DeleteCommand({
-          TableName: "Documents",
-          Key: { documentId },
-        })
-      );
-  
-      const usersWithDoc = await docClient.send(
-        new ScanCommand({
-          TableName: "Users",
-          FilterExpression: "contains(documents, :docId)",
-          ExpressionAttributeValues: { ":docId": documentId },
-        })
-      );
-  
-      for (const userItem of usersWithDoc.Items || []) {
-        const docIndex = (userItem.documents || []).indexOf(documentId);
-        if (docIndex > -1) {
-          await docClient.send(
-            new UpdateCommand({
-              TableName: "Users",
-              Key: { user_id: userItem.user_id },
-              UpdateExpression: `REMOVE documents[${docIndex}]`,
-            })
-          );
-        }
-      }
-  
-      res.status(200).json({ success: true, message: "Document and references deleted" });
-    } catch (error) {
-      console.error("hardDelete error:", error);
-      res
-        .status(500)
-        .json({ success: false, message: "Failed to delete document" });
+  const { documentId } = req.params;
+  // @ts-ignore
+  const user = req.user;
+  try {
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId },
+      })
+    );
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
     }
-  };
+    if (document.uploadedBy !== user.id && user.role !== "admin") {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
+
+    await docClient.send(
+      new DeleteCommand({
+        TableName: "Documents",
+        Key: { documentId },
+      })
+    );
+
+    const usersWithDoc = await docClient.send(
+      new ScanCommand({
+        TableName: "Users",
+        FilterExpression: "contains(documents, :docId)",
+        ExpressionAttributeValues: { ":docId": documentId },
+      })
+    );
+
+    for (const userItem of usersWithDoc.Items || []) {
+      const docIndex = (userItem.documents || []).indexOf(documentId);
+      if (docIndex > -1) {
+        await docClient.send(
+          new UpdateCommand({
+            TableName: "Users",
+            Key: { user_id: userItem.user_id },
+            UpdateExpression: `REMOVE documents[${docIndex}]`,
+          })
+        );
+      }
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "Document and references deleted" });
+  } catch (error) {
+    console.error("hardDelete error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to delete document" });
+  }
+};
 
 export const updateDocument = async (req: Request, res: Response) => {
-    const { documentId } = req.params;
-    // @ts-ignore
-    const user = req.user;
-    try {
-        const { Item: document } = await docClient.send(
-            new GetCommand({
-                TableName: "Documents",
-                Key: { documentId },
-            })
-        );
-        if (!document) {
-            res.status(404).json({ success: false, message: "Document not found" });
-            return;
-        }
-        if (document.uploadedBy !== user.id && user.role !== "admin") {
-            res.status(403).json({ success: false, message: "Access denied" });
-            return;
-        }
-
-        if (!req.file) {
-            res.status(400).json({ success: false, message: "No file uploaded" });
-            return;
-        }
-
-        if (document.fileUrl) {
-            const urlParts = document.fileUrl.split('.amazonaws.com/');
-            const oldKey = urlParts[1];
-            if (oldKey) {
-                await s3Client.send(new DeleteObjectCommand({
-                    Bucket: process.env.AWS_BUCKET_NAME!,
-                    Key: oldKey,
-                }));
-            }
-        }
-
-        const file = req.file;
-        const fileNameWithoutSpaces = file.originalname.replace(/\s/g, "");
-        const params = {
-            Bucket: process.env.AWS_BUCKET_NAME!,
-            Key: `uploads/${Date.now()}_${fileNameWithoutSpaces}`,
-            Body: file.buffer,
-            ContentType: file.mimetype,
-        };
-        const command = new PutObjectCommand(params);
-        await s3Client.send(command);
-
-        const fileUrl = `https://${params.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
-
-        await docClient.send(
-            new UpdateCommand({
-                TableName: "Documents",
-                Key: { documentId },
-                UpdateExpression: "set #f = :f, #ft = :ft, #fn = :fn",
-                ExpressionAttributeNames: {
-                    "#f": "fileUrl",
-                    "#ft": "fileType",
-                    "#fn": "filename"
-                },
-                ExpressionAttributeValues: {
-                    ":f": fileUrl,
-                    ":ft": file.mimetype,
-                    ":fn": file.originalname
-                },
-            })
-        );
-        res.status(200).json({ success: true, message: "Document file updated" });
-    } catch (error) {
-        console.error("updateDocument error:", error);
-        res
-            .status(500)
-            .json({ success: false, message: "Failed to update document" });
+  const { documentId } = req.params;
+  // @ts-ignore
+  const user = req.user;
+  try {
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId },
+      })
+    );
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
     }
+    if (document.uploadedBy !== user.id && user.role !== "admin") {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({ success: false, message: "No file uploaded" });
+      return;
+    }
+
+    if (document.fileUrl) {
+      const urlParts = document.fileUrl.split(".amazonaws.com/");
+      const oldKey = urlParts[1];
+      if (oldKey) {
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME!,
+            Key: oldKey,
+          })
+        );
+      }
+    }
+
+    const file = req.file;
+    const fileNameWithoutSpaces = file.originalname.replace(/\s/g, "");
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME!,
+      Key: `uploads/${Date.now()}_${fileNameWithoutSpaces}`,
+      Body: file.buffer,
+      ContentType: file.mimetype,
+    };
+    const command = new PutObjectCommand(params);
+    await s3Client.send(command);
+
+    const fileUrl = `https://${params.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression: "set #f = :f, #ft = :ft, #fn = :fn",
+        ExpressionAttributeNames: {
+          "#f": "fileUrl",
+          "#ft": "fileType",
+          "#fn": "filename",
+        },
+        ExpressionAttributeValues: {
+          ":f": fileUrl,
+          ":ft": file.mimetype,
+          ":fn": file.originalname,
+        },
+      })
+    );
+    res.status(200).json({ success: true, message: "Document file updated" });
+  } catch (error) {
+    console.error("updateDocument error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update document" });
+  }
 };

@@ -10,6 +10,8 @@ import {router as DocumentRoute} from './routes/document.route'
 import {router as TeamRoute} from './routes/team.route'
 import {router as ProjectRoute} from './routes/project.route'
 import {router as ActivityRoute} from './routes/actitvity.route'
+import http from 'http';
+import { initSocket } from './lib/socket';
 
 dotenv.config();
 
@@ -28,7 +30,8 @@ app.use('/api/team', TeamRoute)
 app.use('/api/project', ProjectRoute)
 app.use('/api/history', ActivityRoute)
 
-
+const server = http.createServer(app);
+initSocket(server);
 
 
 app.listen(PORT, () => {

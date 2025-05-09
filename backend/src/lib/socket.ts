@@ -11,8 +11,13 @@ export function initSocket(server: http.Server) {
     },
   });
 
-  io.on("connection", (socket:any) => {
+  io.on("connection", (socket: any) => {
     console.log("A user connected:", socket.id);
+
+    socket.on("join", (userId: string) => {
+      socket.join(userId);
+      console.log(`User ${userId} joined their room`);
+    });
 
     socket.on("disconnect", () => {
       console.log("User disconnected:", socket.id);
