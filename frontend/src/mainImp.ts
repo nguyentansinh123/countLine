@@ -20,5 +20,36 @@ import UploadDocument from './pages/NDA/components/uploadDocument';
 import SendFile from './pages/NDA/components/sendFile';
 import Onboarding from './pages/Onboarding/Onborading';
 import Overview from './pages/Overview/overview';
+import ForgotPassword from './pages/Onboarding/components/ForgotPassword';
+import VerifyOtpAndReset from './pages/Onboarding/components/VerifyOtpAndReset';
+import ProtectedRoute from './utils/ProtectedRoute';
+import VerifyOtpPage from './pages/Onboarding/components/VerifyOtpPage';
 
-export {HomePage,MainLayout,NDA,Projects,Teams,AddTeam,EditTeam ,Users,Contact,AboutUs,Activities,AddProject,EditProject,ProfilePage,AddUser,EditUsers,ViewDocument,EditDocument,UploadDocument,SendFile,Onboarding,Overview}
+export {
+  HomePage,
+  MainLayout,
+  NDA,
+  Projects,
+  Teams,
+  AddTeam,
+  EditTeam,
+  Users,
+  Contact,
+  AboutUs,
+  Activities,
+  AddProject,
+  EditProject,
+  ProfilePage,
+  AddUser,
+  EditUsers,
+  ViewDocument,
+  EditDocument,
+  UploadDocument,
+  SendFile,
+  Onboarding,
+  Overview,
+  ForgotPassword,
+  VerifyOtpAndReset,
+  ProtectedRoute,
+  VerifyOtpPage,
+};
