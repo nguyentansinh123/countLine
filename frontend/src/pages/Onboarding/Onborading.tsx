@@ -194,6 +194,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchTab }) => {
         },
         { withCredentials: true }
       ); // To include cookies for authentication
+      // for commiting purposes only
 
       console.log('Login successful:', response.data);
       navigate('/home');
