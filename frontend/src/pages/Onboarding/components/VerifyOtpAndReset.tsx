@@ -19,7 +19,7 @@ const VerifyOtpAndReset: React.FC = () => {
         newPassword: values.password,
       });
       message.success('Password reset successful');
-      navigate('/login');
+      navigate('/');
     } catch (err: any) {
       message.error(err?.response?.data?.message || 'Reset failed');
     }

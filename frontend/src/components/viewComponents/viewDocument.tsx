@@ -30,8 +30,7 @@ const ViewDocument: React.FC = () => {
 
   return (
     
-    <div style={{ padding: '20px' }}>
-    
+    <>
       {file && (
         <>
           <GeneralLayout title='View Document'>
@@ -45,19 +44,18 @@ const ViewDocument: React.FC = () => {
             <Input
               value={file?.title || ''}
               style={{ marginRight: '10px' }}
-              placeholder="Enter file content"
             />
-            <Select value={decodedCategory} style={{ width: '150px' }}/>
+            <Select value={decodedCategory} />
              
           </div>
-          <PdfViewer fileUrl={file.location}/>
+          <PdfViewer fileUrl={file.location} height={'60vh'} width={'100'}/>
           </GeneralLayout>
         </>
       )}
       
       
       
-    </div>
+      </>
     
   );
 };
