@@ -260,10 +260,6 @@ const Onboarding: React.FC = () => {
         <h4>Welcome to</h4>
         <h2>WHITE KNIGHT</h2>
       </div>
-
-      <Card
-        style={{ minHeight: '80vh', display: 'flex', alignContent: 'start' }}
-      >
       <Card
         style={{ minHeight: '80vh', display: 'flex', alignContent: 'start' }}
       >

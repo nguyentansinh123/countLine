@@ -25,19 +25,10 @@ function AddTeam() {
     }
 
     const newTeam = {
-<<<<<<< HEAD
-      teamId: TeamConst.length + 1,
-      team: teamName,
-      date: startDate,
-      status: teamStatus,
-      description: '',
-      members: teamMembers.map((member) => ({ name: member })),
-=======
       teamName,
       teamSize,
       description,
       status,
->>>>>>> d234e55 (Profile-Auth-Team-connected)
     };
 
     try {

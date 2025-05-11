@@ -38,6 +38,30 @@ const getAllUser = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message });
   }
 };
+const getLoggedInUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user_id = (req as any).user?.id;
+
+    const result = await docClient.send(
+      new GetCommand({
+        TableName: "Users",
+        Key: { user_id: user_id },
+      })
+    );
+
+    const user = result.Item as User;
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    res.status(200).json(user);
+  } catch (err) {
+    console.error("Error in getLoggedInUser:", err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
 
 const getSingleUser = async (req: Request, res: Response) => {
   try {
@@ -663,4 +687,7 @@ export {
   searchUsersByName,
   getRecentSearches,
   addRecentSearch,
+  reassignUserRole,
+  getLoggedInUser,
+  updateUserProfile,
 };
