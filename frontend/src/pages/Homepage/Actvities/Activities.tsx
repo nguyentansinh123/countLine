@@ -22,6 +22,10 @@ const menuItems = (item: any): MenuProps => ({
       key: 'delete',
       label: 'Delete',
       onClick: () => handleMenuClick('delete', item),
+    },{
+      key: 'view',
+      label: 'View',
+      onClick: () => handleMenuClick('view', item),
     },
   ],
 });
@@ -34,6 +38,8 @@ const handleMenuClick = (key: string, item: any) => {
   } else if (key === 'delete') {
     console.log('Deleting:', item);
     // Add delete logic here, for now, you can log or modify state
+  }else if (key ==='view'){
+    console.log('viewing document')
   }
 };
 

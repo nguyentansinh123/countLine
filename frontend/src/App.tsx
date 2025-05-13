@@ -4,6 +4,7 @@ import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import './index.css';
 import {HomePage,MainLayout,NDA,Projects,Teams,AddTeam,EditTeam ,Users,Contact,AboutUs,Activities,AddProject,
   EditProject,ProfilePage,AddUser,EditUsers,ViewDocument,EditDocument,UploadDocument,SendFile,Onboarding,Overview} from './mainImp'
+import ViewHistory from './pages/Users/components/ViewHistory';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/adduser" element={<AddUser />} />
           <Route path="/edituser/:userId" element={<EditUsers />} />
+           <Route path="/viewhistory/:userId" element={<ViewHistory />} />
           <Route path = "/viewdocument/:category/:file_id" element={<ViewDocument/>}/>
           <Route path="/editDocuments/:category/:file_id" element={<EditDocument />} />
           <Route path="/sendfile/:category/:file_id" element={<SendFile />} />

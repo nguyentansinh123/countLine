@@ -53,7 +53,7 @@ useEffect(() => {
     if (!ctx) return;
 
     // Handle high DPI displays
-    const scale = window.devicePixelRatio || 1;
+    const scale = window.devicePixelRatio || 1.5;
     canvas.width = box.width * scale;
     canvas.height = box.height * scale;
     canvas.style.width = `${box.width}px`;

@@ -46,6 +46,8 @@ function UserPage() {
         message.success(`System user "${user.name}" deleted.`);
         console.log('System user deleted:', user);
       }
+    } else if (key ==='viewHistory'){
+      navigate(`/viewhistory/${user.userId}`);
     }
   };
 
@@ -61,6 +63,11 @@ function UserPage() {
         key: 'delete',
         label: 'Delete',
         onClick: () => handleMenuClick('delete', user, type),
+      },
+      {
+        key:'viewHistory',
+        label:'View History',
+        onClick:()=>handleMenuClick('viewHistory', user ,type),
       },
     ],
   });
