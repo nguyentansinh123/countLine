@@ -9,10 +9,11 @@ import {router as UserRoute} from './routes/users.route'
 import {router as DocumentRoute} from './routes/document.route'
 import {router as TeamRoute} from './routes/team.route'
 import {router as ProjectRoute} from './routes/project.route'
+import {router as ActivityRoute} from './routes/actitvity.route'
+import http from 'http';
+import { initSocket } from './lib/socket';
 
 dotenv.config();
-
-
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,8 +28,10 @@ app.use('/api/users', UserRoute)
 app.use('/api/document', DocumentRoute)
 app.use('/api/team', TeamRoute)
 app.use('/api/project', ProjectRoute)
+app.use('/api/history', ActivityRoute)
 
-
+const server = http.createServer(app);
+initSocket(server);
 
 
 app.listen(PORT, () => {
