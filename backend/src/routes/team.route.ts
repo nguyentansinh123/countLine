@@ -1,13 +1,21 @@
 import express from 'express'
 export const router = express.Router()
-import { addTeam,getTeam,updateTeam,deleteTeam,addTeamMember,removeTeamMember,getTeamMembers } from '../controller/team.controller'
-import { userAuth} from '../middleware/userAuth'
+import { addTeam, getTeam, updateTeam, deleteTeam, addTeamMember, removeTeamMember, getTeamMembers,getMyTeams,changeTeamStatus,exportTeamsCsv } from '../controller/team.controller'
+import { userAuth } from '../middleware/userAuth'
+import authorizeRoles from '../middleware/roleMiddleware'
 
-router.post('/addTeam',userAuth, addTeam) // need to add condition if team name is existed or not
-router.get('/:teamId', userAuth, getTeam);
-router.put('/:teamId', userAuth, updateTeam);
-router.delete('/:teamId', userAuth, deleteTeam);
+// Only admin and employee can create, update, or delete teams
+router.post('/addTeam', userAuth, authorizeRoles('admin', 'employee'), addTeam)
+router.put('/:teamId', userAuth, authorizeRoles('admin', 'employee'), updateTeam)
+router.delete('/:teamId', userAuth, authorizeRoles('admin', 'employee'), deleteTeam)
 
-router.post('/:teamId/members', userAuth, addTeamMember);
-router.delete('/:teamId/members/:userId', userAuth, removeTeamMember);
-router.get('/:teamId/members', userAuth, getTeamMembers);
+// All authenticated users can view teams and members
+router.get('/:teamId', userAuth, getTeam)
+router.get('/:teamId/members', userAuth, getTeamMembers)
+router.get('/FindMyTeams/Yes', userAuth, getMyTeams);
+
+// Only admin and employee can add or remove team members
+router.post('/:teamId/members', userAuth, authorizeRoles('admin', 'employee'), addTeamMember)
+router.delete('/:teamId/members/:userId', userAuth, authorizeRoles('admin', 'employee'), removeTeamMember)
+router.patch('/:teamId/status', userAuth, authorizeRoles('admin', 'employee'), changeTeamStatus);
+router.get('/export/csv', userAuth, authorizeRoles('admin'), exportTeamsCsv);

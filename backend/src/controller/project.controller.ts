@@ -396,7 +396,6 @@ interface ProjectResponse {
 
 const getAllProject = async (req: Request, res: Response) => {
     try {
-        // Get limit from query params with validation
         const limit = req.params.limit 
             ? Math.min(parseInt(req.query.limit as string), 100) 
             : 10;
@@ -409,22 +408,19 @@ const getAllProject = async (req: Request, res: Response) => {
             return
         }
 
-        // Basic scan parameters with proper typing
         const scanParams: ScanCommandInput = {
             TableName: 'Projects',
             Limit: limit,
             FilterExpression: 'isDeleted = :isDeleted',
             ExpressionAttributeValues: {
-                ':isDeleted': { BOOL: false } // Proper DynamoDB attribute value
+                ':isDeleted': { BOOL: false } 
             }
         };
 
-        // Execute scan
         const { Items: projects, LastEvaluatedKey } = await docClient.send(
             new ScanCommand(scanParams)
         );
 
-        // Prepare clean response with proper typing
         const response: ProjectResponse = {
             success: true,
             data: projects || [],
@@ -432,7 +428,6 @@ const getAllProject = async (req: Request, res: Response) => {
             limit
         };
 
-        // Add pagination info if more results exist
         if (LastEvaluatedKey) {
             response.pagination = {
                 nextKey: LastEvaluatedKey,
