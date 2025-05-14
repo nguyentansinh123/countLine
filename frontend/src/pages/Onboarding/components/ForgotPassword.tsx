@@ -9,6 +9,7 @@ const { Title } = Typography;
 const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [messageApi, contextHolder] = message.useMessage();
 
   const handleSubmit = async ({ email }: { email: string }) => {
     setLoading(true);
@@ -16,10 +17,12 @@ const ForgotPassword: React.FC = () => {
       await axios.post('http://localhost:5001/api/auth/send-reset-otp', {
         email,
       });
-      message.success('OTP sent to your email!');
-      navigate('/reset-password', { state: { email } });
+      messageApi.success('OTP sent to your email!');
+      setTimeout(() => {
+        navigate('/reset-password', { state: { email } });
+      }, 2000);
     } catch (err: any) {
-      message.error(err?.response?.data?.message || 'Failed to send OTP');
+      messageApi.error(err?.response?.data?.message || 'Failed to send OTP');
     } finally {
       setLoading(false);
     }
@@ -27,6 +30,7 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <div className="form-card">
+      {contextHolder}
       <Title level={3}>Reset Password</Title>
       <Form layout="vertical" onFinish={handleSubmit}>
         <Form.Item

@@ -14,6 +14,7 @@ import { EyeTwoTone, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './form.css';
+import { message } from 'antd';
 
 const { Title } = Typography;
 
@@ -33,6 +34,7 @@ interface SignupFormValues {
 const SignupForm: React.FC<SignupFormProps> = ({ switchTab }) => {
   const [form] = Form.useForm<SignupFormValues>();
   const navigate = useNavigate();
+  const [messageApi, contextHolder] = message.useMessage();
 
   const onFinish = async (values: SignupFormValues): Promise<void> => {
     try {
@@ -45,8 +47,10 @@ const SignupForm: React.FC<SignupFormProps> = ({ switchTab }) => {
         }
       );
       console.log('Signup successful:', response.data);
+      messageApi.success('Signup successful! Directing to homepage.');
       navigate('/home');
     } catch (error) {
+      messageApi.error('Signup failed! Please try again.');
       console.error('Signup error:', error);
     }
   };
@@ -183,6 +187,7 @@ interface LoginFormValues {
 const LoginForm: React.FC<LoginFormProps> = ({ switchTab }) => {
   const [form] = Form.useForm<LoginFormValues>();
   const navigate = useNavigate();
+  const [messageApi, contextHolder] = message.useMessage();
 
   const onFinish = async (values: LoginFormValues): Promise<void> => {
     try {
@@ -197,14 +202,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchTab }) => {
       // for commiting purposes only
 
       console.log('Login successful:', response.data);
-      navigate('/home');
+      messageApi.success('Login successful! Redirecting to homepage...');
+
+      setTimeout(() => {
+        // Simulate a delay for the success message
+        navigate('/home');
+      }, 2000); // Simulate a delay for the success message
     } catch (error) {
+      messageApi.error('Login failed! Please check your credentials.');
       console.error('Login error:', error);
     }
   };
 
   return (
     <div className="form-card">
+      {contextHolder}
       <Title level={2}>Log In</Title>
       <Divider className="form-divider" />
 
@@ -238,6 +250,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ switchTab }) => {
             }
           />
         </Form.Item>
+        <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+          <a href="/forgot-password">Forgot password?</a>
+        </div>
 
         <Form.Item className="form-buttons">
           <Button type="primary" htmlType="submit" className="form-button">

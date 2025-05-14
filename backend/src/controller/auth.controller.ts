@@ -215,6 +215,7 @@ const sendVerifyOtp = async (req: Request, res: Response) => {
       subject: "Your OTP for Verification",
       text: `Your OTP is: ${otp}. It will expire in 24 hours.`,
     };
+    console.log(mailOptions, "mailOptions");
     await transporter.sendMail(mailOptions);
     res.json({ success: true, message: "Verified OTP send on Email" });
   } catch (error) {
@@ -315,6 +316,8 @@ const isAuthenticated = (req: Request, res: Response) => {
   }
 };
 const sendResetOtp = async (req: Request, res: Response) => {
+  console.log("here");
+
   const { email } = req.body;
   if (!email) {
     res.status(400).json({ success: false, message: "Email is required" });
@@ -359,7 +362,7 @@ const sendResetOtp = async (req: Request, res: Response) => {
       subject: "Password Reset OTP",
       text: `Your OTP will expire in 15 minutes: ${otp}`,
     };
-
+    console.log(mailOptions, "mailOptions");
     await transporter.sendMail(mailOptions);
 
     res.status(200).json({ success: true, message: "OTP sent to email" });
