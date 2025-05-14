@@ -9,13 +9,10 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../lib/dynamoClient";
 import { v2 } from "../lib/cloudinary";
-<<<<<<< HEAD
-import { logUserActivity } from "./activity.controller"; 
+import { logUserActivity } from "./activity.controller";
 
-=======
 import { User } from "../types/User";
 import { ReturnValue } from "@aws-sdk/client-dynamodb";
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
 
 const getAllUser = async (req: Request, res: Response) => {
   try {
@@ -37,89 +34,16 @@ const getAllUser = async (req: Request, res: Response) => {
     let message = "Unknown Error";
     if (error instanceof Error) message = error.message;
 
-<<<<<<< HEAD
-          await logUserActivity({
-            userId: req.body.user_id,
-            action: "get_all_users"
-          });
-
-        res.status(200).json({
-            success: true,
-            message: "Users fetched successfully",
-            data: moreSecuredData,
-          });
-    } catch (error) {
-        let message = 'Unknown Error';
-        if (error instanceof Error) message = error.message;
-    
-        console.error("Error in getAllUser:", message);
-        res.status(500).json({ success: false, message });
-    }
-=======
     console.error("Error in getAllUser:", message);
     res.status(500).json({ success: false, message });
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
   }
 };
-
 const getLoggedInUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const user_id = (req as any).user?.id;
 
-<<<<<<< HEAD
-        const queryParams = {
-            TableName: 'Users', 
-            KeyConditionExpression: 'user_id = :user_id',
-            ExpressionAttributeValues: {
-              ':user_id': id,
-            },
-          };
-
-          const result = await docClient.send(new QueryCommand(queryParams));
-
-          if (!result.Items || result.Items.length === 0) {
-            res.status(404).json({ success: false, message: "User not found" });
-            throw new Error("User not found");
-          }
-          const user = result.Items[0];
-          const { password, ...userWithoutPassword } = user;
-
-            await logUserActivity({
-                userId: req.body.user_id,
-                action: "get_single_user",
-                targetId: id
-            });
-          
-          res.status(200).json({
-            success: true,
-            message: "User fetched successfully",
-            data: userWithoutPassword,
-          });
-
-    } catch (error) {
-        let message = 'Unknown Error';
-        if (error instanceof Error) message = error.message;
-    
-        console.error("Error in getSingleUser:", message);
-        res.status(500).json({ success: false, message });
-    }
-  }
-
-  const getAllUserDocuments = async (req: Request, res:Response) => {
-    try {
-
-      const { user_id } = req.body;
-
-      if (!user_id) {
-        res.status(400).json({ success: false, message: "User ID is required" });
-        return;
-    }
-
-      const userParams = {
-=======
     const result = await docClient.send(
       new GetCommand({
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
         TableName: "Users",
         Key: { user_id: user_id },
       })
@@ -160,22 +84,6 @@ const getSingleUser = async (req: Request, res: Response) => {
     const user = result.Items[0];
     const { password, ...userWithoutPassword } = user;
 
-<<<<<<< HEAD
-      if (documentIds.length === 0) {
-
-        await logUserActivity({
-          userId: req.body.user_id,
-          action: "get_all_user_documents",
-          targetId: user_id
-      });
-
-        res.status(200).json({
-            success: true,
-            message: "No documents found for this user",
-            data: [],
-        });
-        return;
-=======
     res.status(200).json({
       success: true,
       message: "User fetched successfully",
@@ -221,7 +129,6 @@ const getAllUserDocuments = async (req: Request, res: Response) => {
         data: [],
       });
       return;
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
     }
 
     const documentParams = {
@@ -277,18 +184,12 @@ const getSingleUserDocument = async (req: Request, res: Response) => {
       return;
     }
 
-<<<<<<< HEAD
     await logUserActivity({
       userId: req.body.user_id,
       action: "get_single_user_document",
-      targetId: documentID
-  });
+      targetId: documentID,
+    });
 
-      res.status(200).json({
-        success: true,
-        message: "Document fetched successfully",
-        data: document,
-=======
     res.status(200).json({
       success: true,
       message: "Document fetched successfully",
@@ -347,7 +248,6 @@ const updateProfilePic = async (req: Request, res: Response) => {
     const uploadResponse = await v2.uploader.upload(profilePicture, {
       folder: "profile-pictures",
       transformation: { width: 500, height: 500, crop: "fill" },
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
     });
 
     const params = {
@@ -390,136 +290,16 @@ const updateProfilePic = async (req: Request, res: Response) => {
       error: message,
     });
   }
-<<<<<<< HEAD
-
-  const updateProfilePic = async (req: Request, res: Response) => {
-    try {
-        const { user_id } = req.body;
-        const { profilePicture } = req.body;
-
-        if (!profilePicture) {
-            res.status(400).json({
-                success: false,
-                message: 'Profile picture is required'
-            });
-            return
-        }
-
-        const uploadResponse = await v2.uploader.upload(profilePicture, {
-            folder: 'profile-pictures',
-            transformation: { width: 500, height: 500, crop: 'fill' }
-        });
-
-        const params = {
-            TableName: 'Users',
-            Key: { user_id },
-            UpdateExpression: 'SET profilePicture = :profilePicture',
-            ExpressionAttributeValues: {
-                ':profilePicture': uploadResponse.secure_url,
-            },
-            ReturnValues: 'ALL_NEW' as const
-        };
-
-        const { Attributes: updatedUser } = await docClient.send(new UpdateCommand(params));
-
-        if (!updatedUser) {
-            res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-            return
-        }
-
-        await logUserActivity({
-          userId: req.body.user_id,
-          action: "update_profile_picture",
-          targetId: user_id
-      });
-
-        res.status(200).json({
-            success: true,
-            message: 'Profile picture updated successfully',
-            user: {
-                profilePicture: updatedUser.profilePicture
-            }
-        });
-
-    } catch (error) {
-        let message = 'Unknown Error';
-        if (error instanceof Error) message = error.message;
-
-        console.error("Error updating profile picture:", message);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Failed to update profile picture',
-            error: message 
-        });
-    }
-=======
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
 };
 
 const deleteUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id: user_id } = req.params;
 
-<<<<<<< HEAD
-      if (!user_id) {
-          res.status(400).json({
-              success: false,
-              message: 'User ID is required'
-          });
-          return;
-      }
-
-      const getUserParams = {
-          TableName: 'Users',
-          Key: { user_id }
-      };
-      
-      const userData = await docClient.send(new GetCommand(getUserParams));
-      
-      if (!userData.Item) {
-          res.status(404).json({
-              success: false,
-              message: 'User not found'
-          });
-          return;
-      }
-
-      if (userData.Item.profilePicture) {
-          try {
-              const urlParts = userData.Item.profilePicture.split('/');
-              const publicId = urlParts[urlParts.length - 1].split('.')[0];
-              
-              await v2.uploader.destroy(publicId);
-          } catch (cloudinaryError) {
-              console.warn('Cloudinary cleanup warning:', cloudinaryError);
-          }
-      }
-
-      const deleteParams = {
-          TableName: 'Users',
-          Key: { user_id }
-      };
-
-      await docClient.send(new DeleteCommand(deleteParams));
-
-      await logUserActivity({
-        userId: req.body.user_id,
-        action: "delete_user",
-        targetId: user_id
-    });
-
-      res.status(200).json({
-          success: true,
-          message: 'User account deleted successfully'
-=======
     if (!user_id) {
       res.status(400).json({
         success: false,
         message: "User ID is required",
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
       });
       return;
     }
@@ -796,73 +576,76 @@ const getRecentSearches = async (
   }
 };
 
-<<<<<<< HEAD
 const reassignUserRole = async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId, newRole } = req.body;
-    const { user_id } = req.body; 
-    
+    const { user_id } = req.body;
+
     if (!userId || !newRole) {
       res.status(400).json({
         success: false,
-        message: 'User ID and new role are required'
+        message: "User ID and new role are required",
       });
       return;
     }
-    
-    const allowedRoles = ['employee', 'client', 'intern', 'admin', 'user'];
+
+    const allowedRoles = ["employee", "client", "intern", "admin", "user"];
     if (!allowedRoles.includes(newRole)) {
       res.status(400).json({
         success: false,
-        message: `Invalid role. Allowed roles are: ${allowedRoles.join(', ')}`
+        message: `Invalid role. Allowed roles are: ${allowedRoles.join(", ")}`,
       });
       return;
     }
 
     const getUserParams = {
-      TableName: 'Users',
-      Key: { user_id: userId }
+      TableName: "Users",
+      Key: { user_id: userId },
     };
-    
+
     const userData = await docClient.send(new GetCommand(getUserParams));
-    
+
     if (!userData.Item) {
       res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
       return;
     }
 
-    console.log(`Role change requested by Admin (${user_id}) - Changing ${userId} from ${userData.Item.role} to ${newRole}`);
-    
+    console.log(
+      `Role change requested by Admin (${user_id}) - Changing ${userId} from ${userData.Item.role} to ${newRole}`
+    );
+
     if (userId === user_id) {
       res.status(403).json({
         success: false,
-        message: 'You cannot change your own role'
+        message: "You cannot change your own role",
       });
       return;
     }
 
     const updateParams = {
-      TableName: 'Users',
+      TableName: "Users",
       Key: { user_id: userId },
-      UpdateExpression: 'SET #role = :newRole',
+      UpdateExpression: "SET #role = :newRole",
       ExpressionAttributeNames: {
-        '#role': 'role'
+        "#role": "role",
       },
       ExpressionAttributeValues: {
-        ':newRole': newRole
+        ":newRole": newRole,
       },
-      ReturnValues: 'ALL_NEW' as const
+      ReturnValues: "ALL_NEW" as const,
     };
 
-    const { Attributes: updatedUser } = await docClient.send(new UpdateCommand(updateParams));
+    const { Attributes: updatedUser } = await docClient.send(
+      new UpdateCommand(updateParams)
+    );
 
     if (!updatedUser) {
       res.status(500).json({
         success: false,
-        message: 'Failed to update user role'
+        message: "Failed to update user role",
       });
       return;
     }
@@ -873,32 +656,26 @@ const reassignUserRole = async (req: Request, res: Response): Promise<void> => {
       userId: req.body.user_id,
       action: "reassign_user_role",
       targetId: userId,
-      details: { newRole }
+      details: { newRole },
     });
 
     console.log(`Role successfully changed for user ${userId} to ${newRole}`);
-    
+
     res.status(200).json({
       success: true,
       message: `User role updated to ${newRole} successfully`,
-      data: userWithoutPassword
+      data: userWithoutPassword,
     });
-
   } catch (error) {
-    console.error('Error reassigning user role:', error);
+    console.error("Error reassigning user role:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to reassign user role',
-      error: error instanceof Error ? error.message : 'Unknown error'
+      message: "Failed to reassign user role",
+      error: error instanceof Error ? error.message : "Unknown error",
     });
   }
 };
 
-
-export {getAllUser,getSingleUser,getAllUserDocuments,
-  getSingleUserDocument,updateProfilePic,deleteUser,
-  getUserByName,searchUsersByName, getRecentSearches, addRecentSearch, reassignUserRole} ;
-=======
 export {
   getAllUser,
   getSingleUser,
@@ -910,7 +687,7 @@ export {
   searchUsersByName,
   getRecentSearches,
   addRecentSearch,
+  reassignUserRole,
   getLoggedInUser,
   updateUserProfile,
 };
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)

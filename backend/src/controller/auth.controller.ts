@@ -1,27 +1,26 @@
 import { Request, Response } from "express";
 import { validateUser } from "../lib/validate.user";
 import {
-  GetCommand,
   PutCommand,
   QueryCommand,
   UpdateCommand,
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../lib/dynamoClient";
+import { UserSchema } from "../model/user.model";
 import bcrypt from "bcryptjs";
 import mjml2html from "mjml";
 import { welcomeEmailTemplate } from "../template/WelcomeEmailTemplate";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { transporter } from "../lib/nodemailer";
+import { log } from "console";
 dotenv.config();
-
-import { createTransporter } from "../lib/nodemailer";
 
 const Register = async (req: Request, res: Response) => {
   try {
     const { name, email, password } = req.body;
     const validatedUser = validateUser({ name, email, password });
-
     const emailCheckParams = {
       TableName: "Users",
       IndexName: "EmailIndex",
@@ -30,32 +29,23 @@ const Register = async (req: Request, res: Response) => {
         ":email": email,
       },
     };
+    log("hello before emailCheckResult");
+    let emailCheckResult;
+    try {
+      emailCheckResult = await docClient.send(
+        new QueryCommand(emailCheckParams)
+      );
+      console.log("hello1");
+    } catch (err) {
+      console.error("❌ QueryCommand error:", err);
+    }
+    console.log("hello after emailCheckResult");
 
-    const emailCheckResult = await docClient.send(
-      new QueryCommand(emailCheckParams)
-    );
-    if (emailCheckResult.Items && emailCheckResult.Items.length > 0) {
+    if (emailCheckResult?.Items && emailCheckResult.Items.length > 0) {
       throw new Error("Email already exists");
     }
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    const { html } = mjml2html(welcomeEmailTemplate(name));
-    const mailOptions = {
-      from: process.env.SENDER_EMAIL,
-      to: email,
-      subject: "Welcome to Our App",
-      html: html,
-    };
-
-    // Debugging
-
-    const transporter = createTransporter();
-    await transporter.sendMail(mailOptions);
-
-    console.log("Transporter config:", transporter);
-    console.log("SMTP_USER:", process.env.SMTP_USER);
-    console.log("SMTP_PASS:", process.env.SMTP_PASS);
 
     const insertParams = {
       TableName: "Users",
@@ -64,6 +54,11 @@ const Register = async (req: Request, res: Response) => {
         password: hashedPassword,
       },
     };
+    console.log("AWS ENV:", {
+      key: process.env.AWS_ACCESS_KEY_ID,
+      secret: process.env.AWS_SECRET_ACCESS_KEY,
+      region: process.env.AWS_REGION,
+    });
     const data = await docClient.send(new PutCommand(insertParams));
 
     if (!process.env.JWT_SECRET) {
@@ -80,6 +75,16 @@ const Register = async (req: Request, res: Response) => {
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
+    const { html } = mjml2html(welcomeEmailTemplate(name));
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: "Welcome to Our App",
+      html: html,
+    };
+
+    await transporter.sendMail(mailOptions);
 
     res.status(200).json({
       success: true,
@@ -173,21 +178,18 @@ const logout = async (req: Request, res: Response) => {
 const sendVerifyOtp = async (req: Request, res: Response) => {
   try {
     const { user_id } = req.body;
-    console.log("USER_ID in auth.controller", user_id);
-
-    if (!user_id) throw new Error("User_id missing in request");
-    const getParams = {
+    const idCheckParams = {
       TableName: "Users",
-      Key: { user_id },
+      KeyConditionExpression: "user_id = :user_id",
+      ExpressionAttributeValues: {
+        ":user_id": user_id,
+      },
     };
-    console.log("Looking for user_id:", user_id);
-    console.log("Type of user_id:", typeof user_id);
-    const userResult = await docClient.send(new GetCommand(getParams));
-    console.log(userResult);
-    if (!userResult.Item) {
+    const userResult = await docClient.send(new QueryCommand(idCheckParams));
+    if (!userResult.Items || userResult.Items.length === 0) {
       throw new Error("User not found");
     }
-    const user = userResult.Item;
+    const user = userResult.Items[0];
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     const verifyOTPExpiredAt = Date.now() + 24 * 60 * 60 * 1000;
@@ -213,7 +215,6 @@ const sendVerifyOtp = async (req: Request, res: Response) => {
       subject: "Your OTP for Verification",
       text: `Your OTP is: ${otp}. It will expire in 24 hours.`,
     };
-    const transporter = createTransporter();
     await transporter.sendMail(mailOptions);
     res.json({ success: true, message: "Verified OTP send on Email" });
   } catch (error) {
@@ -358,7 +359,7 @@ const sendResetOtp = async (req: Request, res: Response) => {
       subject: "Password Reset OTP",
       text: `Your OTP will expire in 15 minutes: ${otp}`,
     };
-    const transporter = createTransporter();
+
     await transporter.sendMail(mailOptions);
 
     res.status(200).json({ success: true, message: "OTP sent to email" });
