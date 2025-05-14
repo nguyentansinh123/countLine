@@ -1,6 +1,11 @@
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
 export const UserSchema = {
+  id: {
+    type: String,
+    required: true,
+  },
+
   name: {
     type: String,
     required: true,
@@ -8,7 +13,7 @@ export const UserSchema = {
   email: {
     type: String,
     required: true,
-    unique: true, 
+    unique: true,
   },
   password: {
     type: String,
@@ -16,7 +21,7 @@ export const UserSchema = {
   },
   verifyOTP: {
     type: String,
-    default: '',
+    default: "",
   },
   verifyOTPExpiredAt: {
     type: Number,
@@ -28,7 +33,7 @@ export const UserSchema = {
   },
   resetOTP: {
     type: String,
-    default: '',
+    default: "",
   },
   resetOTPExpireAt: {
     type: Number,
@@ -37,29 +42,31 @@ export const UserSchema = {
   role: {
     type: String,
     required: true,
-    default: 'user',
-    enum: ['employee', 'client', 'intern', 'admin', 'user'], 
+    default: "user",
+    enum: ["employee", "client", "intern", "admin", "user"],
   },
   documents: {
-    type: [String], 
-    default: [], 
+    type: [String],
+    default: [],
   },
   teams: {
-    type: [String], 
+    type: [String],
     default: [],
   },
   profilePicture: {
     type: String,
-    default: '', 
+    default: "",
   },
   recentSearches: {
-    type: [{
-      userId: String,
-      name: String,
-      profilePicture: String,
-      timestamp: Number
-    }],
+    type: [
+      {
+        userId: String,
+        name: String,
+        profilePicture: String,
+        timestamp: Number,
+      },
+    ],
     default: [],
-    maxLength: 3 
+    maxLength: 3,
   },
 };

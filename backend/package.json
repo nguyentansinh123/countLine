@@ -34,8 +34,13 @@
     "nodemailer": "^6.10.0",
     "nodemon": "^3.1.9",
     "pdf-parse": "^1.1.1",
+<<<<<<< HEAD
     "socket.io": "^4.8.1",
     "uuid": "^11.1.0"
+=======
+    "uuid": "^11.1.0",
+    "zustand": "^5.0.3"
+>>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.8",
