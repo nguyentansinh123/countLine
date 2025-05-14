@@ -15,7 +15,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         setIsLoading(false);
       } catch (err) {
         console.error('Not authorized');
-        navigate('/login');
+        navigate('/');
       }
     };
 
