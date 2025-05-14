@@ -1,18 +1,14 @@
 import { Request, Response } from "express";
 import { docClient } from "../lib/dynamoClient";
-<<<<<<< HEAD
-import { v4 as uuidv4 } from 'uuid';
-import { BatchGetCommand, GetCommand, PutCommand, ScanCommand, UpdateCommand, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
-=======
 import { v4 as uuidv4 } from "uuid";
 import {
   BatchGetCommand,
   GetCommand,
   PutCommand,
+  ScanCommand,
   UpdateCommand,
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
 import { ReturnValue } from "@aws-sdk/client-dynamodb";
 
 const addTeam = async (req: Request, res: Response) => {
@@ -422,72 +418,6 @@ interface TeamMember {
   role?: string;
 }
 
-<<<<<<< HEAD
-  const getMyTeams = async (req: Request, res: Response) => {
-    // @ts-ignore
-    const userId = req.user.id;
-    try {
-        const { Item: user } = await docClient.send(new GetCommand({
-            TableName: 'Users',
-            Key: { user_id: userId }
-        }));
-        if (!user || !user.teams) {
-            res.json({ success: true, data: [] });
-            return;
-        }
-        const { Responses } = await docClient.send(new BatchGetCommand({
-            RequestItems: {
-                'Teams': {
-                    Keys: user.teams.map((teamId: string) => ({ teamId }))
-                }
-            }
-        }));
-        const teams = (Responses?.Teams || []).filter(Boolean);
-        res.json({ success: true, data: teams });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Failed to fetch your teams" });
-    }
-};
-
-const changeTeamStatus = async (req: Request, res: Response) => {
-    const { teamId } = req.params;
-    const { status } = req.body;
-    try {
-        const { Attributes } = await docClient.send(new UpdateCommand({
-            TableName: 'Teams',
-            Key: { teamId },
-            UpdateExpression: 'SET #status = :status, updatedAt = :updated',
-            ExpressionAttributeNames: { '#status': 'status' },
-            ExpressionAttributeValues: { ':status': status, ':updated': Date.now() },
-            ReturnValues: 'ALL_NEW'
-        }));
-        res.json({ success: true, message: "Status updated", data: Attributes });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Failed to update status" });
-    }
-};
-
-
-const exportTeamsCsv = async (req: Request, res: Response) => {
-    try {
-        const data = await docClient.send(new ScanCommand({ TableName: 'Teams' }));
-        const teams = data.Items || [];
-        const csv = [
-            'teamId,teamName,teamSize,description,status,createdBy,dateCreated',
-            ...teams.map(t =>
-                [t.teamId, t.teamName, t.teamSize, `"${t.description}"`, t.status, t.createdBy, t.dateCreated].join(',')
-            )
-        ].join('\n');
-        res.setHeader('Content-Type', 'text/csv');
-        res.send(csv);
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Failed to export teams" });
-    }
-};
-
-
-export {addTeam,getTeam,updateTeam,deleteTeam,addTeamMember,removeTeamMember,getTeamMembers,getMyTeams,changeTeamStatus,exportTeamsCsv}
-=======
 interface TeamResponse {
   teamId: string;
   teamName?: string;
@@ -579,6 +509,88 @@ const getTeamMembers = async (
   }
 };
 
+const getMyTeams = async (req: Request, res: Response) => {
+  // @ts-ignore
+  const userId = req.user.id;
+  try {
+    const { Item: user } = await docClient.send(
+      new GetCommand({
+        TableName: "Users",
+        Key: { user_id: userId },
+      })
+    );
+    if (!user || !user.teams) {
+      res.json({ success: true, data: [] });
+      return;
+    }
+    const { Responses } = await docClient.send(
+      new BatchGetCommand({
+        RequestItems: {
+          Teams: {
+            Keys: user.teams.map((teamId: string) => ({ teamId })),
+          },
+        },
+      })
+    );
+    const teams = (Responses?.Teams || []).filter(Boolean);
+    res.json({ success: true, data: teams });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch your teams" });
+  }
+};
+
+const changeTeamStatus = async (req: Request, res: Response) => {
+  const { teamId } = req.params;
+  const { status } = req.body;
+  try {
+    const { Attributes } = await docClient.send(
+      new UpdateCommand({
+        TableName: "Teams",
+        Key: { teamId },
+        UpdateExpression: "SET #status = :status, updatedAt = :updated",
+        ExpressionAttributeNames: { "#status": "status" },
+        ExpressionAttributeValues: {
+          ":status": status,
+          ":updated": Date.now(),
+        },
+        ReturnValues: "ALL_NEW",
+      })
+    );
+    res.json({ success: true, message: "Status updated", data: Attributes });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update status" });
+  }
+};
+
+const exportTeamsCsv = async (req: Request, res: Response) => {
+  try {
+    const data = await docClient.send(new ScanCommand({ TableName: "Teams" }));
+    const teams = data.Items || [];
+    const csv = [
+      "teamId,teamName,teamSize,description,status,createdBy,dateCreated",
+      ...teams.map((t) =>
+        [
+          t.teamId,
+          t.teamName,
+          t.teamSize,
+          `"${t.description}"`,
+          t.status,
+          t.createdBy,
+          t.dateCreated,
+        ].join(",")
+      ),
+    ].join("\n");
+    res.setHeader("Content-Type", "text/csv");
+    res.send(csv);
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to export teams" });
+  }
+};
+
 export {
   addTeam,
   getTeam,
@@ -587,5 +599,7 @@ export {
   addTeamMember,
   removeTeamMember,
   getTeamMembers,
+  getMyTeams,
+  changeTeamStatus,
+  exportTeamsCsv,
 };
->>>>>>> 592dc2a (user, auth, project routes are connected, added otp page)
