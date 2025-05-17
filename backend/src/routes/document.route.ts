@@ -1,5 +1,11 @@
 import express from 'express'
-import {uploadFileToS3, getAllTask, SendFileToAUser, getSingleTask, downloadFile, getPresignedUrl, getMyDocuments, deleteDocument, updateDocument, hardDelete} from '../controller/document.controller'
+import {uploadFileToS3, getAllTask, SendFileToAUser, getSingleTask,
+     downloadFile, getPresignedUrl, getMyDocuments, deleteDocument, updateDocument,
+      hardDelete,
+      requestDocumentSignatures,
+      signDocument,
+      getDocumentsRequiringSignature,
+      signDocumentWithCanvas} from '../controller/document.controller'
 import {upload} from '../lib/multerconfig'
 import { userAuth } from '../middleware/userAuth'
 import { preserveBody } from '../middleware/preserveBody'
@@ -26,5 +32,17 @@ router.put('/update/:documentId', userAuth, upload.single('file'), updateDocumen
 // Routes requiring admin or employee role
 router.get('/alltask', userAuth, authorizeRoles('admin', 'employee'), getAllTask)
 
-// Admin-only routes
-router.post('/sendFileToUser/:IdOfUser', userAuth, authorizeRoles('admin'), SendFileToAUser)
+router.post('/sendFileToUser/:IdOfUser', userAuth, SendFileToAUser);
+
+router.post('/share-document/:IdOfUser', userAuth, SendFileToAUser);
+
+// Request signatures for a document
+router.post('/request-signatures/:documentId', userAuth, requestDocumentSignatures);
+
+// Sign a document (any authorized user who is requested to sign)
+router.post('/sign/:documentId', userAuth, signDocument);
+
+router.get('/pending-signatures', userAuth, getDocumentsRequiringSignature);
+
+router.post('/sign-with-canvas/:documentId', userAuth, upload.single('signature'), signDocumentWithCanvas);
+
