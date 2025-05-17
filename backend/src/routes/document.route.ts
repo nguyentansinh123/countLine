@@ -5,32 +5,50 @@ import {uploadFileToS3, getAllTask, SendFileToAUser, getSingleTask,
       requestDocumentSignatures,
       signDocument,
       getDocumentsRequiringSignature,
-      signDocumentWithCanvas} from '../controller/document.controller'
+      signDocumentWithCanvas,
+      getDocumentById} from '../controller/document.controller'
 import {upload} from '../lib/multerconfig'
 import { userAuth } from '../middleware/userAuth'
 import { preserveBody } from '../middleware/preserveBody'
 import authorizeRoles from '../middleware/roleMiddleware'
 
-export const router = express.Router()
+export const router = express.Router();
 
 // Routes for all authenticated users
-router.post('/upload', userAuth, preserveBody, upload.single('file'), uploadFileToS3)
-router.get('/singleTask/:id', userAuth, getSingleTask)
-router.get('/download/:documentId', userAuth, downloadFile)
-router.get('/presigned-url/:documentId', userAuth, getPresignedUrl);
-router.get('/my-documents', userAuth, getMyDocuments);
+router.post(
+  "/upload",
+  userAuth,
+  preserveBody,
+  upload.single("file"),
+  uploadFileToS3
+);
+router.get("/singleTask/:id", userAuth, getSingleTask);
+router.get("/download/:documentId", userAuth, downloadFile);
+router.get("/presigned-url/:documentId", userAuth, getPresignedUrl);
+router.get("/my-documents", userAuth, getMyDocuments);
+router.get("/document/:id", userAuth, getDocumentById);
 
 // SOFT DELETE already check condition in controller only admin or the one upload it can delete
-router.delete('/delete/:documentId', userAuth, deleteDocument);
+router.delete("/delete/:documentId", userAuth, deleteDocument);
 
 // Hard Delete
-router.delete('/deleteHard/:documentId', userAuth, hardDelete);
+router.delete("/deleteHard/:documentId", userAuth, hardDelete);
 
 // Update document metadata (only uploader or admin)
-router.put('/update/:documentId', userAuth, upload.single('file'), updateDocument);
+router.put(
+  "/update/:documentId",
+  userAuth,
+  upload.single("file"),
+  updateDocument
+);
 
 // Routes requiring admin or employee role
-router.get('/alltask', userAuth, authorizeRoles('admin', 'employee'), getAllTask)
+router.get(
+  "/alltask",
+  userAuth,
+  authorizeRoles("admin", "employee"),
+  getAllTask
+);
 
 router.post('/sendFileToUser/:IdOfUser', userAuth, SendFileToAUser);
 

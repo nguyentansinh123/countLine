@@ -1,10 +1,10 @@
 import React from 'react';
-import { List, Dropdown, Button, Menu, MenuProps } from 'antd';
+import { List, Dropdown, Button, MenuProps } from 'antd';
 
 interface ListComponentsProps {
   column: string[];
   data: Array<Record<string, any>>;
-  menu: (item: any) => MenuProps; // Accepting 'item' instead of just 'id'
+  menu?: (item: any) => MenuProps; // Made optional
 }
 
 function ListComponents(props: ListComponentsProps) {
@@ -30,7 +30,7 @@ function ListComponents(props: ListComponentsProps) {
       {/* Data List */}
       <div
         style={{
-          height: '65vh',
+          height: '70vh',
           padding: 5,
           overflowY: 'auto',
           paddingRight: 10,
@@ -43,23 +43,19 @@ function ListComponents(props: ListComponentsProps) {
               key={index}
               style={{
                 display: 'grid',
-                gridTemplateColumns: `repeat(${props.column.length}, 1fr) 40px`,
+                gridTemplateColumns: `repeat(${props.column.length}, 1fr)${props.menu ? ' 40px' : ''}`,
                 width: '100%',
                 alignItems: 'center',
                 gap: '8px',
               }}
             >
-              {/* Render Columns */}
-              {props.column.map((col, colIndex) => {
-                return (
-                  <span key={`${index}-${colIndex}`} style={{ textAlign: 'start' }}>
-                    {col.toLowerCase() === 'privileges' ? (
-                      <>
-                        {item[col.toLowerCase()]?.map((privileges: any) => privileges.name).join(', ')}
-                      </>
-                    ) : col.toLowerCase() === 'status' ? (
-                      
-                      <span style={{
+              {props.column.map((col, colIndex) => (
+                <span key={`${index}-${colIndex}`} style={{ textAlign: 'start' }}>
+                  {col.toLowerCase() === 'privileges' ? (
+                    item[col.toLowerCase()]?.map((priv: any) => priv.name).join(', ')
+                  ) : col.toLowerCase() === 'status' ? (
+                    <span
+                      style={{
                         flex: 1,
                         textAlign: 'center',
                         fontWeight: 'bold',
@@ -67,27 +63,32 @@ function ListComponents(props: ListComponentsProps) {
                           item.status === 'Finished'
                             ? 'green'
                             : item.status === 'In Progress'
-                              ? 'orange'
-                              : 'red'}}
-                              >{item[col.toLowerCase()]}</span>
-                    ) : (
-                      item[col.toLowerCase()]
-                    )}
-                  </span>
-                );
-              })}
-              {/* Dropdown Menu */}
-              <Dropdown menu={props.menu(item)} placement="bottomRight">
-                <Button
-                  style={{
-                    color: '#156CC9',
-                    border: 'solid 1px #156CC9',
-                    alignSelf: 'center',
-                  }}
-                >
-                  ...
-                </Button>
-              </Dropdown>
+                            ? 'orange'
+                            : 'red',
+                      }}
+                    >
+                      {item[col.toLowerCase()]}
+                    </span>
+                  ) : (
+                    item[col.toLowerCase()]
+                  )}
+                </span>
+              ))}
+
+              {/* Optional Dropdown Menu */}
+              {props.menu && (
+                <Dropdown menu={props.menu(item)} placement="bottomRight">
+                  <Button
+                    style={{
+                      color: '#156CC9',
+                      border: 'solid 1px #156CC9',
+                      alignSelf: 'center',
+                    }}
+                  >
+                    ...
+                  </Button>
+                </Dropdown>
+              )}
             </List.Item>
           )}
         />

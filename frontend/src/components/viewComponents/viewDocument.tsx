@@ -1,64 +1,67 @@
 // src/components/ViewDocument.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import ndaDocuments from '../../pages/NDA/const/ndaDocuments';
-import legalDocuments from '../../pages/NDA/const/legalDocuments';
-import executiveDocumentTemplates from '../../pages/NDA/const/executiveDocuments';
-import ipAgreements from '../../pages/NDA/const/ipDocuments';
 import GeneralLayout from '../General_Layout/GeneralLayout';
 import PdfViewer from '../Editor/PdfViewer';
 import { Input, Select } from 'antd';
 
 const ViewDocument: React.FC = () => {
-  const { category, file_id } = useParams<{ category: string; file_id: string }>();
+  const { category, file_id } = useParams<{
+    category: string;
+    file_id: string;
+  }>();
 
   const decodedCategory = decodeURIComponent(category || '');
-  let fileData: any[] = [];
+  const [file, setFile] = useState<any>(null);
 
-  if (decodedCategory === 'NDA Documents') {
-    fileData = ndaDocuments;
-  } else if (decodedCategory === 'IP Agreements') {
-    fileData = ipAgreements;
-  } else if (decodedCategory === 'Executive Documents') {
-    fileData = executiveDocumentTemplates;
-  } else if (decodedCategory === 'Legal Documents') {
-    fileData = legalDocuments;
-  }
+  useEffect(() => {
+    const fetchDocument = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:5001/api/document/document/${file_id}`,
+          {
+            credentials: 'include',
+          }
+        );
+        const result = await response.json();
+        if (response.ok && result.success) {
+          setFile(result.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch document:', error);
+      }
+    };
 
-  const file = fileData.find(f => f.id === file_id);
-
+    fetchDocument();
+  }, [file_id]);
 
   return (
-    
-    <div style={{ padding: '20px' }}>
-    
+    <>
       {file && (
         <>
-          <GeneralLayout title='View Document'>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: '20px',
-            }}
-          >
-            <Input
-              value={file?.title || ''}
-              style={{ marginRight: '10px' }}
-              placeholder="Enter file content"
+          <GeneralLayout title="View Document">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginBottom: '20px',
+              }}
+            >
+              <Input
+                value={file?.filename || ''}
+                style={{ marginRight: '10px' }}
+              />
+              <Select value={decodedCategory} />
+            </div>
+            <PdfViewer
+              fileUrl={file.presignedUrl || file.fileUrl}
+              height={'60vh'}
+              width={'100'}
             />
-            <Select value={decodedCategory} style={{ width: '150px' }}/>
-             
-          </div>
-          <PdfViewer fileUrl={file.location}/>
           </GeneralLayout>
         </>
       )}
-      
-      
-      
-    </div>
-    
+    </>
   );
 };
 

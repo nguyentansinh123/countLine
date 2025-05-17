@@ -1,90 +1,114 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Dropdown, Menu, MenuProps, message } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import ndaDocuments from './const/ndaDocuments';
-import legalDocuments from './const/legalDocuments';
-import executiveDocumentTemplates from './const/executiveDocuments';
-import ipAgreements from './const/ipDocuments';
 import GeneralLayout from '../../components/General_Layout/GeneralLayout';
 
 const NDA: React.FC = () => {
   const navigate = useNavigate();
 
   interface File {
-    id: string;
-    title: string;
+    documentId: string;
+    filename: string;
     uploadedBy: string;
     uploadedAt: string;
     status: string;
-    fileType: string;
-    location: string;
+    documentType: string;
+    fileUrl: string;
   }
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileType, setFileType] = useState<
-    'NDA' | 'IP Agreement' | 'Executive Documents' | 'Legal Documents'
+    'NDA' | 'I.P Agreement' | 'Executive Documents' | 'Legal Documents'
   >('NDA');
 
   const [messageApi, contextHolder] = message.useMessage();
 
+  const [documents, setDocuments] = useState<File[]>([]);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const response = await fetch(
+          'http://localhost:5001/api/document/my-documents',
+          {
+            method: 'GET',
+            credentials: 'include', // include cookies if using auth
+          }
+        );
+        const result = await response.json();
+        if (result.success) {
+          setDocuments(result.data);
+        } else {
+          messageApi.error('Failed to fetch documents');
+        }
+      } catch (error) {
+        console.error('Error fetching documents:', error);
+        messageApi.error('Error fetching documents');
+      }
+    };
+
+    fetchDocuments();
+  }, []);
+
+  console.log(documents);
+
   const documentCategories = {
-    'NDA Documents': ndaDocuments,
-    'IP Agreements': ipAgreements,
-    'Executive Documents': executiveDocumentTemplates,
-    'Legal Documents': legalDocuments,
+    'NDA Documents': documents.filter((doc) =>
+      doc.documentType?.toLowerCase().includes('nda')
+    ),
+    'IP Agreements': documents.filter((doc) =>
+      doc.documentType?.toLowerCase().includes('i.p')
+    ),
+    'Executive Documents': documents.filter((doc) =>
+      doc.documentType?.toLowerCase().includes('executive')
+    ),
+    'Legal Documents': documents.filter((doc) =>
+      doc.documentType?.toLowerCase().includes('legal')
+    ),
   };
 
   // Handle navigation to edit, send, or upload file
   const handleEdit = (fileId: string, category: string): void => {
     console.log(`Navigating to view: /viewdocument/${category}/${fileId}`);
-    navigate(`/editDocuments/${category}/${fileId}`);
+    const cleanCategory = category.replace(/\s+/g, '');
+    navigate(`/editDocuments/${cleanCategory}/${fileId}`);
   };
 
   const handleUpload = (): void => {
     navigate('/uploadDocuments');
   };
 
-  const getCategoryFromFileId = (fileId: string) => {
-    if (ndaDocuments.some((doc) => doc.id === fileId)) {
-      return 'NDA';
-    } else if (ipAgreements.some((doc) => doc.id === fileId)) {
-      return 'IP';
-    } else if (executiveDocumentTemplates.some((doc) => doc.id === fileId)) {
-      return 'Executive Document';
-    } else if (legalDocuments.some((doc) => doc.id === fileId)) {
-      return 'Legal Document';
-    } else {
-      return 'Unknown Category'; // If no match found
-    }
-  };
-
   const handleSendFile = () => {
     if (selectedFile) {
-      const category = getCategoryFromFileId(selectedFile.id);
-      console.log (category);
-      navigate(`/sendfile/${category}/${selectedFile.id}`);
-    }else{
+      //const category = getCategoryFromFileId(selectedFile.id);
+      const category = '';
+      console.log(category);
+      navigate(`/sendfile/${category}/${selectedFile.documentId}`);
+    } else {
       messageApi.info('select a file to send');
     }
   };
 
   function handleView(id: string, category: string): void {
-    console.log(`Navigating to view: /viewdocument/${category}/${id}`);
-    navigate(`/viewdocument/${category}/${id}`)
+    const formattedCategory = category.replace(/\s+/g, ''); // remove all spaces
+    navigate(`/viewdocument/${formattedCategory}/${id}`);
   }
-  
-  
-  
+
   const handleDeleteFile = async (fileId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/documents/${fileId}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `http://localhost:5001/api/document/${fileId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+        }
+      );
       if (response.ok) {
         // Handle file removal from state (you'd want to update the list here)
         console.log(`Document with ID ${fileId} deleted successfully.`);
       } else {
+        messageApi.error('Failed to delete document. Ask admin for help');
         console.error('Failed to delete document');
       }
     } catch (error) {
@@ -98,17 +122,17 @@ const NDA: React.FC = () => {
         {
           key: 'view',
           label: 'View',
-          onClick: () => handleView(file.id, category),
+          onClick: () => handleView(file.documentId, category),
         },
         {
           key: 'edit',
           label: 'Edit',
-          onClick: () => handleEdit(file.id, category),
+          onClick: () => handleEdit(file.documentId, category),
         },
         {
           key: 'delete',
           label: 'Delete',
-          onClick: () => handleDeleteFile(file.id),
+          onClick: () => handleDeleteFile(file.documentId),
         },
       ],
     };
@@ -169,7 +193,7 @@ const NDA: React.FC = () => {
             >
               {files.map((file: File) => (
                 <div
-                  key={file.id}
+                  key={file.documentId}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -179,17 +203,24 @@ const NDA: React.FC = () => {
                     fontSize: '16px',
                     fontWeight: 'bold',
                     cursor: 'pointer',
-                    backgroundColor: selectedFile?.id === file.id ? '#ddd' : 'white',
+                    backgroundColor:
+                      selectedFile?.documentId === file.documentId
+                        ? '#ddd'
+                        : 'white',
                   }}
                   onClick={() => handleDocumentClick(file)} // Select document on click
                 >
-                  {file.title}
+                  {file.filename}
                   <Dropdown
                     menu={menu(file, category)}
                     trigger={['click']}
                     onOpenChange={(visible) => {
                       if (!visible) return;
-                      document.addEventListener('click', (e) => e.stopPropagation(), { once: true });
+                      document.addEventListener(
+                        'click',
+                        (e) => e.stopPropagation(),
+                        { once: true }
+                      );
                     }} // Prevent click event from propagating to document selection
                   >
                     <MoreOutlined
@@ -203,9 +234,7 @@ const NDA: React.FC = () => {
         ))}
       </div>
     </div>
-    
   );
 };
-
 
 export default NDA;
