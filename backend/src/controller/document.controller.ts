@@ -414,6 +414,58 @@ export const getMyDocuments = async (req: Request, res: Response) => {
   }
 };
 
+export const getDocumentById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const { id } = req.params;
+
+  try {
+    const params = {
+      TableName: "Documents",
+      Key: {
+        documentId: id,
+      },
+    };
+
+    const data = await docClient.send(new GetCommand(params));
+
+    if (!data.Item) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
+    }
+    const document = data.Item;
+
+    // Extract the key from fileUrl
+    const urlParts = document.fileUrl.split(".amazonaws.com/");
+    const documentKey = urlParts[1]; // everything after the domain
+
+    if (!documentKey) {
+      res.status(500).json({ success: false, message: "Invalid file URL" });
+    }
+
+    // Generate presigned URL
+    const getObjectParams = {
+      Bucket: process.env.AWS_BUCKET_NAME!,
+      Key: documentKey,
+    };
+    const getCommand = new GetObjectCommand(getObjectParams);
+    const presignedUrl = await getSignedUrl(s3Client, getCommand, {
+      expiresIn: 3600,
+    }); // 1 hour
+
+    // Attach presigned URL to the response
+    document.presignedUrl = presignedUrl;
+
+    res.status(200).json({ success: true, data: data.Item });
+  } catch (error) {
+    console.error("Error fetching document by ID:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to fetch document" });
+  }
+};
+
 export const deleteDocument = async (req: Request, res: Response) => {
   const { documentId } = req.params;
   // @ts-ignore

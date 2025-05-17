@@ -9,7 +9,12 @@ interface PdfViewerProps {
   width: string;
 }
 
-const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, onPageRender, height, width }) => {
+const PdfViewer: React.FC<PdfViewerProps> = ({
+  fileUrl,
+  onPageRender,
+  height,
+  width,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +30,12 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ fileUrl, onPageRender, height, wi
 
       try {
         const fetched = await fetch(fileUrl);
-        if (!fetched.ok) throw new Error('Failed to fetch PDF');
+        if (!fetched.ok) {
+          throw new Error(
+            `Failed to fetch PDF: ${fetched.status} ${fetched.statusText}`
+          );
+        }
+
         const arrayBuffer = await fetched.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
