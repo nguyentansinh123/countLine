@@ -19,6 +19,16 @@ function CollapsableComponent(props: CollapsableComponentProps) {
     Name: ['name'],
     Documents: ['documents'],
   };
+
+  const formatDate = (isoDate: string): string => {
+    const date = new Date(isoDate);
+    return date.toLocaleDateString('en-AU', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   // Create the collapseItems array based on the data
   const collapseItems = data.map((item, index) => ({
     key: item.teamId || item.userId || index, // Ensure unique key
@@ -41,7 +51,10 @@ function CollapsableComponent(props: CollapsableComponentProps) {
               {Array.isArray(value)
                 ? `${value.length}`
                 : value !== undefined
-                  ? value
+                  ? resolvedKey?.toLowerCase().includes('date') ||
+                    resolvedKey === 'created_at'
+                    ? formatDate(value)
+                    : value
                   : 'N/A'}
             </span>
           );
