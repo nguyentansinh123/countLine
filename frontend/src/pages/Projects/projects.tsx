@@ -84,23 +84,13 @@ function Projects() {
 
     try {
       console.log("Attempting to delete project with ID:", projectId);
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        console.error("No authentication token found");
-        message.error("You must be logged in to delete a project");
-        return;
-      }
       
       console.log(`Sending delete request to: ${API_URL}/api/project/${projectId}`);
       
       const loadingMessage = message.loading('Deleting project...', 0);
       
       const response = await axios.delete(`${API_URL}/api/project/${projectId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        withCredentials: true
+        withCredentials: true 
       });
 
       loadingMessage();
@@ -207,50 +197,21 @@ function Projects() {
           key: 'delete',
           label: 'Delete',
           onClick: () => {
-            console.log("Item to delete:", item);
-            
-            Modal.confirm({
-              title: 'Are you sure you want to delete this project?',
-              content: 'This action cannot be undone.',
-              okText: 'Yes, Delete',
-              okType: 'danger',
-              cancelText: 'Cancel',
-              onOk: () => {
-                let id;
-                if (typeof item.projectId === 'object' && item.projectId !== null) {
-                  if (item.projectId.S) {
-                    id = item.projectId.S;
-                    console.log("Using ID from DynamoDB format:", id);
-                  } else {
-                    try {
-                      id = JSON.stringify(item.projectId);
-                      if (id === "[object Object]") {
-                        console.error("Cannot extract usable ID from object:", item.projectId);
-                        message.error("Cannot delete: Invalid project ID format");
-                        return;
-                      }
-                      console.log("Using stringified ID:", id);
-                    } catch (e) {
-                      console.error("Failed to stringify project ID:", e);
-                      message.error("Cannot delete: Invalid project ID");
-                      return;
-                    }
-                  }
-                } else {
-                  id = String(item.projectId);
-                  console.log("Using simple ID:", id);
-                }
-                
-                if (!id || id === "undefined" || id === "null") {
-                  console.error("Invalid ID for deletion:", id);
-                  message.error("Cannot delete: Invalid project ID");
-                  return;
-                }
-                
-                console.log("Proceeding to delete with ID:", id);
-                handleDelete(id);
-              }
-            });
+            let id;
+            if (typeof item.projectId === 'object' && item.projectId !== null && 'S' in item.projectId) {
+              id = item.projectId.S;
+              console.log("Using DynamoDB ID:", id);
+            } else {
+              id = String(item.projectId);
+              console.log("Using regular ID:", id);
+            }
+
+            if (confirm(`Are you sure you want to delete this project? This action cannot be undone.`)) {
+              console.log("User confirmed deletion, calling handleDelete with ID:", id);
+              handleDelete(id);
+            } else {
+              console.log("User cancelled deletion");
+            }
           },
         },
       ],
