@@ -1,123 +1,159 @@
 import React from 'react';
-import { List, Dropdown, Button, MenuProps } from 'antd';
+import { List, Button, Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
 
 interface ListComponentsProps {
   column: string[];
-  data: Array<Record<string, any>>;
-  menu?: (item: any) => MenuProps; // Made optional
+  data: any[];
+  menu: (item: any) => MenuProps;
 }
 
-function ListComponents(props: ListComponentsProps) {
-  const formatDate = (isoDate: string): string => {
-    const date = new Date(isoDate);
-    return date.toLocaleDateString('en-AU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+const formatDate = (dateStr: string) => {
+  try {
+    return new Date(dateStr).toLocaleDateString();
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return dateStr; 
+  }
+};
 
+const safeToString = (value: any): string => {
+  if (value === null || value === undefined) {
+    return 'N/A';
+  }
+  
+  if (typeof value === 'object') {
+    if (Array.isArray(value)) {
+      return value.map(v => safeToString(v)).join(', ');
+    }
+    if (value && 'S' in value) {
+      return value.S || 'N/A';
+    }
+    try {
+      return JSON.stringify(value);
+    } catch (e) {
+      return 'Complex Object';
+    }
+  }
+  
+  return String(value);
+};
+
+const getStatusColor = (status: any): string => {
+  const statusValue = typeof status === 'object' && status !== null && 'S' in status
+    ? status.S 
+    : String(status);
+
+  switch (statusValue) {
+    case 'Finished':
+      return 'green';
+    case 'In Progress':
+      return 'orange';
+    case 'Drafted':
+      return 'blue';
+    case 'Cancelled':
+      return 'red';
+    default:
+      return 'gray';
+  }
+};
+
+const ListComponents: React.FC<ListComponentsProps> = (props) => {
+  const gridTemplateColumns = `repeat(${props.column.length}, 1fr) 80px`;
+  
   return (
-    <>
-      {/* Column Headers */}
-      <div
+    <div className="list-components">
+      <div 
         style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${props.column.length}, 1fr)`,
+          gridTemplateColumns,
+          padding: '12px 16px',
+          background: '#fafafa',
+          borderBottom: '1px solid #f0f0f0',
           fontWeight: 'bold',
-          paddingBottom: 8,
-          borderBottom: '1px solid #ccc',
         }}
       >
         {props.column.map((col, index) => (
-          <span key={index} style={{ textAlign: 'start' }}>
-            {col}
-          </span>
+          <div key={`header-${index}`}>{col}</div>
         ))}
+        <div>Action</div>
       </div>
-
-      {/* Data List */}
-      <div
-        style={{
-          height: '70vh',
-          padding: 5,
-          overflowY: 'auto',
-          paddingRight: 10,
-        }}
-      >
-        <List
-          dataSource={props.data}
-          renderItem={(item, index) => (
-            <List.Item
-              key={index}
+      
+      <List
+        dataSource={props.data}
+        renderItem={(item, index) => {
+          return (
+            <List.Item 
+              key={item.projectId || `item-${index}`}
               style={{
                 display: 'grid',
-                gridTemplateColumns: `repeat(${props.column.length}, 1fr)${props.menu ? ' 40px' : ''}`,
-                width: '100%',
-                alignItems: 'center',
-                gap: '8px',
+                gridTemplateColumns,
+                padding: '12px 16px',
+                borderBottom: '1px solid #f0f0f0',
               }}
             >
               {props.column.map((col, colIndex) => {
                 const lowerCol = col.toLowerCase();
-                const fieldKey = lowerCol === 'date' ? 'created_at' : lowerCol;
-
-                return (
-                  <span
-                    key={`${index}-${colIndex}`}
-                    style={{ textAlign: 'start' }}
-                  >
-                    {lowerCol === 'role' ? (
-                      Array.isArray(item[fieldKey]) ? (
-                        item[fieldKey].map((priv: any) => priv.name).join(', ')
-                      ) : (
-                        item[fieldKey]
-                      )
-                    ) : lowerCol === 'status' ? (
+                const fieldKey = lowerCol === 'project' ? 'project' : 
+                                lowerCol === 'team' ? 'team' : 
+                                lowerCol === 'date' ? 'date' : 
+                                lowerCol === 'status' ? 'status' : lowerCol;
+                
+                const value = item[fieldKey];
+                
+                if (lowerCol === 'status') {
+                  return (
+                    <div key={`item-${index}-${colIndex}`}>
                       <span
                         style={{
-                          flex: 1,
-                          textAlign: 'center',
                           fontWeight: 'bold',
-                          color:
-                            item.status === 'Finished'
-                              ? 'green'
-                              : item.status === 'In Progress'
-                                ? 'orange'
-                                : 'red',
+                          color: getStatusColor(value)
                         }}
                       >
-                        {item[fieldKey]}
+                        {safeToString(value)}
                       </span>
-                    ) : lowerCol === 'date' && item[fieldKey] ? (
-                      formatDate(item[fieldKey])
-                    ) : (
-                      item[fieldKey]
-                    )}
-                  </span>
+                    </div>
+                  );
+                }
+                
+                if (lowerCol === 'date') {
+                  return (
+                    <div key={`item-${index}-${colIndex}`}>
+                      {typeof value === 'string' ? formatDate(value) : safeToString(value)}
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div key={`item-${index}-${colIndex}`}>
+                    {safeToString(value)}
+                  </div>
                 );
               })}
-
-              {/* Optional Dropdown Menu */}
-              {props.menu && (
-                <Dropdown menu={props.menu(item)} placement="bottomRight">
+              
+              {/* Action button */}
+              <div>
+                <Dropdown 
+                  menu={props.menu(item)} 
+                  placement="bottomRight"
+                  trigger={['click']}
+                >
                   <Button
                     style={{
                       color: '#156CC9',
                       border: 'solid 1px #156CC9',
-                      alignSelf: 'center',
                     }}
                   >
                     ...
                   </Button>
                 </Dropdown>
-              )}
+              </div>
             </List.Item>
-          )}
-        />
-      </div>
-    </>
+          );
+        }}
+      />
+    </div>
   );
-}
+};
 
 export default ListComponents;

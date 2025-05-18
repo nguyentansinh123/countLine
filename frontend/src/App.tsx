@@ -36,13 +36,11 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Onboarding Routes (without MainLayout) */}
         <Route path="/" element={<Onboarding />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<VerifyOtpAndReset />} />
 
-        {/* Main Routes with MainLayout wrapper */}
         <Route element={<MainLayout children={undefined} />}>
           <Route
             path="/home"

@@ -6,15 +6,21 @@ import { ScanCommand } from "@aws-sdk/client-dynamodb";
 
 const createProject = async (req: Request, res: Response) => {
     try {
-        const { projectName, projectStart, projectEnd, description, teams, priority, budget, tags } = req.body;
+        const { projectName, projectStart, projectEnd, description, teams, priority, budget, tags, status } = req.body;
         const createdBy = req.body.user_id; 
+
+        const validStatuses = ['Finished', 'In Progress', 'Drafted', 'Cancelled'];
+        
+        const projectStatus = status ? 
+            (validStatuses.includes(status) ? status : 'Drafted') : 
+            'Drafted';
 
         const projectData = {
             projectId: uuidv4(),
             projectName,
             projectStart,
             projectEnd: projectEnd || null, 
-            status: 'Drafted',
+            status: projectStatus,
             teams: teams || [],
             description: description || '',
             createdAt: new Date().toISOString(),
@@ -31,6 +37,10 @@ const createProject = async (req: Request, res: Response) => {
             return
         }
 
+        const statusWarning = status && !validStatuses.includes(status) ? 
+            { statusWarning: `The provided status "${status}" is invalid. Using default status "Drafted" instead.` } : 
+            {};
+
         await docClient.send(new PutCommand({
             TableName: 'Projects',
             Item: projectData
@@ -39,7 +49,8 @@ const createProject = async (req: Request, res: Response) => {
         res.status(201).json({
             success: true,
             message: "Project created successfully",
-            data: projectData
+            data: projectData,
+            ...statusWarning
         });
 
     } catch (error) {
@@ -51,7 +62,6 @@ const createProject = async (req: Request, res: Response) => {
         return
     }
 };
-
 
 
 const getProject = async (req: Request, res: Response) => {
@@ -178,7 +188,6 @@ const verifyTeamExists = async (teamId: string): Promise<boolean> => {
 };
 const addTeamToProject = async (req: Request, res: Response) => {
     try {
-        // 1. Extract parameters
         const { projectId } = req.body;
         const { teamId } = req.body;
         const userId = req.body.user_id;
@@ -351,7 +360,6 @@ const addTeamToProject = async (req: Request, res: Response) => {
             console.error("Team Update Error:", teamUpdateError);
         }
 
-        // 9. Return success response
         res.status(200).json({
             success: true,
             message: "Team added to project successfully",
@@ -380,8 +388,90 @@ const addTeamToProject = async (req: Request, res: Response) => {
     }
 };
 
-const deleteProject = async (req : Request, res: Response) => {}
+const deleteProject = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { projectId } = req.params;
+        const userId = req.body.user_id;
 
+        console.log("Delete request received for project:", projectId, "by user:", userId);
+
+        if (!projectId) {
+            res.status(400).json({
+                success: false,
+                message: "Project ID is required"
+            });
+            return; 
+        }
+
+        const { Item: project } = await docClient.send(new GetCommand({
+            TableName: 'Projects',
+            Key: { projectId }
+        }));
+
+        if (!project) {
+            console.log("Project not found:", projectId);
+            res.status(404).json({
+                success: false,
+                message: "Project not found"
+            });
+            return;
+        }
+
+        if (project.isDeleted) {
+            console.log("Project already deleted:", projectId);
+            res.status(410).json({
+                success: false,
+                message: "Project has already been deleted"
+            });
+            return;
+        }
+
+        if (project.createdBy !== userId) {
+            console.log("Authorization failed. Creator:", project.createdBy, "Requester:", userId);
+            res.status(403).json({
+                success: false,
+                message: "Only the project creator can delete this project"
+            });
+            return; 
+        }
+
+        console.log("Soft deleting project:", projectId);
+        
+        const updateResult = await docClient.send(new UpdateCommand({
+            TableName: 'Projects',
+            Key: { projectId },
+            UpdateExpression: 'SET isDeleted = :isDeleted, updatedAt = :updatedAt',
+            ExpressionAttributeValues: {
+                ':isDeleted': true,
+                ':updatedAt': new Date().toISOString()
+            },
+            ReturnValues: 'ALL_NEW'
+        }));
+
+        console.log("Project successfully marked as deleted:", projectId);
+
+        res.status(200).json({
+            success: true,
+            message: "Project deleted successfully",
+            data: {
+                projectId,
+                deletedAt: new Date().toISOString()
+            }
+        });
+        return; 
+
+    } catch (error) {
+        console.error("Error deleting project:", error);
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+            error: process.env.NODE_ENV === 'development' ? 
+                (error instanceof Error ? error.message : String(error)) : 
+                undefined
+        });
+        return; 
+    }
+};
 
 interface ProjectResponse {
     success: boolean;
