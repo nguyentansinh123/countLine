@@ -8,6 +8,15 @@ interface ListComponentsProps {
 }
 
 function ListComponents(props: ListComponentsProps) {
+  const formatDate = (isoDate: string): string => {
+    const date = new Date(isoDate);
+    return date.toLocaleDateString('en-AU', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
   return (
     <>
       {/* Column Headers */}
@@ -49,31 +58,45 @@ function ListComponents(props: ListComponentsProps) {
                 gap: '8px',
               }}
             >
-              {props.column.map((col, colIndex) => (
-                <span key={`${index}-${colIndex}`} style={{ textAlign: 'start' }}>
-                  {col.toLowerCase() === 'privileges' ? (
-                    item[col.toLowerCase()]?.map((priv: any) => priv.name).join(', ')
-                  ) : col.toLowerCase() === 'status' ? (
-                    <span
-                      style={{
-                        flex: 1,
-                        textAlign: 'center',
-                        fontWeight: 'bold',
-                        color:
-                          item.status === 'Finished'
-                            ? 'green'
-                            : item.status === 'In Progress'
-                            ? 'orange'
-                            : 'red',
-                      }}
-                    >
-                      {item[col.toLowerCase()]}
-                    </span>
-                  ) : (
-                    item[col.toLowerCase()]
-                  )}
-                </span>
-              ))}
+              {props.column.map((col, colIndex) => {
+                const lowerCol = col.toLowerCase();
+                const fieldKey = lowerCol === 'date' ? 'created_at' : lowerCol;
+
+                return (
+                  <span
+                    key={`${index}-${colIndex}`}
+                    style={{ textAlign: 'start' }}
+                  >
+                    {lowerCol === 'role' ? (
+                      Array.isArray(item[fieldKey]) ? (
+                        item[fieldKey].map((priv: any) => priv.name).join(', ')
+                      ) : (
+                        item[fieldKey]
+                      )
+                    ) : lowerCol === 'status' ? (
+                      <span
+                        style={{
+                          flex: 1,
+                          textAlign: 'center',
+                          fontWeight: 'bold',
+                          color:
+                            item.status === 'Finished'
+                              ? 'green'
+                              : item.status === 'In Progress'
+                                ? 'orange'
+                                : 'red',
+                        }}
+                      >
+                        {item[fieldKey]}
+                      </span>
+                    ) : lowerCol === 'date' && item[fieldKey] ? (
+                      formatDate(item[fieldKey])
+                    ) : (
+                      item[fieldKey]
+                    )}
+                  </span>
+                );
+              })}
 
               {/* Optional Dropdown Menu */}
               {props.menu && (
