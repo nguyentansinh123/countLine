@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GeneralLayout from '../../components/General_Layout/GeneralLayout';
 import ListComponents from '../../components/listComponents/listComponents';
-import { MenuProps, message, Modal, Spin } from 'antd';
+import { Button, Dropdown, MenuProps, message, Modal, Select, Spin } from 'antd';
 import axios from 'axios';
+
+const { Option } = Select;
 
 interface Project {
   projectId: string | { S: string } | any; 
@@ -25,11 +27,23 @@ interface ProjectsApiResponse {
   message?: string;
 }
 
+interface Team {
+  teamId: string;
+  teamName: string;
+}
+
 function Projects() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [isAssigningTeam, setIsAssigningTeam] = useState<boolean>(false);
+  const [teamModalVisible, setTeamModalVisible] = useState<boolean>(false);
+  const [teamLoading, setTeamLoading] = useState<boolean>(false);
 
   const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
@@ -51,20 +65,65 @@ function Projects() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        withCredentials: true
+        withCredentials: true,
+        params: { _t: new Date().getTime() }
       });
 
       if (response.data.success) {
         console.log("Projects data received:", response.data);
         
-        const formattedProjects = response.data.data.map(project => ({
-          projectId: project.projectId,
-          project: project.projectName,
-          team: project.teams && project.teams.length > 0 ? project.teams.join(', ') : 'No team assigned',
-          date: project.projectStart,
-          status: project.status || 'N/A'
-        }));
+        const formattedProjects = response.data.data.map(project => {
+          let teamNames = 'No team assigned';
+          
+          const projectTeams = project.teams as any;
+          if (projectTeams && 'L' in projectTeams && Array.isArray(projectTeams.L)) {
+            const teamIds = projectTeams.L.map((team: any) => {
+              if (team && 'S' in team) {
+                return team.S;
+              }
+              return '';
+            }).filter((id:any) => id !== '');
+            
+            if (teamIds.length > 0) {
+              fetchTeamNames(teamIds)
+                .then(names => {
+                  if (names.length > 0) {
+                    setProjects(prev => prev.map(p => {
+                      // Type assertions here as well
+                      const pId = typeof p.projectId === 'object' && p.projectId ? 
+                                (p.projectId as any).S || String(p.projectId) : 
+                                String(p.projectId);
+                      const projectIdStr = typeof project.projectId === 'object' && project.projectId ? 
+                                          (project.projectId as any).S || String(project.projectId) : 
+                                          String(project.projectId);
+                      
+                      if (pId === projectIdStr) {
+                        return { ...p, team: names.join(', ') };
+                      }
+                      return p;
+                    }));
+                  }
+                })
+                .catch(err => console.error("Error fetching team names:", err));
+              
+              teamNames = teamIds.join(', ');
+            }
+          }
+          
+          const projectName = (project.projectName as any)?.S || project.projectName;
+          const projectStart = (project.projectStart as any)?.S || project.projectStart;
+          const projectStatus = (project.status as any)?.S || project.status || 'N/A';
+          
+          return {
+            projectId: project.projectId,
+            project: projectName,
+            team: teamNames,
+            date: projectStart,
+            status: projectStatus
+          };
+        });
         
+        console.log("Formatted projects:", formattedProjects);
         setProjects(formattedProjects);
       } else {
         message.error('Failed to fetch projects');
@@ -76,6 +135,136 @@ function Projects() {
       setError('Error loading projects');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTeamNames = async (teamIds: string[]): Promise<string[]> => {
+    try {
+      const token = localStorage.getItem('token');
+      const results: string[] = [];
+      
+      await Promise.all(teamIds.map(async (teamId) => {
+        try {
+          const response = await axios.get(`${API_URL}/api/team/${teamId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            withCredentials: true
+          });
+          
+          if (response.data.success && response.data.data) {
+            const teamData = response.data.data as any;
+            const teamName = teamData.teamName?.S || teamData.teamName;
+            if (teamName) {
+              results.push(teamName);
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching team with ID ${teamId}:`, err);
+        }
+      }));
+      
+      return results;
+    } catch (err) {
+      console.error("Error in fetchTeamNames:", err);
+      return [];
+    }
+  };
+
+  const fetchTeams = async () => {
+    try {
+      setTeamLoading(true);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/api/team/getAllTeams`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        console.log("Teams data received:", response.data);
+        setTeams(response.data.data.map((team: any) => ({
+          teamId: team.teamId,
+          teamName: team.teamName
+        })));
+      } else {
+        message.error('Failed to fetch teams');
+      }
+    } catch (err) {
+      console.error('Error fetching teams:', err);
+      message.error('Error loading teams');
+    } finally {
+      setTeamLoading(false);
+    }
+  };
+
+  const assignTeamToProject = async () => {
+    if (!selectedTeam || !selectedProject) {
+      message.error('Please select both a team and a project');
+      return;
+    }
+
+    try {
+      setIsAssigningTeam(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.post(`${API_URL}/api/project/addTeamToProject`, 
+        {
+          projectId: selectedProject,
+          teamId: selectedTeam
+        }, 
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        }
+      );
+
+      if (response.data.success) {
+        message.success('Team assigned to project successfully');
+        
+        // Get the name of the assigned team
+        const assignedTeamName = teams.find(team => team.teamId === selectedTeam)?.teamName;
+        
+        setProjects(prevProjects => prevProjects.map(project => {
+          const projectIdStr = typeof project.projectId === 'object' && project.projectId?.S ? 
+                               project.projectId.S : String(project.projectId);
+          
+          if (projectIdStr === selectedProject && assignedTeamName) {
+            return {
+              ...project,
+              team: project.team === 'No team assigned' ? 
+                    assignedTeamName : 
+                    `${project.team}, ${assignedTeamName}`
+            };
+          }
+          return project;
+        }));
+        
+        setTeamModalVisible(false);
+        setSelectedTeam(null);
+        
+        setTimeout(fetchProjects, 1000);
+      } else {
+        message.error(response.data.message || 'Failed to assign team');
+      }
+    } catch (err: any) {
+      console.error('Error assigning team:', err);
+      
+      if (err.response) {
+        if (err.response.status === 409) {
+          message.warning('This team is already assigned to the project');
+        } else {
+          message.error(err.response.data?.message || 'Failed to assign team');
+        }
+      } else {
+        message.error('Failed to connect to server');
+      }
+    } finally {
+      setIsAssigningTeam(false);
     }
   };
 
@@ -194,6 +383,23 @@ function Projects() {
           },
         },
         {
+          key: 'assignTeam',
+          label: 'Assign Team',
+          onClick: () => {
+            console.log("Assign team to project:", item);
+            let id;
+            if (typeof item.projectId === 'object' && item.projectId !== null && 'S' in item.projectId) {
+              id = item.projectId.S;
+            } else {
+              id = String(item.projectId);
+            }
+            
+            setSelectedProject(id);
+            fetchTeams();
+            setTeamModalVisible(true);
+          },
+        },
+        {
           key: 'delete',
           label: 'Delete',
           onClick: () => {
@@ -251,6 +457,35 @@ function Projects() {
     );
   };
 
+  const teamAssignmentModal = (
+    <Modal
+      title="Assign Team to Project"
+      open={teamModalVisible}
+      onCancel={() => {
+        setTeamModalVisible(false);
+        setSelectedTeam(null);
+      }}
+      onOk={assignTeamToProject}
+      okText="Assign"
+      confirmLoading={isAssigningTeam}
+    >
+      <div style={{ marginBottom: '20px' }}>
+        <p>Select a team to assign to this project:</p>
+        <Select
+          style={{ width: '100%' }}
+          placeholder="Select a team"
+          loading={teamLoading}
+          onChange={(value) => setSelectedTeam(value)}
+          value={selectedTeam}
+        >
+          {teams.map(team => (
+            <Option key={team.teamId} value={team.teamId}>{team.teamName}</Option>
+          ))}
+        </Select>
+      </div>
+    </Modal>
+  );
+
   return (
     <React.Fragment>
       <ErrorBoundary fallback={<div>Something went wrong. Please refresh the page.</div>}>
@@ -260,6 +495,7 @@ function Projects() {
           navigateLocation="/addprojects"
         >
           {renderContent()}
+          {teamAssignmentModal}
         </GeneralLayout>
       </ErrorBoundary>
     </React.Fragment>
