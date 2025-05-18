@@ -10,6 +10,7 @@ import {
   UpdateCommandInput,
 } from "@aws-sdk/lib-dynamodb";
 import { ReturnValue } from "@aws-sdk/client-dynamodb";
+import { logUserActivity } from "./activity.controller";
 
 const addTeam = async (req: Request, res: Response) => {
   try {
@@ -90,6 +91,16 @@ const addTeam = async (req: Request, res: Response) => {
       );
     }
 
+    await logUserActivity({
+      userId: user_id,
+      action: "create_team",
+      targetId: teamData.teamId,
+      details: { 
+        teamName: teamData.teamName,
+        teamSize: teamData.teamSize
+      }
+    });
+
     res.status(201).json({
       success: true,
       message: "Team created successfully",
@@ -120,6 +131,12 @@ const getTeam = async (req: Request, res: Response) => {
       res.status(404).json({ success: false, message: "Team not foundhehe" });
       return;
     }
+
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "view_team",
+      targetId: teamId
+    });
 
     res.json({ success: true, data: Item });
   } catch (error) {
@@ -158,6 +175,16 @@ const updateTeam = async (req: Request, res: Response) => {
     const { Attributes } = await docClient.send(
       new UpdateCommand(updateParams)
     );
+
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "update_team",
+      targetId: teamId,
+      details: { 
+        teamName,
+        updatedFields: Object.keys(req.body).filter(key => key !== 'user_id')
+      }
+    });
 
     res.json({
       success: true,
@@ -232,6 +259,16 @@ const addTeamMember = async (req: Request, res: Response) => {
     };
 
     await docClient.send(new UpdateCommand(updateUserParams));
+
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "add_team_member",
+      targetId: teamId,
+      details: { 
+        addedMember: team_userId,
+        memberCount: (Attributes?.members || []).length
+      }
+    });
 
     res.json({
       success: true,
@@ -310,6 +347,15 @@ const deleteTeam = async (req: Request, res: Response) => {
         ReturnValues: ReturnValue.ALL_NEW,
       })
     );
+
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "delete_team",
+      targetId: teamId,
+      details: { 
+        teamName: team.teamName
+      }
+    });
 
     res.json({
       success: true,
@@ -391,6 +437,16 @@ const removeTeamMember = async (req: Request, res: Response) => {
       );
     }
 
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "remove_team_member",
+      targetId: teamId,
+      details: { 
+        removedMember: userId,
+        remainingCount: updatedMembers.length
+      }
+    });
+
     res.json({
       success: true,
       message: "Member removed successfully",
@@ -421,6 +477,14 @@ const getAllTeams = async (req: Request, res: Response): Promise<void> => {
     };
 
     const result = await docClient.send(new ScanCommand(params));
+
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "view_all_teams",
+      details: { 
+        count: result.Items?.length || 0
+      }
+    });
 
     res.status(200).json({
       success: true,
@@ -512,6 +576,15 @@ const getTeamMembers = async (
         role: user.role,
       })) || [];
 
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "view_team_members",
+      targetId: teamId,
+      details: {
+        memberCount: members.length
+      }
+    });
+
     res.json({
       success: true,
       data: {
@@ -555,6 +628,15 @@ const getMyTeams = async (req: Request, res: Response) => {
       })
     );
     const teams = (Responses?.Teams || []).filter(Boolean);
+
+    await logUserActivity({
+      userId: userId,
+      action: "view_my_teams",
+      details: { 
+        count: teams.length
+      }
+    });
+
     res.json({ success: true, data: teams });
   } catch (error) {
     res
@@ -580,6 +662,16 @@ const changeTeamStatus = async (req: Request, res: Response) => {
         ReturnValues: "ALL_NEW",
       })
     );
+
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "change_team_status",
+      targetId: teamId,
+      details: { 
+        newStatus: status
+      }
+    });
+
     res.json({ success: true, message: "Status updated", data: Attributes });
   } catch (error) {
     res
@@ -606,6 +698,15 @@ const exportTeamsCsv = async (req: Request, res: Response) => {
         ].join(",")
       ),
     ].join("\n");
+
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "export_teams_csv",
+      details: { 
+        count: teams.length
+      }
+    });
+
     res.setHeader("Content-Type", "text/csv");
     res.send(csv);
   } catch (error) {

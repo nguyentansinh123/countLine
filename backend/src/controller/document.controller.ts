@@ -415,6 +415,12 @@ export const getPresignedUrl = async (
       return;
     }
 
+    await logUserActivity({
+      userId: user.id,
+      action: "get_presigned_url",
+      targetId: documentId,
+    });
+
     const urlParts = document.fileUrl.split(".amazonaws.com/");
     const key = urlParts[1];
 
@@ -450,6 +456,12 @@ export const getMyDocuments = async (req: Request, res: Response) => {
       ExpressionAttributeValues: { ":uid": userId },
     };
     const data = await docClient.send(new ScanCommand(params));
+
+    await logUserActivity({
+      userId: userId,
+      action: "view_my_documents",
+    });
+
     res.status(200).json({ success: true, data: data.Items });
   } catch (error) {
     console.error("getMyDocuments error:", error);
@@ -498,6 +510,13 @@ export const getDocumentById = async (
     }); 
 
     document.presignedUrl = presignedUrl;
+
+    await logUserActivity({
+      userId: req.body.user_id,
+      action: "view_document",
+      targetId: id,
+      details: { filename: document.filename },
+    });
 
     res.status(200).json({ success: true, data: data.Item });
   } catch (error) {
@@ -557,6 +576,13 @@ export const deleteDocument = async (req: Request, res: Response) => {
       }
     }
 
+    await logUserActivity({
+      userId: user.id,
+      action: "soft_delete_document",
+      targetId: documentId,
+      details: { filename: document.filename },
+    });
+
     res.status(200).json({
       success: true,
       message: "Document soft deleted and references removed",
@@ -615,6 +641,13 @@ export const hardDelete = async (req: Request, res: Response) => {
         );
       }
     }
+
+    await logUserActivity({
+      userId: user.id,
+      action: "hard_delete_document",
+      targetId: documentId,
+      details: { filename: document.filename },
+    });
 
     res
       .status(200)
@@ -695,6 +728,17 @@ export const updateDocument = async (req: Request, res: Response) => {
         },
       })
     );
+
+    await logUserActivity({
+      userId: user.id, 
+      action: "update_document",
+      targetId: documentId,
+      details: { 
+        filename: file.originalname,
+        fileType: file.mimetype
+      },
+    });
+
     res.status(200).json({ success: true, message: "Document file updated" });
   } catch (error) {
     console.error("updateDocument error:", error);
@@ -891,6 +935,11 @@ export const getDocumentsRequiringSignature = async (req: Request, res: Response
         ":status": "pending"
       }
     }));
+
+    await logUserActivity({
+      userId: userId,
+      action: "view_pending_signatures",
+    });
     
     res.status(200).json({
       success: true,

@@ -29,7 +29,7 @@ const Register = async (req: Request, res: Response) => {
         ":email": email,
       },
     };
-    log("hello before emailCheckResult");
+    console.log("hello before emailCheckResult");
     let emailCheckResult;
     try {
       emailCheckResult = await docClient.send(

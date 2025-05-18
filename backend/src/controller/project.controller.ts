@@ -3,6 +3,7 @@ import { PutCommand, GetCommand, UpdateCommand, QueryCommand, DeleteCommand, Sca
 import { docClient } from "../lib/dynamoClient";
 import { v4 as uuidv4 } from 'uuid';
 import { ScanCommand } from "@aws-sdk/client-dynamodb";
+import { logUserActivity } from "./activity.controller";
 
 const createProject = async (req: Request, res: Response) => {
     try {
@@ -46,6 +47,17 @@ const createProject = async (req: Request, res: Response) => {
             Item: projectData
         }));
 
+        await logUserActivity({
+            userId: createdBy,
+            action: "create_project",
+            targetId: projectData.projectId,
+            details: { 
+                projectName, 
+                priority: priority || 'Medium',
+                status: projectStatus 
+            }
+        });
+
         res.status(201).json({
             success: true,
             message: "Project created successfully",
@@ -80,6 +92,12 @@ const getProject = async (req: Request, res: Response) => {
             });
             return
         }
+
+        await logUserActivity({
+            userId: req.body.user_id,
+            action: "view_project",
+            targetId: projectId
+        });
 
         res.json({ 
             success: true, 
@@ -155,6 +173,15 @@ const updateProject = async (req: Request, res: Response) => {
             ExpressionAttributeValues: expressionAttributeValues,
             ReturnValues: 'ALL_NEW'
         }));
+
+        await logUserActivity({
+            userId,
+            action: "update_project",
+            targetId: projectId,
+            details: { 
+                updatedFields: Object.keys(updates).filter(key => key !== 'projectId')
+            }
+        });
 
         res.json({ 
             success: true, 
@@ -360,6 +387,16 @@ const addTeamToProject = async (req: Request, res: Response) => {
             console.error("Team Update Error:", teamUpdateError);
         }
 
+        await logUserActivity({
+            userId,
+            action: "add_team_to_project",
+            targetId: projectId,
+            details: { 
+                teamId,
+                totalTeams: updatedTeams.length
+            }
+        });
+
         res.status(200).json({
             success: true,
             message: "Team added to project successfully",
@@ -450,6 +487,16 @@ const deleteProject = async (req: Request, res: Response): Promise<void> => {
 
         console.log("Project successfully marked as deleted:", projectId);
 
+        await logUserActivity({
+            userId,
+            action: "delete_project",
+            targetId: projectId,
+            details: { 
+                projectName: project.projectName,
+                softDelete: true
+            }
+        });
+
         res.status(200).json({
             success: true,
             message: "Project deleted successfully",
@@ -510,6 +557,14 @@ const getAllProject = async (req: Request, res: Response) => {
         const { Items: projects, LastEvaluatedKey } = await docClient.send(
             new ScanCommand(scanParams)
         );
+
+        await logUserActivity({
+            userId: req.body.user_id,
+            action: "view_all_projects",
+            details: { 
+                count: projects?.length || 0
+            }
+        });
 
         const response: ProjectResponse = {
             success: true,
