@@ -117,7 +117,7 @@ const getTeam = async (req: Request, res: Response) => {
     const { Item } = await docClient.send(new GetCommand(params));
 
     if (!Item) {
-      res.status(404).json({ success: false, message: "Team not found" });
+      res.status(404).json({ success: false, message: "Team not foundhehe" });
       return;
     }
 
@@ -410,6 +410,28 @@ const removeTeamMember = async (req: Request, res: Response) => {
   }
 };
 
+const getAllTeams = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const params = {
+      TableName: "Teams",
+      FilterExpression: "attribute_not_exists(isDeleted) OR isDeleted = :false",
+      ExpressionAttributeValues: {
+        ":false": false,
+      },
+    };
+
+    const result = await docClient.send(new ScanCommand(params));
+
+    res.status(200).json({
+      success: true,
+      data: result.Items || [],
+    });
+  } catch (error) {
+    console.error("Error fetching teams:", error);
+    res.status(500).json({ success: false, message: "Failed to load teams" });
+  }
+};
+
 interface TeamMember {
   user_id: string;
   name?: string;
@@ -602,4 +624,5 @@ export {
   getMyTeams,
   changeTeamStatus,
   exportTeamsCsv,
+  getAllTeams,
 };

@@ -1,4 +1,4 @@
-import { Button, Card, Input, Select } from 'antd';
+import { Button, Card, Input, Select, message } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import teamsData from '../const/TeamsConst';
@@ -13,32 +13,43 @@ const statusOptions = [
 
 function EditTeam() {
   const { teamId } = useParams();
+  const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const [team, setTeam] = useState<{
     teamId: number;
-    team: string;
+    teamName: string;
     date: string;
     status: string;
     description: string;
     members: { name: string }[];
   } | null>(null);
-  const [teamName, setTeamName] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [teamStatus, setTeamStatus] = useState('');
-  const [description, setDescription] = useState('');
-  const [teamMembers, setTeamMembers] = useState<string[]>([]);
 
   useEffect(() => {
-    if (teamId) {
-      const foundTeam = teamsData.find((t) => t.teamId === Number(teamId));
-      if (foundTeam) {
-        setTeam(foundTeam);
-        setTeamName(foundTeam.team);
-        setStartDate(formatDateForInput(foundTeam.date));
-        setTeamStatus(foundTeam.status);
-        setDescription(foundTeam.description);
-        setTeamMembers(foundTeam.members.map((member) => member.name));
+    const fetchTeam = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:5001/api/team/${teamId}`,
+          {
+            credentials: 'include',
+          }
+        );
+        const data = await response.json();
+        if (data.success) {
+          const foundTeam = data.data;
+          setTeam({
+            ...foundTeam,
+            date: formatDateForInput(foundTeam.dateCreated),
+          });
+        } else {
+          console.error('Team not found');
+        }
+      } catch (error) {
+        console.error('Failed to fetch team:', error);
       }
+    };
+
+    if (teamId) {
+      fetchTeam();
     }
   }, [teamId]);
 
@@ -50,20 +61,37 @@ function EditTeam() {
     return dateStr;
   };
 
-  const handleSave = () => {
-    if (!team) return;
+  const handleSave = async () => {
+    try {
+      const updatedTeam = {
+        teamName: team?.teamName,
+        description: team?.description,
+        status: team?.status,
+      };
 
-    const updatedTeam = {
-      teamId: team.teamId,
-      teamName,
-      date: startDate.split('-').reverse().join('/'),
-      status: teamStatus,
-      description,
-      members: teamMembers.map((name) => ({ name })),
-    };
-
-    console.log('Updated Team:', updatedTeam);
-    navigate('/teams');
+      const response = await fetch(`http://localhost:5001/api/team/${teamId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(updatedTeam),
+      });
+      console.log('Updated Team:', updatedTeam);
+      const result = await response.json();
+      if (result.success) {
+        messageApi.success('Team updated successfully');
+        console.log('Team updated successfully');
+        setTimeout(() => {
+          navigate('/teams');
+        }, 1000);
+      } else {
+        messageApi.error('Failed to update team');
+        console.error('Failed to update team:', result.message);
+      }
+    } catch (error) {
+      console.error('Failed to save team:', error);
+    }
   };
 
   return (
@@ -77,6 +105,7 @@ function EditTeam() {
         minHeight: '80vh',
       }}
     >
+      {contextHolder}
       <Card
         style={{
           border: 'solid 1px',
@@ -93,24 +122,24 @@ function EditTeam() {
             <div>
               <h3>Team Name</h3>
               <Input
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
+                value={team.teamName}
+                onChange={(e) => setTeam({ ...team, teamName: e.target.value })}
                 placeholder="Team Name"
               />
             </div>
             <div>
               <h3>Start Date</h3>
               <Input
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                value={team.date}
+                onChange={(e) => setTeam({ ...team, date: e.target.value })}
                 type="date"
               />
             </div>
             <div>
               <h3>Team Status</h3>
               <Select
-                value={teamStatus}
-                onChange={setTeamStatus}
+                value={team.status}
+                onChange={(value) => setTeam({ ...team, status: value })}
                 placeholder="Select status"
                 style={{ width: '100%' }}
               >
@@ -124,8 +153,10 @@ function EditTeam() {
             <div>
               <h3>Description</h3>
               <TextArea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                value={team.description}
+                onChange={(e) =>
+                  setTeam({ ...team, description: e.target.value })
+                }
                 placeholder="Team Description"
                 rows={3}
               />
@@ -135,8 +166,15 @@ function EditTeam() {
               <Select
                 mode="multiple"
                 placeholder="Please select"
-                value={teamMembers}
-                onChange={setTeamMembers}
+                value={team.members.map((member) => member.name)}
+                onChange={(value: string[]) =>
+                  setTeam({
+                    ...team,
+                    members: value.map((name) => ({
+                      name,
+                    })),
+                  })
+                }
                 style={{ width: '100%' }}
               >
                 {teamsData

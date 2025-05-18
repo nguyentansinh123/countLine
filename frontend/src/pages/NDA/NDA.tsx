@@ -81,8 +81,7 @@ const NDA: React.FC = () => {
 
   const handleSendFile = () => {
     if (selectedFile) {
-      //const category = getCategoryFromFileId(selectedFile.id);
-      const category = '';
+      const category = selectedFile.documentType.replace(/\s+/g, ''); // remove all spaces
       console.log(category);
       navigate(`/sendfile/${category}/${selectedFile.documentId}`);
     } else {
