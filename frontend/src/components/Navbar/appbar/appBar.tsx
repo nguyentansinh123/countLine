@@ -1,24 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { Input, Avatar, Popover, List, Menu, Dropdown } from 'antd';
+import React, { useState } from 'react';
+import { Input, Avatar, Popover, Badge, Menu, Dropdown, Space } from 'antd';
 import { BellOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import Notification from '../notification/notification';
 
 const AppBar = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(3);
   
-  // Fetch the profile picture from localStorage
   const savedProfilePicture = localStorage.getItem('profilePic') || '';
+  const savedUserName = localStorage.getItem('userName') || 'User';
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
   };
 
   const notifications = [
-    { id: 1, message: 'New message from Sarah' },
-    { id: 2, message: 'Your report has been approved' },
-    { id: 3, message: 'Project deadline is approaching' },
+    { 
+      id: 1, 
+      message: 'New message from Sarah',
+      time: '5 minutes ago',
+      isRead: false,
+      avatar: 'https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png'
+    },
+    { 
+      id: 2, 
+      message: 'Your report has been approved',
+      time: '1 hour ago',
+      isRead: false,
+      avatar: ''
+    },
+    { 
+      id: 3, 
+      message: 'Project deadline is approaching',
+      time: '5 hours ago',
+      isRead: true,
+      avatar: ''
+    },
   ];
+
+  const handleMarkAllRead = () => {
+    setNotificationCount(0);
+    // funtion to mark notifications as read
+  };
 
   const { Search } = Input;
 
@@ -36,7 +61,7 @@ const AppBar = () => {
       <Menu.Item
         key="logout"
         onClick={() => {
-          /* handle logout logic */
+          /* function to logout*/
         }}
       >
         Logout
@@ -57,44 +82,47 @@ const AppBar = () => {
         padding: '10px',
       }}
     >
-      {/* search bar */}
       <Search
         placeholder="Input search text"
         style={{ width: 300 }}
         className="appbar-search"
       />
 
-      {/* Notification Popover */}
       <Popover
         content={
-          <div>
-            <List
-              size="small"
-              dataSource={notifications}
-              renderItem={(item) => (
-                <List.Item key={item.id}>
-                  <span>{item.message}</span>
-                </List.Item>
-              )}
-            />
-          </div>
+          <Notification 
+            notifications={notifications} 
+            onMarkAllRead={handleMarkAllRead}
+          />
         }
-        title="Notifications"
         trigger="click"
         open={open}
         onOpenChange={handleOpenChange}
+        placement="bottomRight"
+        overlayStyle={{ width: '320px' }}
       >
-        <BellOutlined style={{ fontSize: '24px' }} />
+        <Badge count={notificationCount} overflowCount={99} size="small">
+          <BellOutlined 
+            style={{ 
+              fontSize: '24px', 
+              cursor: 'pointer',
+              padding: '4px'
+            }} 
+          />
+        </Badge>
       </Popover>
 
-      {/* User Dropdown Menu */}
       <Dropdown overlay={userMenu} trigger={['click']}>
-        <Avatar
-          size="large"
-          icon={<UserOutlined />}
-          src={savedProfilePicture || ''} 
-          style={{ cursor: 'pointer' }}
-        />
+        <Space style={{ cursor: 'pointer' }}>
+          <Avatar
+            size="large"
+            icon={<UserOutlined />}
+            src={savedProfilePicture || ''} 
+          />
+          <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {savedUserName}
+          </span>
+        </Space>
       </Dropdown>
     </div>
   );
