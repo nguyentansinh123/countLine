@@ -30,7 +30,7 @@ function Teams() {
     };
 
     fetchTeams();
-  }, [teams]);
+  }, []);
 
   const handleMenuClick = async (key: string, teamId: string) => {
     if (key === 'edit') {

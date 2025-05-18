@@ -6,7 +6,7 @@ const clientUserConst = [
     name: 'Mia Turner',
     type: 'Employee',
     category: 'Client',
-    date: '24-02-2024',
+    created_at: '24-02-2024',
     documents: [
       { name: 'Intern NDA' },
       { name: 'Project Proposal' },

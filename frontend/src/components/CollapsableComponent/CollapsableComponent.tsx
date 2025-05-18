@@ -11,11 +11,13 @@ interface CollapsableComponentProps {
 function CollapsableComponent(props: CollapsableComponentProps) {
   const { column, data, menu } = props; // Destructuring the props here
   const navigate = useNavigate();
-  const columnKeyMap: Record<string, string> = {
-    Team: 'teamName',
-    Members: 'members',
-    Date: 'dateCreated',
-    Status: 'status',
+  const columnKeyMap: Record<string, string[]> = {
+    Team: ['teamName'],
+    Members: ['members'],
+    Date: ['dateCreated', 'created_at'],
+    Status: ['status'],
+    Name: ['name'],
+    Documents: ['documents'],
   };
   // Create the collapseItems array based on the data
   const collapseItems = data.map((item, index) => ({
@@ -29,11 +31,15 @@ function CollapsableComponent(props: CollapsableComponentProps) {
         }}
       >
         {props.column.map((col, idx) => {
-          const value = item[columnKeyMap[col]];
+          const keys = columnKeyMap[col] || [col];
+          const resolvedKey = keys.find((key) => item[key] !== undefined); // pick first valid key
+
+          const value = resolvedKey ? item[resolvedKey] : undefined;
+
           return (
             <span key={idx}>
               {Array.isArray(value)
-                ? `${value.length} `
+                ? `${value.length}`
                 : value !== undefined
                   ? value
                   : 'N/A'}
