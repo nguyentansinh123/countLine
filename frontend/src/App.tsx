@@ -31,6 +31,11 @@ import {
   ForgotPassword,
 } from './mainImp';
 import 'antd/dist/reset.css';
+import LinkGuard from './utils/LinkGuard';
+import PdfEditor from './TempWebsite/pdf editor/TempEditor';
+import TempEditor from './TempWebsite/pdf editor/TempEditor';
+import ViewHistory from './pages/Users/components/ViewHistory';
+import { SearchResults } from './pages/SearchResults/SeacrhResults';
 
 function App() {
   return (
@@ -202,8 +207,33 @@ function App() {
               </ProtectedRoute>
             }
           />
+            <Route
+            path="/viewHistory/:user_id"
+            element={
+              <ProtectedRoute>
+                <ViewHistory />
+              </ProtectedRoute>
+            }
+          />
+           <Route
+            path="/search/:value"
+            element={
+              <ProtectedRoute>
+                <SearchResults />
+              </ProtectedRoute>
+            }
+          />
         </Route>
-      </Routes>
+       <Route path="tempEditor/:user_id/:file_id" element={
+          <ProtectedRoute>
+            <TempEditor/>
+            </ProtectedRoute>
+            }/>
+    
+       
+       
+
+        </Routes>
     </Router>
   );
 }

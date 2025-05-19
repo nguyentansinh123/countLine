@@ -1,0 +1,39 @@
+export const Mockdata=[{
+   file_id:'u001-Nda-u002',
+    name:'lalalal',
+    location:"https://csit321bucket.s3.ap-southeast-2.amazonaws.com/Pending-Documents/FOR+ATHUL-1.pdf",
+    aurthor:{
+        id:'u001',
+        name:'authr',
+        signed:'True',
+        form_filled:'True',
+         date:'12/05/2024'
+    },
+    client:{
+        id:'u002',
+        name:'hannah',
+        signed:'False',
+        form_filled:'False',
+        date:'12/05/2024'
+    }
+
+},{
+   file_id:'u002-Nda-u001',
+        name:'lalalal2',
+    location:"https://csit321bucket.s3.ap-southeast-2.amazonaws.com/Pending-Documents/FOR+ATHUL-1.pdf",
+    aurthor:{
+        id:'u002',
+        name:'authr',
+        signed:'True',
+        form_filled:'True',
+         date:'12/05/2024'
+    },
+    client:{
+        id:'u001',
+        name:'hannah',
+        signed:'False',
+        form_filled:'False',
+        date:'12/05/2024'
+    }
+},
+]

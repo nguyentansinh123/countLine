@@ -15,6 +15,8 @@ const AppBar = () => {
     userName: 'Loading...',
   });
   const [loading, setLoading] = useState(true);
+ const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
 
   const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
@@ -63,9 +65,6 @@ const AppBar = () => {
     fetchUserData();
   }, [API_URL]);
 
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-  };
 
   const notifications = [
     {
@@ -97,6 +96,56 @@ const AppBar = () => {
   };
 
   const { Search } = Input;
+
+ 
+
+  useEffect(() => {
+    const fetchRecentSearches = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/api/recent-searches`, {
+          withCredentials: true,
+        });
+
+        if (res.data?.data) {
+          const names = res.data.data.map((s: any) => s.name);
+          setRecentSearches(names);
+        }
+      } catch (err) {
+        console.error('Error fetching recent searches:', err);
+      }
+    };
+
+    fetchRecentSearches();
+  }, [API_URL]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+  };
+
+  const handleSearch = (value: string) => {
+    if (!value) return;
+    setRecentSearches((prev) => {
+      const updated = [value, ...prev.filter((v) => v !== value)];
+      return updated.slice(0, 5);
+    });
+    setDropdownVisible(false);
+    navigate(`/search/${value}`)
+  };
+
+  const searchMenu = (
+    <Menu>
+      {recentSearches.length > 0 ? (
+        recentSearches.map((item, idx) => (
+          <Menu.Item key={idx} onClick={() => handleSearch(item)}>
+            {item}
+          </Menu.Item>
+        ))
+      ) : (
+        <Menu.Item disabled>No recent searches</Menu.Item>
+      )}
+    </Menu>
+  );
+
 
   const userMenu = (
     <Menu>
@@ -152,11 +201,23 @@ const AppBar = () => {
         padding: '10px',
       }}
     >
+     <Dropdown
+      overlay={searchMenu}
+      visible={dropdownVisible}
+      onVisibleChange={setDropdownVisible}
+      trigger={['click']}
+      
+    >
       <Search
         placeholder="Input search text"
         style={{ width: 300 }}
+        onSearch={handleSearch}
+        onClick={() => {setDropdownVisible(true)
+
+        }}
         className="appbar-search"
       />
+    </Dropdown>
 
       <Popover
         content={

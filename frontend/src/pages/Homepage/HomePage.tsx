@@ -55,7 +55,7 @@ function HomePage() {
         >
           <div
             style={{
-              maxHeight: 350,
+              maxHeight: '40vh',
               overflowY: 'auto',
               paddingRight: 10,
             }}

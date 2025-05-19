@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Button } from "antd";
+import GeneralLayout from "../../components/General_Layout/GeneralLayout";
 
 const documentData = [
   { name: "NDA", count: 3 },
@@ -59,8 +60,7 @@ const Overview: React.FC = () => {
   };
 
   return (
-    <div style={{ width: "100%", height: "100vh", padding: "20px" }}>
-      <h2>Overview</h2>
+    <GeneralLayout title="overview">
       <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
         {["Documents", "Projects", "Teams", "Users"].map((tab) => (
           <Button key={tab} type={activeTab === tab ? "primary" : "default"} onClick={() => setActiveTab(tab)}>
@@ -69,7 +69,8 @@ const Overview: React.FC = () => {
         ))}
       </div>
       {renderGraph()}
-    </div>
+
+    </GeneralLayout>
   );
 };
 
