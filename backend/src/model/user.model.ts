@@ -1,3 +1,4 @@
+import { Stream } from "nodemailer/lib/xoauth2";
 import { v4 as uuidv4 } from "uuid";
 
 export const UserSchema = {
@@ -46,7 +47,14 @@ export const UserSchema = {
     enum: ["employee", "client", "intern", "admin", "user"],
   },
   documents: {
-    type: [String],
+    type: [
+      {
+        documentId: String,
+        fileName: String,
+        fileUrl: String,
+        filyType: String,
+      },
+    ],
     default: [],
   },
   teams: {

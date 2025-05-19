@@ -1,11 +1,6 @@
 import { Request, Response } from "express";
 import { validateUser } from "../lib/validate.user";
-import {
-  PutCommand,
-  QueryCommand,
-  UpdateCommand,
-  UpdateCommandInput,
-} from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, UpdateCommand, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../lib/dynamoClient";
 import { UserSchema } from "../model/user.model";
 import bcrypt from "bcryptjs";
@@ -32,9 +27,7 @@ const Register = async (req: Request, res: Response) => {
     console.log("hello before emailCheckResult");
     let emailCheckResult;
     try {
-      emailCheckResult = await docClient.send(
-        new QueryCommand(emailCheckParams)
-      );
+      emailCheckResult = await docClient.send(new QueryCommand(emailCheckParams));
       console.log("hello1");
     } catch (err) {
       console.error("❌ QueryCommand error:", err);
@@ -64,11 +57,10 @@ const Register = async (req: Request, res: Response) => {
     if (!process.env.JWT_SECRET) {
       throw new Error("JWT_SECRET is not defined in environment variables");
     }
-    const token = jwt.sign(
-      { id: validatedUser.user_id },
-      process.env.JWT_SECRET,
-      { expiresIn: "2d" }
-    );
+
+    const token = jwt.sign({ id: validatedUser.user_id }, process.env.JWT_SECRET, {
+      expiresIn: "2d",
+    });
     res.cookie("tdToken", token, {
       httpOnly: true,
       secure: false,
@@ -118,9 +110,7 @@ const Login = async (req: Request, res: Response) => {
       },
     };
 
-    const emailCheckResult = await docClient.send(
-      new QueryCommand(emailCheckParams)
-    );
+    const emailCheckResult = await docClient.send(new QueryCommand(emailCheckParams));
     if (!emailCheckResult.Items || emailCheckResult.Items.length === 0) {
       throw new Error("User not found");
     }
@@ -294,9 +284,7 @@ const verifiedEmail = async (req: Request, res: Response) => {
     };
 
     await docClient.send(new UpdateCommand(updateParams));
-    res
-      .status(200)
-      .json({ success: true, message: "Email verified successfully" });
+    res.status(200).json({ success: true, message: "Email verified successfully" });
   } catch (error) {
     let message = "Unknown Error";
     if (error instanceof Error) message = error.message;
@@ -415,8 +403,7 @@ const resetPassword = async (req: Request, res: Response) => {
       Key: {
         user_id: user.user_id, // Primary key
       },
-      UpdateExpression:
-        "SET password = :password, resetOTP = :emptyOtp, resetOTPExpireAt = :zero",
+      UpdateExpression: "SET password = :password, resetOTP = :emptyOtp, resetOTPExpireAt = :zero",
       ExpressionAttributeValues: {
         ":password": hashedPassword,
         ":emptyOtp": "",
@@ -426,9 +413,7 @@ const resetPassword = async (req: Request, res: Response) => {
     };
 
     await docClient.send(new UpdateCommand(updateParams));
-    res
-      .status(200)
-      .json({ success: true, message: "Password reset successfully" });
+    res.status(200).json({ success: true, message: "Password reset successfully" });
   } catch (error) {
     let message = "Unknown Error";
     if (error instanceof Error) message = error.message;

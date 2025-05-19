@@ -176,7 +176,7 @@ function UserPage() {
     } else if (key === 'delete') {
       showDeleteModal(user);
     } else if (key === 'viewHistory') {
-      navigate(`/viewhistory/${user.userId}`);
+      navigate(`/viewhistory/${user.user_id}`);
     }
   };
 
@@ -296,6 +296,22 @@ function UserPage() {
               column={['Name', 'Role', 'Documents', 'Date']}
               data={clientUsers}
               menu={(item) => renderUserMenu(item, 'client')}
+              onDocumentRemoved={(userId, documentId) => {
+                console.log(userId, documentId);
+
+                setClientUsers((prev) =>
+                  prev.map((user) =>
+                    user.user_id === userId
+                      ? {
+                          ...user,
+                          documents: (user.documents as any[]).filter(
+                            (doc) => doc.documentId !== documentId
+                          ),
+                        }
+                      : user
+                  )
+                );
+              }}
             />
           </TabPane>
 

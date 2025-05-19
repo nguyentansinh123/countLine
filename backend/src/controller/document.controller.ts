@@ -1,19 +1,10 @@
-import {
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { upload } from "../lib/multerconfig";
 import { s3Client } from "../lib/s3";
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { docClient } from "../lib/dynamoClient";
-import {
-  GetCommand,
-  PutCommand,
-  UpdateCommand,
-  UpdateCommandInput,
-} from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, UpdateCommand, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
 import { ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
@@ -22,10 +13,7 @@ import { logUserActivity } from "./activity.controller";
 import { createNotification } from "./notification.controller";
 import { getIO } from "../lib/socket";
 
-export const uploadFileToS3 = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const uploadFileToS3 = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
       res.status(400).json({ success: false, message: "No file uploaded" });
@@ -33,6 +21,8 @@ export const uploadFileToS3 = async (
     }
 
     const file = req.file;
+    const fileName = req.body.filename;
+
     const fileNameWithoutSpaces = file.originalname.replace(/\s/g, "");
 
     let documentType = req.body.documentType;
@@ -55,9 +45,7 @@ export const uploadFileToS3 = async (
         gif: "Image",
       };
 
-      documentType = fileExtension
-        ? extensionMap[fileExtension] || "Unknown"
-        : "Unknown";
+      documentType = fileExtension ? extensionMap[fileExtension] || "Unknown" : "Unknown";
 
       if (documentType === "Unknown") {
         const mimeTypeMap: { [key: string]: string } = {
@@ -66,8 +54,7 @@ export const uploadFileToS3 = async (
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
             "Word Document",
           "application/vnd.ms-excel": "Excel Spreadsheet",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            "Excel Spreadsheet",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Excel Spreadsheet",
           "text/plain": "Text Document",
           "image/jpeg": "Image",
           "image/png": "Image",
@@ -101,7 +88,7 @@ export const uploadFileToS3 = async (
 
     const document = {
       documentId: uuidv4(),
-      filename: file.originalname,
+      filename: fileName,
       fileType: file.mimetype,
       documentType: documentType,
       fileUrl,
@@ -121,6 +108,25 @@ export const uploadFileToS3 = async (
       Item: document,
     });
     await docClient.send(putCommand);
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Users",
+        Key: { user_id: document.uploadedBy },
+        UpdateExpression: "SET documents = list_append(if_not_exists(documents, :emptyList), :doc)",
+        ExpressionAttributeValues: {
+          ":doc": [
+            {
+              documentId: document.documentId,
+              fileName: document.filename,
+              fileUrl: document.fileUrl,
+              documentType: document.documentType,
+            },
+          ],
+          ":emptyList": [],
+        },
+      })
+    );
 
     const notification = await createNotification(
       document.uploadedBy,
@@ -225,7 +231,7 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
     const { documentId, requestSignature } = req.body;
     const userId = req.body.user_id;
     // @ts-ignore
-    const userRole = req.user.role
+    const userRole = req.user.role;
 
     if (!documentId) {
       res.status(400).json({ success: false, message: "Document ID is required" });
@@ -233,11 +239,13 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
     }
 
     if (requestSignature === true) {
-      const { Item: document } = await docClient.send(new GetCommand({
-        TableName: "Documents",
-        Key: { documentId }
-      }));
-      
+      const { Item: document } = await docClient.send(
+        new GetCommand({
+          TableName: "Documents",
+          Key: { documentId },
+        })
+      );
+
       if (!document) {
         res.status(404).json({ success: false, message: "Document not found" });
         return;
@@ -274,26 +282,26 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
     if (requestSignature) {
       notificationType = "signature_requested";
       notificationMessage = `You've been requested to sign a document.`;
-      
-      await docClient.send(new UpdateCommand({
-        TableName: "Documents",
-        Key: { documentId },
-        UpdateExpression: "SET requiresSignature = :req, signaturesRequired = list_append(if_not_exists(signaturesRequired, :empty_list), :uid), signingStatus = :status",
-        ExpressionAttributeValues: {
-          ":req": true,
-          ":uid": [IdOfUser],
-          ":status": "pending",
-          ":empty_list": []
-        }
-      }));
+
+      await docClient.send(
+        new UpdateCommand({
+          TableName: "Documents",
+          Key: { documentId },
+          UpdateExpression:
+            "SET requiresSignature = :req, signaturesRequired = list_append(if_not_exists(signaturesRequired, :empty_list), :uid), signingStatus = :status",
+          ExpressionAttributeValues: {
+            ":req": true,
+            ":uid": [IdOfUser],
+            ":status": "pending",
+            ":empty_list": [],
+          },
+        })
+      );
     }
 
-    const notification = await createNotification(
-      IdOfUser,
-      notificationType,
-      notificationMessage,
-      { documentId }
-    );
+    const notification = await createNotification(IdOfUser, notificationType, notificationMessage, {
+      documentId,
+    });
 
     if (IdOfUser) {
       getIO().to(IdOfUser).emit("notification", notification);
@@ -308,7 +316,9 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      message: requestSignature ? "Signature request sent successfully" : "File sent to user successfully",
+      message: requestSignature
+        ? "Signature request sent successfully"
+        : "File sent to user successfully",
       documents: Attributes?.documents,
     });
   } catch (error) {
@@ -320,10 +330,7 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
   }
 };
 
-export const downloadFile = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const downloadFile = async (req: Request, res: Response): Promise<void> => {
   try {
     const { documentId } = req.params;
 
@@ -358,17 +365,12 @@ export const downloadFile = async (
     const { Body, ContentType } = await s3Client.send(command);
 
     if (!Body) {
-      res
-        .status(404)
-        .json({ success: false, message: "File content not found" });
+      res.status(404).json({ success: false, message: "File content not found" });
       return;
     }
 
     res.setHeader("Content-Type", ContentType || "application/octet-stream");
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="${document.filename}"`
-    );
+    res.setHeader("Content-Disposition", `inline; filename="${document.filename}"`);
 
     if (typeof (Body as any).pipe === "function") {
       (Body as any).pipe(res);
@@ -388,10 +390,7 @@ export const downloadFile = async (
   }
 };
 
-export const getPresignedUrl = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getPresignedUrl = async (req: Request, res: Response): Promise<void> => {
   try {
     const { documentId } = req.params;
     // @ts-ignore
@@ -401,9 +400,7 @@ export const getPresignedUrl = async (
       TableName: "Documents",
       Key: { documentId },
     };
-    const { Item: document } = await docClient.send(
-      new GetCommand(getDocParams)
-    );
+    const { Item: document } = await docClient.send(new GetCommand(getDocParams));
 
     if (!document) {
       res.status(404).json({ success: false, message: "Document not found" });
@@ -452,8 +449,8 @@ export const getMyDocuments = async (req: Request, res: Response) => {
   try {
     const params = {
       TableName: "Documents",
-      FilterExpression: "uploadedBy = :uid",
-      ExpressionAttributeValues: { ":uid": userId },
+      FilterExpression: "uploadedBy = :uid AND isDeleted = :deleted",
+      ExpressionAttributeValues: { ":uid": userId, ":deleted": false },
     };
     const data = await docClient.send(new ScanCommand(params));
 
@@ -465,16 +462,11 @@ export const getMyDocuments = async (req: Request, res: Response) => {
     res.status(200).json({ success: true, data: data.Items });
   } catch (error) {
     console.error("getMyDocuments error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch your documents" });
+    res.status(500).json({ success: false, message: "Failed to fetch your documents" });
   }
 };
 
-export const getDocumentById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getDocumentById = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
 
   try {
@@ -494,7 +486,7 @@ export const getDocumentById = async (
     const document = data.Item;
 
     const urlParts = document.fileUrl.split(".amazonaws.com/");
-    const documentKey = urlParts[1]; 
+    const documentKey = urlParts[1];
 
     if (!documentKey) {
       res.status(500).json({ success: false, message: "Invalid file URL" });
@@ -507,7 +499,7 @@ export const getDocumentById = async (
     const getCommand = new GetObjectCommand(getObjectParams);
     const presignedUrl = await getSignedUrl(s3Client, getCommand, {
       expiresIn: 3600,
-    }); 
+    });
 
     document.presignedUrl = presignedUrl;
 
@@ -521,9 +513,7 @@ export const getDocumentById = async (
     res.status(200).json({ success: true, data: data.Item });
   } catch (error) {
     console.error("Error fetching document by ID:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch document" });
+    res.status(500).json({ success: false, message: "Failed to fetch document" });
   }
 };
 
@@ -588,9 +578,7 @@ export const deleteDocument = async (req: Request, res: Response) => {
       message: "Document soft deleted and references removed",
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to delete document" });
+    res.status(500).json({ success: false, message: "Failed to delete document" });
   }
 };
 
@@ -609,7 +597,7 @@ export const hardDelete = async (req: Request, res: Response) => {
       res.status(404).json({ success: false, message: "Document not found" });
       return;
     }
-    if (document.uploadedBy !== user.id && user.role !== "admin") {
+    if (user.role !== "admin") {
       res.status(403).json({ success: false, message: "Access denied" });
       return;
     }
@@ -621,16 +609,19 @@ export const hardDelete = async (req: Request, res: Response) => {
       })
     );
 
-    const usersWithDoc = await docClient.send(
-      new ScanCommand({
-        TableName: "Users",
-        FilterExpression: "contains(documents, :docId)",
-        ExpressionAttributeValues: { ":docId": documentId },
-      })
+    const scanResult = await docClient.send(new ScanCommand({ TableName: "Users" }));
+
+    // Step 2: Filter only users who have the documentId in their documents array
+    const usersWithDoc = (scanResult.Items || []).filter((user: any) =>
+      (user.documents || []).some((doc: any) => doc.documentId === documentId)
     );
 
-    for (const userItem of usersWithDoc.Items || []) {
-      const docIndex = (userItem.documents || []).indexOf(documentId);
+    // Step 3: Remove that document from their list
+    for (const userItem of usersWithDoc) {
+      const docIndex = (userItem.documents || []).findIndex(
+        (doc: any) => doc.documentId === documentId
+      );
+
       if (docIndex > -1) {
         await docClient.send(
           new UpdateCommand({
@@ -649,14 +640,10 @@ export const hardDelete = async (req: Request, res: Response) => {
       details: { filename: document.filename },
     });
 
-    res
-      .status(200)
-      .json({ success: true, message: "Document and references deleted" });
+    res.status(200).json({ success: true, message: "Document and references deleted" });
   } catch (error) {
     console.error("hardDelete error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to delete document" });
+    res.status(500).json({ success: false, message: "Failed to delete document" });
   }
 };
 
@@ -730,21 +717,19 @@ export const updateDocument = async (req: Request, res: Response) => {
     );
 
     await logUserActivity({
-      userId: user.id, 
+      userId: user.id,
       action: "update_document",
       targetId: documentId,
-      details: { 
+      details: {
         filename: file.originalname,
-        fileType: file.mimetype
+        fileType: file.mimetype,
       },
     });
 
     res.status(200).json({ success: true, message: "Document file updated" });
   } catch (error) {
     console.error("updateDocument error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to update document" });
+    res.status(500).json({ success: false, message: "Failed to update document" });
   }
 };
 
@@ -754,43 +739,48 @@ export const requestDocumentSignatures = async (req: Request, res: Response) => 
     const { userIds } = req.body;
     // @ts-ignore
     const user = req.user;
-    
+
     if (!userIds || !Array.isArray(userIds) || userIds.length < 1) {
-      res.status(400).json({ 
-        success: false, 
-        message: "You must specify at least one user to sign the document" 
+      res.status(400).json({
+        success: false,
+        message: "You must specify at least one user to sign the document",
       });
       return;
     }
-    
-    const { Item: document } = await docClient.send(new GetCommand({
-      TableName: "Documents",
-      Key: { documentId }
-    }));
-    
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId },
+      })
+    );
+
     if (!document) {
       res.status(404).json({ success: false, message: "Document not found" });
       return;
     }
-    
+
     const userId = req.body.user_id;
     if (document.uploadedBy !== userId && user.role !== "admin") {
       res.status(403).json({ success: false, message: "Not authorized to request signatures" });
       return;
     }
-    
-    await docClient.send(new UpdateCommand({
-      TableName: "Documents",
-      Key: { documentId },
-      UpdateExpression: "SET requiresSignature = :req, signaturesRequired = :users, signingStatus = :status, signedBy = :empty",
-      ExpressionAttributeValues: {
-        ":req": true,
-        ":users": userIds,
-        ":status": "pending",
-        ":empty": []
-      }
-    }));
-    
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression:
+          "SET requiresSignature = :req, signaturesRequired = :users, signingStatus = :status, signedBy = :empty",
+        ExpressionAttributeValues: {
+          ":req": true,
+          ":users": userIds,
+          ":status": "pending",
+          ":empty": [],
+        },
+      })
+    );
+
     for (const userId of userIds) {
       const notification = await createNotification(
         userId,
@@ -798,30 +788,33 @@ export const requestDocumentSignatures = async (req: Request, res: Response) => 
         `You've been requested to sign a document: "${document.filename}"`,
         { documentId }
       );
-      
+
       getIO().to(userId).emit("notification", notification);
-      
-      await docClient.send(new UpdateCommand({
-        TableName: "Users",
-        Key: { user_id: userId },
-        UpdateExpression: "SET documents = list_append(if_not_exists(documents, :empty_list), :documentId)",
-        ExpressionAttributeValues: {
-          ":documentId": [documentId],
-          ":empty_list": []
-        }
-      }));
+
+      await docClient.send(
+        new UpdateCommand({
+          TableName: "Users",
+          Key: { user_id: userId },
+          UpdateExpression:
+            "SET documents = list_append(if_not_exists(documents, :empty_list), :documentId)",
+          ExpressionAttributeValues: {
+            ":documentId": [documentId],
+            ":empty_list": [],
+          },
+        })
+      );
     }
-    
+
     await logUserActivity({
       userId,
       action: "request_signatures",
       targetId: documentId,
-      details: { requestedSigners: userIds }
+      details: { requestedSigners: userIds },
     });
-    
+
     res.status(200).json({
       success: true,
-      message: `Signature requests sent to ${userIds.length} users`
+      message: `Signature requests sent to ${userIds.length} users`,
     });
   } catch (error) {
     let message = "Unknown Error";
@@ -835,70 +828,72 @@ export const signDocument = async (req: Request, res: Response) => {
   try {
     const { documentId } = req.params;
     const userId = req.body.user_id;
-    
-    const { Item: document } = await docClient.send(new GetCommand({
-      TableName: "Documents",
-      Key: { documentId }
-    }));
-    
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId },
+      })
+    );
+
     if (!document) {
       res.status(404).json({ success: false, message: "Document not found" });
       return;
     }
-    
+
     if (!document.signaturesRequired.includes(userId)) {
-      res.status(403).json({ 
-        success: false, 
-        message: "You are not authorized to sign this document" 
+      res.status(403).json({
+        success: false,
+        message: "You are not authorized to sign this document",
       });
       return;
     }
-    
+
     if (document.signedBy.includes(userId)) {
-      res.status(400).json({ 
-        success: false, 
-        message: "You have already signed this document" 
+      res.status(400).json({
+        success: false,
+        message: "You have already signed this document",
       });
       return;
     }
-    
+
     const updatedSignedBy = [...document.signedBy, userId];
-    
-    const allSigned = document.signaturesRequired.every((id:any) => 
-      updatedSignedBy.includes(id)
-    );
-    
+
+    const allSigned = document.signaturesRequired.every((id: any) => updatedSignedBy.includes(id));
+
     const signingStatus = allSigned ? "completed" : "pending";
-    
-    await docClient.send(new UpdateCommand({
-      TableName: "Documents",
-      Key: { documentId },
-      UpdateExpression: "SET signedBy = :signed, signingStatus = :status",
-      ExpressionAttributeValues: {
-        ":signed": updatedSignedBy,
-        ":status": signingStatus
-      }
-    }));
-    
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression: "SET signedBy = :signed, signingStatus = :status",
+        ExpressionAttributeValues: {
+          ":signed": updatedSignedBy,
+          ":status": signingStatus,
+        },
+      })
+    );
+
     await logUserActivity({
       userId,
       action: "sign_document",
-      targetId: documentId
+      targetId: documentId,
     });
-    
+
     const notification = await createNotification(
       document.uploadedBy,
       "document_signed",
       `${userId} has signed the document "${document.filename}"`,
-      { 
+      {
         documentId,
         signedBy: userId,
-        signingComplete: allSigned
+        signingComplete: allSigned,
       }
     );
-    
+
     getIO().to(document.uploadedBy).emit("notification", notification);
-    
+
     if (allSigned) {
       const completeNotification = await createNotification(
         document.uploadedBy,
@@ -906,14 +901,14 @@ export const signDocument = async (req: Request, res: Response) => {
         `All required signatures have been collected for "${document.filename}"`,
         { documentId }
       );
-      
+
       getIO().to(document.uploadedBy).emit("notification", completeNotification);
     }
-    
+
     res.status(200).json({
       success: true,
       message: "Document signed successfully",
-      signingComplete: allSigned
+      signingComplete: allSigned,
     });
   } catch (error) {
     let message = "Unknown Error";
@@ -926,24 +921,27 @@ export const signDocument = async (req: Request, res: Response) => {
 export const getDocumentsRequiringSignature = async (req: Request, res: Response) => {
   try {
     const userId = req.body.user_id;
-    
-    const { Items } = await docClient.send(new ScanCommand({
-      TableName: "Documents",
-      FilterExpression: "contains(signaturesRequired, :uid) AND NOT contains(signedBy, :uid) AND signingStatus = :status",
-      ExpressionAttributeValues: {
-        ":uid": userId,
-        ":status": "pending"
-      }
-    }));
+
+    const { Items } = await docClient.send(
+      new ScanCommand({
+        TableName: "Documents",
+        FilterExpression:
+          "contains(signaturesRequired, :uid) AND NOT contains(signedBy, :uid) AND signingStatus = :status",
+        ExpressionAttributeValues: {
+          ":uid": userId,
+          ":status": "pending",
+        },
+      })
+    );
 
     await logUserActivity({
       userId: userId,
       action: "view_pending_signatures",
     });
-    
+
     res.status(200).json({
       success: true,
-      data: Items || []
+      data: Items || [],
     });
   } catch (error) {
     let message = "Unknown Error";
@@ -953,102 +951,105 @@ export const getDocumentsRequiringSignature = async (req: Request, res: Response
   }
 };
 
-
 export const signDocumentWithCanvas = async (req: Request, res: Response) => {
   try {
     const { documentId } = req.params;
     const userId = req.body.user_id || (req as any).user?.id;
-    
-    const { Item: document } = await docClient.send(new GetCommand({
-      TableName: "Documents",
-      Key: { documentId }
-    }));
-    
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId },
+      })
+    );
+
     if (!document) {
       res.status(404).json({ success: false, message: "Document not found" });
       return;
     }
-    
+
     if (!document.signaturesRequired.includes(userId)) {
-      res.status(403).json({ 
-        success: false, 
-        message: "You are not authorized to sign this document" 
+      res.status(403).json({
+        success: false,
+        message: "You are not authorized to sign this document",
       });
       return;
     }
-    
+
     if (document.signedBy.includes(userId)) {
-      res.status(400).json({ 
-        success: false, 
-        message: "You have already signed this document" 
+      res.status(400).json({
+        success: false,
+        message: "You have already signed this document",
       });
       return;
     }
-    
+
     if (!req.file) {
       res.status(400).json({ success: false, message: "No signature file provided" });
       return;
     }
-    
+
     const file = req.file;
     const signatureKey = `signatures/${documentId}/${userId}_${Date.now()}.png`;
-    
+
     const uploadParams = {
       Bucket: process.env.AWS_BUCKET_NAME!,
       Key: signatureKey,
       Body: file.buffer,
       ContentType: file.mimetype,
     };
-    
+
     await s3Client.send(new PutObjectCommand(uploadParams));
-    
+
     const signatureUrl = `https://${uploadParams.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${signatureKey}`;
-    
-    
+
     const updatedSignedBy = [...document.signedBy, userId];
-    
-    const allSigned = document.signaturesRequired.every((id:any) => 
-      updatedSignedBy.includes(id)
-    );
-    
+
+    const allSigned = document.signaturesRequired.every((id: any) => updatedSignedBy.includes(id));
+
     const signingStatus = allSigned ? "completed" : "pending";
-    
-    await docClient.send(new UpdateCommand({
-      TableName: "Documents",
-      Key: { documentId },
-      UpdateExpression: "SET signedBy = :signed, signingStatus = :status, signatures = list_append(if_not_exists(signatures, :empty_list), :signature)",
-      ExpressionAttributeValues: {
-        ":signed": updatedSignedBy,
-        ":status": signingStatus,
-        ":signature": [{
-          userId,
-          signatureUrl,
-          signedAt: new Date().toISOString()
-        }],
-        ":empty_list": []
-      }
-    }));
-    
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression:
+          "SET signedBy = :signed, signingStatus = :status, signatures = list_append(if_not_exists(signatures, :empty_list), :signature)",
+        ExpressionAttributeValues: {
+          ":signed": updatedSignedBy,
+          ":status": signingStatus,
+          ":signature": [
+            {
+              userId,
+              signatureUrl,
+              signedAt: new Date().toISOString(),
+            },
+          ],
+          ":empty_list": [],
+        },
+      })
+    );
+
     await logUserActivity({
       userId,
       action: "sign_document_with_canvas",
-      targetId: documentId
+      targetId: documentId,
     });
-    
+
     const notification = await createNotification(
       document.uploadedBy,
       "document_signed",
       `${userId} has signed the document "${document.filename}"`,
-      { 
+      {
         documentId,
         signedBy: userId,
         signatureUrl,
-        signingComplete: allSigned
+        signingComplete: allSigned,
       }
     );
-    
+
     getIO().to(document.uploadedBy).emit("notification", notification);
-    
+
     if (allSigned) {
       const completeNotification = await createNotification(
         document.uploadedBy,
@@ -1056,15 +1057,15 @@ export const signDocumentWithCanvas = async (req: Request, res: Response) => {
         `All required signatures have been collected for "${document.filename}"`,
         { documentId }
       );
-      
+
       getIO().to(document.uploadedBy).emit("notification", completeNotification);
     }
-    
+
     res.status(200).json({
       success: true,
       message: "Document signed successfully with signature image",
       signatureUrl,
-      signingComplete: allSigned
+      signingComplete: allSigned,
     });
   } catch (error) {
     let message = "Unknown Error";

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, Card, Input, Upload, message, Select } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import GeneralLayout from '../../../components/General_Layout/GeneralLayout';
+import { useNavigate } from 'react-router-dom';
 
 const fileTypes = [
   { label: 'NDA', value: 'NDA' },
@@ -11,6 +12,7 @@ const fileTypes = [
 ];
 
 const UploadDocument: React.FC = () => {
+  const navigate = useNavigate();
   const [file, setFile] = useState<any>(null);
   const [fileName, setFileName] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string>('');
@@ -24,9 +26,10 @@ const UploadDocument: React.FC = () => {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('fileName', fileName);
+    formData.append('filename', fileName);
     formData.append('documentType', selectedTypes); // Assuming only one type can be selected
-    console.log(selectedTypes);
+
+    console.log(formData.get);
 
     try {
       const response = await fetch(
@@ -41,6 +44,9 @@ const UploadDocument: React.FC = () => {
       const result = await response.json();
       if (response.ok) {
         messageApi.success('File uploaded successfully!');
+        setTimeout(() => {
+          navigate('/non-disclosure-agreement');
+        }, 500);
         console.log(result);
       } else {
         message.error(result.message || 'Upload failed');

@@ -33,7 +33,7 @@ const NDA: React.FC = () => {
           'http://localhost:5001/api/document/my-documents',
           {
             method: 'GET',
-            credentials: 'include', // include cookies if using auth
+            credentials: 'include',
           }
         );
         const result = await response.json();
@@ -50,8 +50,6 @@ const NDA: React.FC = () => {
 
     fetchDocuments();
   }, []);
-
-  console.log(documents);
 
   const documentCategories = {
     'NDA Documents': documents.filter((doc) =>
@@ -82,7 +80,6 @@ const NDA: React.FC = () => {
   const handleSendFile = () => {
     if (selectedFile) {
       const category = selectedFile.documentType.replace(/\s+/g, ''); // remove all spaces
-      console.log(category);
       navigate(`/sendfile/${category}/${selectedFile.documentId}`);
     } else {
       messageApi.info('select a file to send');
@@ -97,14 +94,17 @@ const NDA: React.FC = () => {
   const handleDeleteFile = async (fileId: string) => {
     try {
       const response = await fetch(
-        `http://localhost:5001/api/document/${fileId}`,
+        `http://localhost:5001/api/document/delete/${fileId}`,
         {
           method: 'DELETE',
           credentials: 'include',
         }
       );
       if (response.ok) {
-        // Handle file removal from state (you'd want to update the list here)
+        setDocuments((prevDocs) =>
+          prevDocs.filter((doc) => doc.documentId !== fileId)
+        );
+        messageApi.success('Document deleted successfully');
         console.log(`Document with ID ${fileId} deleted successfully.`);
       } else {
         messageApi.error('Failed to delete document. Ask admin for help');

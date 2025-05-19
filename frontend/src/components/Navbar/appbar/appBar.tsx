@@ -8,7 +8,7 @@ const AppBar = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(3);
-  
+
   const savedProfilePicture = localStorage.getItem('profilePic') || '';
   const savedUserName = localStorage.getItem('userName') || 'User';
 
@@ -17,26 +17,27 @@ const AppBar = () => {
   };
 
   const notifications = [
-    { 
-      id: 1, 
+    {
+      id: 1,
       message: 'New message from Sarah',
       time: '5 minutes ago',
       isRead: false,
-      avatar: 'https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png'
+      avatar:
+        'https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png',
     },
-    { 
-      id: 2, 
+    {
+      id: 2,
       message: 'Your report has been approved',
       time: '1 hour ago',
       isRead: false,
-      avatar: ''
+      avatar: '',
     },
-    { 
-      id: 3, 
+    {
+      id: 3,
       message: 'Project deadline is approaching',
       time: '5 hours ago',
       isRead: true,
-      avatar: ''
+      avatar: '',
     },
   ];
 
@@ -60,8 +61,23 @@ const AppBar = () => {
       </Menu.Item>
       <Menu.Item
         key="logout"
-        onClick={() => {
-          /* function to logout*/
+        onClick={async () => {
+          try {
+            const res = await fetch('http://localhost:5001/api/auth/logout', {
+              method: 'POST',
+              credentials: 'include',
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+              navigate('/');
+            } else {
+              console.error('Logout failed:', data.message);
+            }
+          } catch (err) {
+            console.error('Logout error:', err);
+          }
         }}
       >
         Logout
@@ -90,8 +106,8 @@ const AppBar = () => {
 
       <Popover
         content={
-          <Notification 
-            notifications={notifications} 
+          <Notification
+            notifications={notifications}
             onMarkAllRead={handleMarkAllRead}
           />
         }
@@ -102,12 +118,12 @@ const AppBar = () => {
         overlayStyle={{ width: '320px' }}
       >
         <Badge count={notificationCount} overflowCount={99} size="small">
-          <BellOutlined 
-            style={{ 
-              fontSize: '24px', 
+          <BellOutlined
+            style={{
+              fontSize: '24px',
               cursor: 'pointer',
-              padding: '4px'
-            }} 
+              padding: '4px',
+            }}
           />
         </Badge>
       </Popover>
@@ -117,9 +133,16 @@ const AppBar = () => {
           <Avatar
             size="large"
             icon={<UserOutlined />}
-            src={savedProfilePicture || ''} 
+            src={savedProfilePicture || ''}
           />
-          <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span
+            style={{
+              maxWidth: '120px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {savedUserName}
           </span>
         </Space>

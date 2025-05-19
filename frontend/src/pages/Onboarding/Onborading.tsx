@@ -44,11 +44,14 @@ const SignupForm: React.FC<SignupFormProps> = ({ switchTab }) => {
           name: values.name,
           email: values.email,
           password: values.password,
-        }
+        },
+        { withCredentials: true }
       );
       console.log('Signup successful:', response.data);
       messageApi.success('Signup successful! Directing to homepage.');
-      navigate('/home');
+      setTimeout(() => {
+        navigate('/home');
+      }, 2000); // Simulate a delay for the success message
     } catch (error) {
       messageApi.error('Signup failed! Please try again.');
       console.error('Signup error:', error);
@@ -57,6 +60,7 @@ const SignupForm: React.FC<SignupFormProps> = ({ switchTab }) => {
 
   return (
     <div className="form-card">
+      {contextHolder}
       <Title level={2}>Sign Up</Title>
       <Divider className="form-divider" />
 

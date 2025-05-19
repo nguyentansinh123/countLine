@@ -1,16 +1,27 @@
-import { Collapse, MenuProps, Dropdown, Button, List } from 'antd';
+import {
+  Collapse,
+  MenuProps,
+  Dropdown,
+  Button,
+  List,
+  Modal,
+  message,
+} from 'antd';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 interface CollapsableComponentProps {
   column: string[]; // Column headers
   data: Array<Record<string, any>>; // Data to display
   menu: (item: any) => MenuProps; // Dropdown menu generator
+  onDocumentRemoved?: (userId: string, documentId: string) => void;
 }
 
 function CollapsableComponent(props: CollapsableComponentProps) {
   const { column, data, menu } = props; // Destructuring the props here
   const navigate = useNavigate();
+  const [messageApi, contextHolder] = message.useMessage();
   const columnKeyMap: Record<string, string[]> = {
     Team: ['teamName'],
     Members: ['members'],
@@ -20,6 +31,10 @@ function CollapsableComponent(props: CollapsableComponentProps) {
     Documents: ['documents'],
     Role: ['role'],
   };
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  console.log(data);
 
   const formatDate = (isoDate: string): string => {
     const date = new Date(isoDate);
@@ -32,7 +47,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
 
   // Create the collapseItems array based on the data
   const collapseItems = data.map((item, index) => ({
-    key: item.teamId || item.userId || index, // Ensure unique key
+    key: item.teamId || item.user_id || index, // Ensure unique key
     label: (
       <div
         style={{
@@ -103,6 +118,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
         {/* Check if there are documents and render them */}
         {item.documents ? (
           <List>
+            {console.log(item)}
             {item.documents.map((document: any, index: number) => (
               <List.Item
                 key={index}
@@ -113,7 +129,8 @@ function CollapsableComponent(props: CollapsableComponentProps) {
                   width: '100%',
                 }}
               >
-                <span>{document.name}</span>
+                <span>{document.fileName}</span>
+                <span>{document.documentType}</span>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <Button
                     type="primary"
@@ -123,9 +140,13 @@ function CollapsableComponent(props: CollapsableComponentProps) {
                       border: 'none',
                       marginTop: 10,
                     }}
-                    onClick={() =>
-                      navigate(`/users`, { state: { user: document } })
-                    }
+                    onClick={() => {
+                      const category = document.documentType || 'General';
+                      const formattedCategory = category.replace(/\s+/g, '');
+                      navigate(
+                        `/viewdocument/${formattedCategory}/${document.documentId}`
+                      );
+                    }}
                   >
                     View
                   </Button>
@@ -136,6 +157,34 @@ function CollapsableComponent(props: CollapsableComponentProps) {
                       border: 'solid 1px #335DFF',
                       marginTop: 10,
                       color: '#335DFF',
+                    }}
+                    onClick={async () => {
+                      try {
+                        const response = await fetch(
+                          `http://localhost:5001/api/document/deleteHard/${document.documentId}`,
+                          {
+                            method: 'DELETE',
+                            credentials: 'include',
+                          }
+                        );
+                        const result = await response.json();
+                        if (result.success) {
+                          messageApi.success('Document deleted successfully');
+                          if (props.onDocumentRemoved) {
+                            props.onDocumentRemoved(
+                              item.user_id,
+                              document.documentId
+                            );
+                          }
+                        } else {
+                          messageApi.error(
+                            result.message || 'Failed to delete document'
+                          );
+                        }
+                      } catch (err) {
+                        console.error(err);
+                        messageApi.error('Error deleting document');
+                      }
                     }}
                   >
                     Remove
@@ -154,6 +203,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
   return (
     <div style={{ width: '100%', paddingBottom: 8 }}>
       {/* Table Header */}
+      {contextHolder}
       <div
         style={{
           display: 'grid',
@@ -177,6 +227,20 @@ function CollapsableComponent(props: CollapsableComponentProps) {
           </Collapse.Panel>
         ))}
       </Collapse>
+      {/* can be additionally be done */}
+      {/* <Modal
+        open={!!previewUrl}
+        onCancel={() => setPreviewUrl(null)}
+        footer={null}
+        width={900}
+      >
+        <iframe
+          src={previewUrl!}
+          width="100%"
+          height="600px"
+          style={{ border: 'none' }}
+        />
+      </Modal> */}
     </div>
   );
 }
