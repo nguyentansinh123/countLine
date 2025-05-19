@@ -10,6 +10,7 @@ import {
   Menu,
   message,
   MenuProps,
+  Modal,
 } from 'antd';
 
 import { data, useNavigate } from 'react-router-dom';
@@ -45,6 +46,50 @@ function UserPage() {
   const { TabPane } = Tabs;
   const { Panel } = Collapse;
 
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
+
+  const [messageApi, contextHolder] = message.useMessage();
+
+  const showDeleteModal = (user: any) => {
+    setUserToDelete(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteOk = async () => {
+    try {
+      await axios.delete(
+        `http://localhost:5001/api/users/delete-user/${userToDelete.user_id}`,
+        {
+          withCredentials: true,
+        }
+      );
+
+      if (userToDelete.role === 'admin') {
+        setSystemUsers((prev) =>
+          prev.filter((u) => u.user_id !== userToDelete.user_id)
+        );
+      } else {
+        setClientUsers((prev) =>
+          prev.filter((u) => u.user_id !== userToDelete.user_id)
+        );
+      }
+
+      messageApi.success(`User "${userToDelete.name}" deleted successfully.`);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      messageApi.error('Failed to delete user');
+    } finally {
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false);
+    setUserToDelete(null);
+  };
+
   const fetchUsers = async () => {
     try {
       const res = await axios.get(
@@ -55,7 +100,7 @@ function UserPage() {
       );
       if (res.data.success) {
         const allUsers = res.data.data as User[];
-        const clients = allUsers.filter((u) => u.role === 'user');
+        const clients = allUsers.filter((u) => u.role !== 'admin');
         const admins = allUsers.filter((u) => u.role === 'admin');
         setClientUsers(clients);
         setSystemUsers(admins);
@@ -69,27 +114,67 @@ function UserPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // delete confirmation modal
+  // const deleteUserModal = (
+  //   <Modal
+  //     title="Confirm Deletion"
+  //     open={deleteUserModalVisible}
+  //     onCancel={() => {
+  //       setDeleteUserModalVisible(false);
+  //       setUserToDelete(null);
+  //     }}
+  //     onOk={async () => {
+  //       try {
+  //         await axios.delete(
+  //           `http://localhost:5001/api/users/delete-user/${userToDelete.user_id}`,
+  //           {
+  //             withCredentials: true,
+  //           }
+  //         );
+
+  //         if (userToDelete.role === 'admin') {
+  //           setSystemUsers((prev) =>
+  //             prev.filter((u) => u.user_id !== userToDelete.user_id)
+  //           );
+  //         } else {
+  //           setClientUsers((prev) =>
+  //             prev.filter((u) => u.user_id !== userToDelete.user_id)
+  //           );
+  //         }
+
+  //         messageApi.success(
+  //           `User "${userToDelete.name}" deleted successfully.`
+  //         );
+  //       } catch (err) {
+  //         console.error('Error deleting user:', err);
+  //         messageApi.error('Failed to delete user');
+  //       } finally {
+  //         setDeleteUserModalVisible(false);
+  //         setUserToDelete(null);
+  //       }
+  //     }}
+  //     okText="Delete"
+  //     okType="danger"
+  //     cancelText="Cancel"
+  //   >
+  //     <p>
+  //       Are you sure you want to delete <strong>{userToDelete?.name}</strong>?
+  //       This action cannot be undone.
+  //     </p>
+  //   </Modal>
+  // );
+
   // Menu click handler
-  const handleMenuClick = (
+  const handleMenuClick = async (
     key: string,
     user: any,
     type: 'client' | 'system'
   ) => {
     if (key === 'edit') {
-      navigate(`/edituser/${user.userId}`);
+      navigate(`/edituser/${user.user_id}`);
     } else if (key === 'delete') {
-      if (type === 'client') {
-        setClientUsers((prev) =>
-          prev.filter((u) => u.user_id !== user.user_id)
-        );
-        message.success(`Client user "${user.name}" deleted.`);
-      } else {
-        setSystemUsers((prev) =>
-          prev.filter((u) => u.user_id !== user.user_id)
-        );
-        message.success(`System user "${user.name}" deleted.`);
-        console.log('System user deleted:', user);
-      }
+      showDeleteModal(user);
     } else if (key === 'viewHistory') {
       navigate(`/viewhistory/${user.userId}`);
     }
@@ -194,6 +279,7 @@ function UserPage() {
 
   return (
     <>
+      {contextHolder}
       <GeneralLayout
         title="Users"
         buttonLabel="Add Users"
@@ -207,9 +293,9 @@ function UserPage() {
           {/* Client Users Tab */}
           <TabPane tab="Client Users" key="Client">
             <CollapsableComponent
-              column={['Name', 'Documents', 'Date']}
+              column={['Name', 'Role', 'Documents', 'Date']}
               data={clientUsers}
-              menu={(item) => renderUserMenu(item.userId, 'client')}
+              menu={(item) => renderUserMenu(item, 'client')}
             />
           </TabPane>
 
@@ -222,6 +308,21 @@ function UserPage() {
             />
           </TabPane>
         </Tabs>
+        <Modal
+          title="Confirm Deletion"
+          open={isDeleteModalOpen}
+          onOk={handleDeleteOk}
+          onCancel={handleDeleteCancel}
+          okText="Delete"
+          okType="danger"
+          cancelText="Cancel"
+        >
+          <p>
+            Are you sure you want to delete{' '}
+            <strong>{userToDelete?.name}</strong>?<br />
+            This action cannot be undone.
+          </p>
+        </Modal>
       </GeneralLayout>
     </>
   );

@@ -13,6 +13,7 @@ import { logUserActivity } from "./activity.controller";
 
 import { User } from "../types/User";
 import { ReturnValue } from "@aws-sdk/client-dynamodb";
+import { log } from "console";
 
 const getAllUser = async (req: Request, res: Response) => {
   try {
@@ -138,9 +139,7 @@ const getAllUserDocuments = async (req: Request, res: Response) => {
         },
       },
     };
-    const { Responses: documents } = await docClient.send(
-      new BatchGetCommand(documentParams)
-    );
+    const { Responses: documents } = await docClient.send(new BatchGetCommand(documentParams));
 
     res.status(200).json({
       success: true,
@@ -162,9 +161,7 @@ const getSingleUserDocument = async (req: Request, res: Response) => {
     const { user_id } = req.body;
 
     if (!documentID) {
-      res
-        .status(400)
-        .json({ success: false, message: "Document ID is required" });
+      res.status(400).json({ success: false, message: "Document ID is required" });
       return;
     }
 
@@ -175,9 +172,7 @@ const getSingleUserDocument = async (req: Request, res: Response) => {
       },
     };
 
-    const { Item: document } = await docClient.send(
-      new GetCommand(documentParams)
-    );
+    const { Item: document } = await docClient.send(new GetCommand(documentParams));
 
     if (!document) {
       res.status(404).json({ success: false, message: "Document not found" });
@@ -203,7 +198,44 @@ const getSingleUserDocument = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message });
   }
 };
+const updateUser = async (req: Request, res: Response) => {
+  try {
+    const { user_id } = req.params;
+    const { name, email, role } = req.body;
+    log("user controller");
+    const updateParams = {
+      TableName: "Users",
+      Key: { user_id },
+      UpdateExpression: `
+        SET #name = :name,
+            #email = :email,
+            #role = :role
+      `,
+      ExpressionAttributeNames: {
+        "#name": "name",
+        "#email": "email",
+        "#role": "role",
+      },
+      ExpressionAttributeValues: {
+        ":name": name,
+        ":email": email,
+        ":role": role,
+      },
+      ReturnValues: "ALL_NEW" as const,
+    };
 
+    const result = await docClient.send(new UpdateCommand(updateParams));
+
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: result.Attributes,
+    });
+  } catch (err) {
+    console.error("Error updating user:", err);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
 const updateUserProfile = async (req: Request, res: Response) => {
   const user_id = req.body.user_id;
   const { name, email, profilePicture } = req.body;
@@ -260,9 +292,7 @@ const updateProfilePic = async (req: Request, res: Response) => {
       ReturnValues: "ALL_NEW" as const,
     };
 
-    const { Attributes: updatedUser } = await docClient.send(
-      new UpdateCommand(params)
-    );
+    const { Attributes: updatedUser } = await docClient.send(new UpdateCommand(params));
 
     if (!updatedUser) {
       res.status(404).json({
@@ -405,10 +435,7 @@ const getUserByName = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const searchUsersByName = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+const searchUsersByName = async (req: Request, res: Response): Promise<void> => {
   const { term } = req.query;
 
   if (typeof term !== "string" || !term.trim()) {
@@ -464,8 +491,7 @@ const MAX_RECENT_SEARCHES = 3;
 const addRecentSearch = async (req: Request, res: Response): Promise<void> => {
   try {
     const { user_id } = req.body;
-    const { searchedUserId, searchedUserName, searchedUserProfilePicture } =
-      req.body;
+    const { searchedUserId, searchedUserName, searchedUserProfilePicture } = req.body;
 
     if (!user_id || !searchedUserId || !searchedUserName) {
       res.status(400).json({
@@ -512,9 +538,7 @@ const addRecentSearch = async (req: Request, res: Response): Promise<void> => {
       ReturnValues: "UPDATED_NEW" as const,
     };
 
-    const { Attributes: updatedUser } = await docClient.send(
-      new UpdateCommand(updateParams)
-    );
+    const { Attributes: updatedUser } = await docClient.send(new UpdateCommand(updateParams));
 
     res.status(200).json({
       success: true,
@@ -531,10 +555,7 @@ const addRecentSearch = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-const getRecentSearches = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+const getRecentSearches = async (req: Request, res: Response): Promise<void> => {
   try {
     const { user_id } = req.body;
 
@@ -638,9 +659,7 @@ const reassignUserRole = async (req: Request, res: Response): Promise<void> => {
       ReturnValues: "ALL_NEW" as const,
     };
 
-    const { Attributes: updatedUser } = await docClient.send(
-      new UpdateCommand(updateParams)
-    );
+    const { Attributes: updatedUser } = await docClient.send(new UpdateCommand(updateParams));
 
     if (!updatedUser) {
       res.status(500).json({
@@ -690,4 +709,5 @@ export {
   reassignUserRole,
   getLoggedInUser,
   updateUserProfile,
+  updateUser,
 };

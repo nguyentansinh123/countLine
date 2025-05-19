@@ -18,6 +18,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
     Status: ['status'],
     Name: ['name'],
     Documents: ['documents'],
+    Role: ['role'],
   };
 
   const formatDate = (isoDate: string): string => {
@@ -36,7 +37,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${props.column.length}, 1fr) 50px`, // Added a fixed width for the button column
+          gridTemplateColumns: '2fr 1fr 1fr 1.5fr 50px', // Added a fixed width for the button column
           alignItems: 'center',
         }}
       >
@@ -156,12 +157,13 @@ function CollapsableComponent(props: CollapsableComponentProps) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: `repeat(${props.column.length}, 1fr) 50px`, // Same fixed width for the button column
+          gridTemplateColumns: '40px 2fr 1fr 1fr 1.5fr 50px', // Same fixed width for the button column
           fontWeight: 'bold',
           borderBottom: '1px solid #ccc',
           paddingBottom: 8,
         }}
       >
+        <span />
         {props.column.map((col, index) => (
           <span key={index}>{col}</span>
         ))}

@@ -163,7 +163,7 @@ function App() {
             }
           />
           <Route
-            path="/edituser/:userId"
+            path="/edituser/:user_id"
             element={
               <ProtectedRoute>
                 <EditUsers />

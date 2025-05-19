@@ -13,6 +13,7 @@ import {
   reassignUserRole,
   getLoggedInUser,
   updateUserProfile,
+  updateUser,
 } from "../controller/users.controller";
 import { userAuth } from "../middleware/userAuth";
 import { requireAuth } from "../middleware/requireAuth";
@@ -22,32 +23,13 @@ export const router = express.Router();
 
 // Admin-only routes
 router.get("/getAllUser", userAuth, authorizeRoles("admin"), getAllUser);
-router.get(
-  "/AllUserDocuments",
-  userAuth,
-  authorizeRoles("admin"),
-  getAllUserDocuments
-);
-router.delete(
-  "/delete-user/:id",
-  userAuth,
-  authorizeRoles("admin"),
-  deleteUser
-);
-router.put(
-  "/reassign-role",
-  userAuth,
-  authorizeRoles("admin"),
-  reassignUserRole
-);
+router.get("/AllUserDocuments", userAuth, authorizeRoles("admin"), getAllUserDocuments);
+router.delete("/delete-user/:id", userAuth, authorizeRoles("admin"), deleteUser);
+router.put("/reassign-role", userAuth, authorizeRoles("admin"), reassignUserRole);
+router.put("/:user_id", userAuth, authorizeRoles("admin"), updateUser);
 
 // Routes for admin and employee
-router.get(
-  "/getUserById/:id",
-  userAuth,
-  authorizeRoles("admin", "employee"),
-  getSingleUser
-);
+router.get("/getUserById/:id", userAuth, authorizeRoles("admin", "employee"), getSingleUser);
 
 // Routes for all authenticated users
 router.get("/SingleUserDocument/:documentID", userAuth, getSingleUserDocument);

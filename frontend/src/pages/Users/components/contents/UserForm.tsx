@@ -64,38 +64,45 @@ const UserForm: React.FC<UserFormProps> = ({
         />
       </div>
       <div>
-        <h3>Type</h3>
-        <Input
+        <h3>Role</h3>
+        <Select
+          placeholder="Select a role"
           value={type}
-          onChange={(e) => onTypeChange(e.target.value)}
-          placeholder="Type"
+          onChange={onTypeChange}
+          style={{ width: '100%' }}
+          options={[
+            { label: 'employee', value: 'employee' },
+            { label: 'client', value: 'client' },
+            { label: 'intern', value: 'intern' },
+            { label: 'admin', value: 'admin' },
+            { label: 'user', value: 'user' },
+          ]}
         />
       </div>
 
       {/* Privileges - Only for System User */}
-     
-        <div>
+
+      <div>
         {category === 'System' && onPrivilegesChange && (
           <>
-          <h3>Privileges</h3>
-          <Select
-            mode="multiple"
-            value={privileges}
-            onChange={onPrivilegesChange}
-            placeholder="Select privileges"
-            style={{ width: '100%' }}
-          >
-            {privilegesData.map((item) => (
-              <Select.Option key={item.value} value={item.value}>
-                {item.label}
-              </Select.Option>
-            ))}
-          </Select>
-          </>            
-            )}
-        </div>
-    
-    
+            <h3>Privileges</h3>
+            <Select
+              mode="multiple"
+              value={privileges}
+              onChange={onPrivilegesChange}
+              placeholder="Select privileges"
+              style={{ width: '100%' }}
+            >
+              {privilegesData.map((item) => (
+                <Select.Option key={item.value} value={item.value}>
+                  {item.label}
+                </Select.Option>
+              ))}
+            </Select>
+          </>
+        )}
+      </div>
+
       <div style={{ display: 'flex', gap: 20, marginTop: 40 }}>
         <Button
           onClick={onCancel}

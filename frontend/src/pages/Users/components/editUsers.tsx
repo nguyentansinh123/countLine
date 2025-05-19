@@ -1,14 +1,20 @@
-import { Button, Card, Input, Select, Tabs, TabsProps } from 'antd';
+import { Button, Card, Tabs, TabsProps, message } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import systemUsersConst from '../const/systemUserConst';
-import clientUserConst from '../const/clientUserConst';
-import ClientComponents from './contents/UserForm';
+import axios from 'axios';
 import UserForm from './contents/UserForm';
 
 function EditUsers() {
-  const { userId } = useParams();
+  const { user_id } = useParams();
   const navigate = useNavigate();
+  const [messageApi, contextHolder] = message.useMessage();
+
+  const [category, setCategory] = useState<'Client' | 'System' | ''>('');
+  const [tabKey, setTabKey] = useState<string>('1');
+  const [name, setName] = useState('');
+  const [mail, setMail] = useState('');
+  const [type, setType] = useState('');
+  const [privileges, setPrivileges] = useState<string[]>([]);
 
   const privilegesData = [
     { value: 'Admin', label: 'Admin' },
@@ -17,118 +23,69 @@ function EditUsers() {
     { value: 'Projects', label: 'Projects' },
     { value: 'Teams', label: 'Teams' },
   ];
-
-  const [category, setCategory] = useState<'Client' | 'System' | ''>('');
-  const [tabKey, setTabKey] = useState<string>('1');
-  const [Name, setName] = useState('');
-  const [mail, setMail] = useState('');
-  const [type, setType] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [privileges, setPrivileges] = useState<string[]>([]);
+  console.log(user_id);
 
   useEffect(() => {
-    if (userId) {
-      const clientUser = clientUserConst.find((user) => user.userId === userId);
-      const systemUser = systemUsersConst.find(
-        (user) => user.userId === userId
-      );
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:5001/api/users/getUserById/${user_id}`,
+          {
+            withCredentials: true,
+          }
+        );
 
-      if (clientUser) {
-        setCategory('Client');
-        setTabKey('1');
-        setName(clientUser.name);
-        setMail(clientUser.mail);
-        setType(clientUser.type || '');
-        setDate(clientUser.date || new Date().toISOString().split('T')[0]);
-        setPrivileges([]); // Reset privileges for client user
-      } else if (systemUser) {
-        setCategory('System');
-        setTabKey('2');
-        setName(systemUser.name);
-        setMail(systemUser.mail);
-        setType(systemUser.type || '');
-        setDate(systemUser.date || new Date().toISOString().split('T')[0]);
-        const privList = systemUser.privileges?.map((p) => p.name) || [];
+        const user = res.data.data;
+        console.log(user);
+
+        setName(user.name || '');
+        setMail(user.email || '');
+        setType(user.role || '');
+
+        // Optional: handle category detection based on role or another indicator
+        if (user.role === 'admin') {
+          setCategory('System');
+          setTabKey('2');
+        } else {
+          setCategory('Client');
+          setTabKey('1');
+        }
+
+        const privList = user.privileges?.map((p: any) => p.name) || [];
         setPrivileges(privList);
+      } catch (err) {
+        console.error('Failed to fetch user:', err);
       }
-    }
-  }, [userId]);
+    };
 
-  const handleClientUserSave = () => {
-    if (!Name || !mail || !type) {
-      alert('Please fill in all fields');
+    if (user_id) fetchUser();
+  }, [user_id]);
+
+  const handleSave = async () => {
+    if (!name || !mail || !type) {
+      messageApi.error('Please fill in all required fields');
       return;
     }
 
-    if (userId && category === 'Client') {
-      const index = clientUserConst.findIndex((user) => user.userId === userId);
-      if (index !== -1) {
-        clientUserConst[index] = {
-          ...clientUserConst[index],
-          name: Name,
-          mail,
-          type,
-          date,
-        };
-      }
-    } else {
-      const newUserId = (
-        parseInt(clientUserConst[clientUserConst.length - 1]?.userId || '0') + 1
-      ).toString();
-      const newUser = {
-        mail,
-        userId: newUserId,
-        name: Name,
-        type,
-        category: 'Client',
-        date,
-        documents: [],
-      };
-      clientUserConst.push(newUser);
-    }
-    navigate('/users');
-  };
-
-  const handleSystemUserSave = () => {
-    if (!Name || !mail || !type || privileges.length === 0) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    if (userId && category === 'System') {
-      const index = systemUsersConst.findIndex(
-        (user) => user.userId === userId
+    try {
+      await axios.put(
+        `http://localhost:5001/api/users/${user_id}`,
+        {
+          name,
+          email: mail,
+          role: type,
+        },
+        { withCredentials: true }
       );
-      if (index !== -1) {
-        systemUsersConst[index] = {
-          ...systemUsersConst[index],
-          name: Name,
-          mail,
-          type,
-          date,
-          privileges: privileges.map((p) => ({ name: p })),
-        };
-        alert('System user updated successfully');
-      }
-    } else {
-      const newUserId = (
-        parseInt(systemUsersConst[systemUsersConst.length - 1]?.userId || '0') +
-        1
-      ).toString();
-      const newUser = {
-        mail,
-        userId: newUserId,
-        name: Name,
-        type,
-        category: 'System',
-        date,
-        privileges: privileges.map((p) => ({ name: p })),
-      };
-      systemUsersConst.push(newUser);
-      alert('System user added successfully');
-    }
 
-    navigate('/users');
+      messageApi.success('User updated successfully');
+      setTimeout(() => {
+        navigate('/users');
+      }, 1000);
+    } catch (err) {
+      console.error('Update failed:', err);
+      messageApi.error('Failed to update user');
+    }
   };
 
   const items: TabsProps['items'] = [
@@ -137,18 +94,17 @@ function EditUsers() {
       label: 'Client User',
       children: (
         <UserForm
-        name={Name}
-        mail={mail}
-        type={type}
-        category="Client"
-        userId={userId}
-        onNameChange={(value) => setName(value)}
-        onMailChange={(value) => setMail(value)}
-        onTypeChange={(value) => setType(value)}
-        onSave={handleClientUserSave}
-        onCancel={() => navigate('/users')}
-      />
-      
+          name={name}
+          mail={mail}
+          type={type}
+          category="Client"
+          userId={user_id}
+          onNameChange={setName}
+          onMailChange={setMail}
+          onTypeChange={setType}
+          onSave={handleSave}
+          onCancel={() => navigate('/users')}
+        />
       ),
     },
     {
@@ -156,27 +112,27 @@ function EditUsers() {
       label: 'System User',
       children: (
         <UserForm
-        name={Name}
-        mail={mail}
-        type={type}
-        privileges={privileges}
-        privilegesData={privilegesData}
-        category="System"
-        userId={userId}
-        onNameChange={(value) => setName(value)}
-        onMailChange={(value) => setMail(value)}
-        onTypeChange={(value) => setType(value)}
-        onPrivilegesChange={(value) => setPrivileges(value)}
-        onSave={handleSystemUserSave}
-        onCancel={() => navigate('/users')}
-      />
-      )
+          name={name}
+          mail={mail}
+          type={type}
+          privileges={privileges}
+          privilegesData={privilegesData}
+          category="System"
+          userId={user_id}
+          onNameChange={setName}
+          onMailChange={setMail}
+          onTypeChange={setType}
+          onPrivilegesChange={setPrivileges}
+          onSave={handleSave}
+          onCancel={() => navigate('/users')}
+        />
+      ),
     },
   ];
 
   return (
     <Card
-      title={userId ? 'Edit User' : 'Add User'}
+      title={user_id ? 'Edit User' : 'Add User'}
       style={{
         maxWidth: 1350,
         margin: '0 auto',
@@ -184,7 +140,8 @@ function EditUsers() {
         marginTop: 10,
       }}
     >
-      {userId ? (
+      {contextHolder}
+      {user_id ? (
         category === 'System' ? (
           <Tabs
             activeKey="2"
@@ -197,7 +154,6 @@ function EditUsers() {
           />
         )
       ) : (
-        // Show both tabs when adding new user
         <Tabs defaultActiveKey="1" items={items} />
       )}
     </Card>
