@@ -1,16 +1,67 @@
-import React, { useState } from 'react';
-import { Input, Avatar, Popover, Badge, Menu, Dropdown, Space } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Input, Avatar, Popover, Badge, Menu, Dropdown, Space, Spin } from 'antd';
 import { BellOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Notification from '../notification/notification';
+import axios from 'axios';
 
 const AppBar = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(3);
+  
+  const [userData, setUserData] = useState({
+    profilePic: '',
+    userName: 'Loading...',
+  });
+  const [loading, setLoading] = useState(true);
 
-  const savedProfilePicture = localStorage.getItem('profilePic') || '';
-  const savedUserName = localStorage.getItem('userName') || 'User';
+  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+        
+        const response = await axios.get(`${API_URL}/api/users/me`, {
+          withCredentials: true
+        });
+
+        console.log("User data response:", response.data);
+
+        if (response.data) {
+          // Using the same approach as your ProfilePage
+          console.log("User object:", response.data);
+          
+          setUserData({
+            profilePic: response.data.profilePicture || '',
+            userName: response.data.name || response.data.email || 'User'
+          });
+          
+          console.log("Set user data to:", {
+            profilePic: response.data.profilePicture || '',
+            userName: response.data.name || response.data.email || 'User'
+          });
+        } else {
+          console.error('Failed to fetch user data');
+          setUserData({
+            profilePic: '',
+            userName: 'User'
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+        setUserData({
+          profilePic: '',
+          userName: 'User'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [API_URL]);
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
@@ -43,7 +94,6 @@ const AppBar = () => {
 
   const handleMarkAllRead = () => {
     setNotificationCount(0);
-    // funtion to mark notifications as read
   };
 
   const { Search } = Input;
@@ -63,7 +113,7 @@ const AppBar = () => {
         key="logout"
         onClick={async () => {
           try {
-            const res = await fetch('http://localhost:5001/api/auth/logout', {
+            const res = await fetch(`${API_URL}/api/auth/logout`, {
               method: 'POST',
               credentials: 'include',
             });
@@ -71,6 +121,10 @@ const AppBar = () => {
             const data = await res.json();
 
             if (data.success) {
+              setUserData({
+                profilePic: '',
+                userName: 'User'
+              });
               navigate('/');
             } else {
               console.error('Logout failed:', data.message);
@@ -130,11 +184,19 @@ const AppBar = () => {
 
       <Dropdown overlay={userMenu} trigger={['click']}>
         <Space style={{ cursor: 'pointer' }}>
-          <Avatar
-            size="large"
-            icon={<UserOutlined />}
-            src={savedProfilePicture || ''}
-          />
+          {loading ? (
+            <Spin size="small" />
+          ) : (
+            <Avatar
+              size="large"
+              icon={<UserOutlined />}
+              src={userData.profilePic || ''}
+              onError={() => {
+                console.error("Failed to load profile picture from URL:", userData.profilePic);
+                return false; // This prevents the default fallback behavior
+              }}
+            />
+          )}
           <span
             style={{
               maxWidth: '120px',
@@ -143,7 +205,7 @@ const AppBar = () => {
               whiteSpace: 'nowrap',
             }}
           >
-            {savedUserName}
+            {loading ? 'Loading...' : userData.userName}
           </span>
         </Space>
       </Dropdown>

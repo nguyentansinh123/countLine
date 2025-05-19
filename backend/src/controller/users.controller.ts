@@ -695,6 +695,79 @@ const reassignUserRole = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+const updateUserName = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user_id = (req as any).user?.id;
+    const { name } = req.body;
+
+    if (!user_id) {
+      res.status(401).json({
+        success: false,
+        message: "Authentication required"
+      });
+      return;
+    }
+
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      res.status(400).json({
+        success: false,
+        message: "Name is required and must be at least 2 characters"
+      });
+      return;
+    }
+
+    const params = {
+      TableName: "Users",
+      Key: { user_id },
+      UpdateExpression: "SET #name = :name",
+      ExpressionAttributeNames: {
+        "#name": "name",
+      },
+      ExpressionAttributeValues: {
+        ":name": name.trim(),
+      },
+      ReturnValues: "ALL_NEW" as const,
+    };
+
+    const { Attributes: updatedUser } = await docClient.send(new UpdateCommand(params));
+
+    if (!updatedUser) {
+      res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+      return;
+    }
+
+    await logUserActivity({
+      userId: user_id,
+      action: "update_name",
+      targetId: user_id,
+      details: { 
+        previous: updatedUser.name !== name ? updatedUser.name : undefined,
+        new: name 
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Name updated successfully",
+      data: {
+        name: updatedUser.name
+      }
+    });
+  } catch (error) {
+    console.error("Error updating user name:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update name",
+      error: process.env.NODE_ENV === 'development' ? 
+        (error instanceof Error ? error.message : String(error)) : 
+        undefined
+    });
+  }
+};
+
 export {
   getAllUser,
   getSingleUser,
@@ -710,4 +783,5 @@ export {
   getLoggedInUser,
   updateUserProfile,
   updateUser,
+  updateUserName
 };
