@@ -1,17 +1,23 @@
-import { Input, Select, Tabs } from 'antd';
+import { Input, Select, Tabs, Spin, message } from 'antd';
 import React, { useEffect, useState } from 'react';
-import teamsData from '../../../Teams/const/TeamsConst';
-import clientUserConst from '../../../Users/const/clientUserConst';
+import axios from 'axios';
 import { Document, Team, TeamMember, UserData } from './types';
 
 interface Step1Props {
-  file: Document | undefined;
+  file: any;
   category: string | undefined;
   selectedUser: string;
   setSelectedUser: React.Dispatch<React.SetStateAction<string>>;
-  clientUserConst: { mail: string; name: string }[];
-  teamsData: Team[];
+  teamsData: any[];
   userEmail: string;
+}
+
+interface ApiUser {
+  user_id: string;
+  name: string;
+  email: string;
+  profilePicture?: string;
+  role?: string;
 }
 
 const Step1: React.FC<Step1Props> = ({
@@ -19,24 +25,57 @@ const Step1: React.FC<Step1Props> = ({
   category,
   selectedUser,
   setSelectedUser,
-  clientUserConst,
   teamsData,
   userEmail,
 }) => {
   const [teamMembersWithData, setTeamMembersWithData] = useState<(UserData | TeamMember)[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [messageContent, setMessageContent] = useState<string>('');
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('http://localhost:5001/api/users/getAllUser', {
+          withCredentials: true
+        });
+        
+        if (response.data.success) {
+          console.log("Users loaded from API:", response.data.data);
+          setUsers(response.data.data);
+        } else {
+          message.error('Failed to fetch users');
+        }
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        message.error('Error loading users');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    setMessageContent(
+      `Dear ${selectedUser || '[User]'},\n\nYou can sign the document: ${file?.title || '[Document]'}.\n\nBest regards,`
+    );
+  }, [selectedUser, file]);
 
   const getTeamMembersWithUserData = (teamId: number): (UserData | TeamMember)[] => {
     const team = teamsData.find((t) => t.teamId === teamId);
 
     if (!team) {
-      return []; // Team not found
+      return [];
     }
 
-    return team.members.map((member) => {
-      const user = clientUserConst.find((u) => u.name === member.name);
+    return team.members.map((member:any) => {
+      const user = users.find((u) => u.name === member.name);
       if (user) {
-        return { ...user, mail: user.mail || '' };
+        return { ...user, mail: user.email || '' };
       } else {
         return { ...member, mail: '' };
       }
@@ -48,7 +87,7 @@ const Step1: React.FC<Step1Props> = ({
       const members = getTeamMembersWithUserData(selectedTeamId);
       setTeamMembersWithData(members);
     }
-  }, [selectedTeamId]);
+  }, [selectedTeamId, users]);
 
   const handleTeamChange = (teamName: string) => {
     const selectedTeam = teamsData.find((team) => team.team === teamName);
@@ -56,8 +95,6 @@ const Step1: React.FC<Step1Props> = ({
       setSelectedTeamId(selectedTeam.teamId);
     }
   };
-
-  
 
   const items = [
     {
@@ -82,25 +119,39 @@ const Step1: React.FC<Step1Props> = ({
 
           <div>
             <h4>User</h4>
-            <Select style={{ width: 200 }} value={selectedUser} onChange={(value) => setSelectedUser(value)}>
-              {clientUserConst.map((user) => (
-                <Select.Option key={user.name} value={user.name}>
-                  {user.name}
-                </Select.Option>
-              ))}
-            </Select>
+            {loading ? (
+              <Spin size="small" />
+            ) : (
+              <Select 
+                style={{ width: 200 }} 
+                value={selectedUser || undefined}
+                placeholder="Select a user"
+                onChange={(value) => setSelectedUser(value)}
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.children?.toString() || '').toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {users.map((user) => (
+                  <Select.Option key={user.user_id} value={user.name}>
+                    {user.name} ({user.email})
+                  </Select.Option>
+                ))}
+              </Select>
+            )}
           </div>
 
           <h4>Mail Description</h4>
           <div style={{ width: '60%' }}>
             <textarea
               style={{ width: '100%', height: 300 }}
-              defaultValue={`Dear ${selectedUser},\n\nYou can sign the document: ${file?.title}.\n\nBest regards,`}
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
             />
           </div>
 
           <div>
-            <p>Email: {userEmail}</p>
+            <p>Email: {userEmail || 'Not selected'}</p>
           </div>
         </div>
       ),
@@ -141,7 +192,7 @@ const Step1: React.FC<Step1Props> = ({
             <ul>
               {teamMembersWithData.map((member, index) => (
                 <li key={index}>
-                  {member.mail ? `<span class="math-inline">\{member\.name\} \(</span>{member.mail})` : member.name}
+                  {member.mail ? `${member.name} (${member.mail})` : member.name}
                 </li>
               ))}
             </ul>
@@ -151,7 +202,7 @@ const Step1: React.FC<Step1Props> = ({
           <div style={{ width: '60%' }}>
             <textarea
               style={{ width: '100%', height: 300 }}
-              defaultValue={`Dear Team,\n\nYou can sign the document: ${file?.title}.\n\nBest regards,`}
+              defaultValue={`Dear Team,\n\nYou can sign the document: ${file?.title || '[Document]'}.\n\nBest regards,`}
             />
           </div>
         </div>

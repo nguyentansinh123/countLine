@@ -104,9 +104,9 @@ const SendFile: React.FC = () => {
   };
 
   const fetchPdfFileWrapper = async () => {
-    console.log('fetchPdfFileWrapper called'); // Added console.log
+    console.log('fetchPdfFileWrapper called'); 
     const fileUrl = file?.location;
-    console.log('File URL:', fileUrl); // Added console.log
+    console.log('File URL:', fileUrl);
 
     if (!fileUrl) {
       setError('File URL is undefined.');
@@ -115,7 +115,7 @@ const SendFile: React.FC = () => {
     }
 
     try {
-      console.log('Loading state set to true'); // Added console.log
+      console.log('Loading state set to true');
       setLoading(true);
       console.log('Starting fetchPdfFile...');
       await fetchPdfFile(fileUrl);
@@ -123,7 +123,7 @@ const SendFile: React.FC = () => {
     } catch (err) {
       console.error('Error fetching the PDF:', err);
       setError('Failed to load PDF file');
-      console.log('Loading state set to false due to error'); // Added console.log
+      console.log('Loading state set to false due to error'); 
       setLoading(false);
     }
   };
@@ -152,8 +152,8 @@ const SendFile: React.FC = () => {
       console.log('Text extraction successful.');
       setTxtContent(text);
       console.log('txtContent set in fetchPdfFile:', text);
-      console.log('fetchPdfFile completed'); // Added console.log
-      console.log('Loading state set to false'); // Added console.log
+      console.log('fetchPdfFile completed'); 
+      console.log('Loading state set to false'); 
       setLoading(false);
     } catch (error) {
       console.error('Error loading PDF:', error);
@@ -236,7 +236,6 @@ const SendFile: React.FC = () => {
             category={category}
             selectedUser={selectedUser}
             setSelectedUser={setSelectedUser}
-            clientUserConst={clientUserConst}
             teamsData={[]} // needs to be fixed after teams and users
             userEmail={userEmail}
           />
