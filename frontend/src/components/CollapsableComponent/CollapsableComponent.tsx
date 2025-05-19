@@ -220,7 +220,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
       </div>
 
       {/* Collapsible List */}
-      <Collapse bordered={false}>
+      <Collapse bordered={false}  style={{overflowY:'auto',height:'70vh'}}>
         {collapseItems.map((item) => (
           <Collapse.Panel key={item.key} header={item.label}>
             {item.children}

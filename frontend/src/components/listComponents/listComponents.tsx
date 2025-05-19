@@ -5,7 +5,7 @@ import type { MenuProps } from 'antd';
 interface ListComponentsProps {
   column: string[];
   data: any[];
-  menu: (item: any) => MenuProps;
+  menu?: (item: any) => MenuProps ;
 }
 
 const formatDate = (dateStr: string) => {
@@ -82,6 +82,10 @@ const ListComponents: React.FC<ListComponentsProps> = (props) => {
 
       <List
         dataSource={props.data}
+        style={{
+          height:'70vh',
+          overflowY:'auto'
+        }}
         renderItem={(item, index) => {
           return (
             <List.Item
@@ -89,6 +93,7 @@ const ListComponents: React.FC<ListComponentsProps> = (props) => {
               style={{
                 display: 'grid',
                 gridTemplateColumns,
+                
                 padding: '12px 16px',
                 borderBottom: '1px solid #f0f0f0',
               }}
@@ -151,7 +156,7 @@ const ListComponents: React.FC<ListComponentsProps> = (props) => {
               {/* Action button */}
               <div>
                 <Dropdown
-                  menu={props.menu(item)}
+                 menu={props.menu ? props.menu(item) : undefined}
                   placement="bottomRight"
                   trigger={['click']}
                 >

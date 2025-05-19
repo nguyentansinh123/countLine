@@ -25,7 +25,8 @@ function statistics() {
           variant="borderless"
           style={{
             width: '100%',
-            maxHeight: 400,
+            overflowY:'auto',
+            maxHeight: '40vh',
             backgroundColor: '#151349',
             margin: 'none',
             padding: 'none',
