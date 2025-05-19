@@ -34,6 +34,7 @@ const Step1: React.FC<Step1Props> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [messageContent, setMessageContent] = useState<string>('');
   const [teamMessageContent, setTeamMessageContent] = useState<string>('');
+  const [selectedUserEmail, setSelectedUserEmail] = useState<string>('');
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -163,7 +164,17 @@ const Step1: React.FC<Step1Props> = ({
                 style={{ width: 200 }} 
                 value={selectedUser || undefined}
                 placeholder="Select a user"
-                onChange={(value) => setSelectedUser(value)}
+                onChange={(value, option: any) => {
+                  setSelectedUser(value);
+                  
+                  // Find the selected user's email and update state
+                  const selectedUserData = users.find(user => user.name === value);
+                  if (selectedUserData) {
+                    setSelectedUserEmail(selectedUserData.email);
+                  } else {
+                    setSelectedUserEmail('');
+                  }
+                }}
                 showSearch
                 filterOption={(input, option) =>
                   (option?.children?.toString() || '').toLowerCase().includes(input.toLowerCase())
@@ -188,7 +199,7 @@ const Step1: React.FC<Step1Props> = ({
           </div>
 
           <div>
-            <p>Email: {userEmail || 'Not selected'}</p>
+            <p>Email: {selectedUserEmail || userEmail || 'Not selected'}</p>
           </div>
         </div>
       ),
