@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { validateUser } from "../lib/validate.user";
-import { PutCommand, QueryCommand, UpdateCommand, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
+import { PutCommand, QueryCommand, UpdateCommand, UpdateCommandInput, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient } from "../lib/dynamoClient";
 import { UserSchema } from "../model/user.model";
 import bcrypt from "bcryptjs";
@@ -10,6 +10,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { transporter } from "../lib/nodemailer";
 import { log } from "console";
+import { logUserActivity } from "./activity.controller";
 dotenv.config();
 
 const Register = async (req: Request, res: Response) => {
@@ -423,6 +424,140 @@ const resetPassword = async (req: Request, res: Response) => {
   }
 };
 
+const adminCreateUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, email, role } = req.body;
+    const userId = req.body.user_id;
+    
+    const userParams = {
+      TableName: "Users",
+      Key: { user_id: userId }
+    };
+    
+    const { Item: adminUser } = await docClient.send(new GetCommand(userParams));
+    
+    if (!adminUser || !adminUser.role || adminUser.role !== "admin") {
+      res.status(403).json({ 
+        success: false, 
+        message: "Forbidden - Admin access required" 
+      });
+      return; 
+    }
+    
+    if (!name || !email) {
+      res.status(400).json({ 
+        success: false, 
+        message: "Name and email are required" 
+      });
+      return; 
+    }
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ 
+        success: false, 
+        message: "Invalid email format" 
+      });
+      return;
+    }
+    
+    const emailCheckParams = {
+      TableName: "Users",
+      IndexName: "EmailIndex",
+      KeyConditionExpression: "email = :email",
+      ExpressionAttributeValues: {
+        ":email": email,
+      },
+    };
+    
+    const emailCheckResult = await docClient.send(new QueryCommand(emailCheckParams));
+    
+    if (emailCheckResult?.Items && emailCheckResult.Items.length > 0) {
+      res.status(400).json({ 
+        success: false, 
+        message: "Email already exists" 
+      });
+      return; 
+    }
+    
+    const password = "12345";
+    
+    const validatedUser = validateUser({ name, email, password });
+    
+    validatedUser.role = role;
+    validatedUser.isAccountVerified = true;
+    
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    
+    const insertParams = {
+      TableName: "Users",
+      Item: {
+        ...validatedUser,
+        password: hashedPassword,
+      },
+    };
+    
+    await docClient.send(new PutCommand(insertParams));
+    
+    const { html } = mjml2html(`
+      <mjml>
+        <mj-body>
+          <mj-section>
+            <mj-column>
+              <mj-text font-size="20px" font-weight="bold">Welcome to Our App</mj-text>
+              <mj-text>Hello ${name},</mj-text>
+              <mj-text>An administrator has created an account for you.</mj-text>
+              <mj-divider border-color="#F45E43"></mj-divider>
+              <mj-text><strong>Your login credentials:</strong></mj-text>
+              <mj-text><strong>Email:</strong> ${email}</mj-text>
+              <mj-text><strong>Password:</strong> ${password}</mj-text>
+              <mj-text>Please change your password after logging in for the first time.</mj-text>
+              <mj-spacer height="20px" />
+              <mj-text>Best regards,</mj-text>
+              <mj-text>The Admin Team</mj-text>
+            </mj-column>
+          </mj-section>
+        </mj-body>
+      </mjml>
+    `);
+    
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: "Your New Account",
+      html: html,
+    };
+    
+    await transporter.sendMail(mailOptions);
+    
+    await logUserActivity({
+      userId: userId,
+      action: "admin_create_user",
+      targetId: validatedUser.user_id,
+      details: { 
+        email,
+        role: role
+      }
+    });
+    
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      data: {
+        user_id: validatedUser.user_id,
+        name: validatedUser.name,
+        email: validatedUser.email,
+        role: validatedUser.role
+      },
+    });
+  } catch (error) {
+    let message = "Unknown Error";
+    if (error instanceof Error) message = error.message;
+    console.error("Error in adminCreateUser:", message);
+    res.status(500).json({ success: false, message });
+  }
+};
+
 export {
   Login,
   Register,
@@ -433,4 +568,5 @@ export {
   sendResetOtp,
   resetPassword,
   getUserById,
+  adminCreateUser,
 };

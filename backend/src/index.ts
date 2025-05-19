@@ -12,6 +12,7 @@ import { router as ProjectRoute } from "./routes/project.route";
 import { router as ActivityRoute } from "./routes/actitvity.route";
 import http from "http";
 import { initSocket } from "./lib/socket";
+import { router as statisticsRouter } from "./routes/statistics.route";
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use("/api/document", DocumentRoute);
 app.use("/api/team", TeamRoute);
 app.use("/api/project", ProjectRoute);
 app.use("/api/history", ActivityRoute);
+app.use("/api/statistics", statisticsRouter);
 
 const server = http.createServer(app);
 initSocket(server);
