@@ -33,6 +33,7 @@ const Step1: React.FC<Step1Props> = ({
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [messageContent, setMessageContent] = useState<string>('');
+  const [teamMessageContent, setTeamMessageContent] = useState<string>('');
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -60,10 +61,46 @@ const Step1: React.FC<Step1Props> = ({
   }, []);
 
   useEffect(() => {
+    console.log("Current file data:", file);
+  }, [file]);
+
+  useEffect(() => {
+    // Log the file data after fetching
+    if (file) {
+      console.log('File data loaded:', file);
+      console.log('File title:', file.title);
+      // Try different property names if title is undefined
+      console.log('Alternative title fields:', {
+        name: file.name,
+        fileName: file.fileName,
+        docName: file.docName
+      });
+    }
+  }, [file]);
+
+  useEffect(() => {
+    // More defensive approach to get document title
+    const documentTitle = file?.title || file?.name || file?.fileName || 
+                         (file && typeof file === 'object' ? Object.values(file)[0] : null) || 
+                         '[Document]';
+    
+    console.log("Document title being used:", documentTitle);
+                         
     setMessageContent(
-      `Dear ${selectedUser || '[User]'},\n\nYou can sign the document: ${file?.title || '[Document]'}.\n\nBest regards,`
+      `Dear ${selectedUser || '[User]'},\n\nYou can sign the document: ${documentTitle}.\n\nBest regards,`
     );
   }, [selectedUser, file]);
+
+  useEffect(() => {
+    // Same defensive approach for team messages
+    const documentTitle = file?.title || file?.name || file?.fileName || 
+                         (file && typeof file === 'object' ? Object.values(file)[0] : null) || 
+                         '[Document]';
+                         
+    setTeamMessageContent(
+      `Dear Team,\n\nYou can sign the document: ${documentTitle}.\n\nBest regards,`
+    );
+  }, [file]);
 
   const getTeamMembersWithUserData = (teamId: number): (UserData | TeamMember)[] => {
     const team = teamsData.find((t) => t.teamId === teamId);
@@ -202,7 +239,8 @@ const Step1: React.FC<Step1Props> = ({
           <div style={{ width: '60%' }}>
             <textarea
               style={{ width: '100%', height: 300 }}
-              defaultValue={`Dear Team,\n\nYou can sign the document: ${file?.title || '[Document]'}.\n\nBest regards,`}
+              value={teamMessageContent}
+              onChange={(e) => setTeamMessageContent(e.target.value)}
             />
           </div>
         </div>
