@@ -12,6 +12,23 @@ import { DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { logUserActivity } from "./activity.controller";
 import { createNotification } from "./notification.controller";
 import { getIO } from "../lib/socket";
+import { Document, DocumentRevision } from '../types/document.types';
+
+export const generatePresignedUrl = async (key: string): Promise<string> => {
+  try {
+    const getObjectParams = {
+      Bucket: process.env.AWS_BUCKET_NAME!,
+      Key: key,
+    };
+    const getCommand = new GetObjectCommand(getObjectParams);
+    return await getSignedUrl(s3Client, getCommand, {
+      expiresIn: 3600,
+    });
+  } catch (error) {
+    console.error("Error generating presigned URL:", error);
+    throw new Error("Failed to generate presigned URL");
+  }
+};
 
 export const uploadFileToS3 = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -112,6 +129,7 @@ export const uploadFileToS3 = async (req: Request, res: Response): Promise<void>
       TableName: "Documents",
       Item: document,
     });
+
     await docClient.send(putCommand);
 
     await docClient.send(
@@ -1077,5 +1095,565 @@ export const signDocumentWithCanvas = async (req: Request, res: Response) => {
     if (error instanceof Error) message = error.message;
     console.error("Error in signDocumentWithCanvas:", message);
     res.status(500).json({ success: false, message });
+  }
+};
+
+export const getDocumentWithRevisions = async (req: Request, res: Response) => {
+  try {
+    const { documentId } = req.params;
+    const userId = (req as any).user?.id;
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId }
+      })
+    ) as { Item?: Document };
+
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
+    }
+
+    if (document.uploadedBy !== userId &&
+        !(document.sharedWith || []).includes(userId) &&
+        (req as any).user?.role !== "admin") {
+      res.status(403).json({ success: false, message: "Access denied" });
+      return;
+    }
+
+    const baseUrl = document.fileUrl.split(".amazonaws.com/")[1];
+    const presignedUrl = await generatePresignedUrl(baseUrl);
+    
+    const revisions = document.revisions || [];
+    const revisionsWithUrls = await Promise.all(revisions.map(async (rev: DocumentRevision) => {
+      const revUrl = rev.fileUrl.split(".amazonaws.com/")[1];
+      const presignedRevUrl = await generatePresignedUrl(revUrl);
+      return { ...rev, presignedUrl: presignedRevUrl };
+    }));
+
+    await logUserActivity({
+      userId,
+      action: "view_document_history",
+      targetId: documentId
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...document,
+        presignedUrl,
+        revisions: revisionsWithUrls
+      }
+    });
+  } catch (error) {
+    console.error("Error in getDocumentWithRevisions:", error);
+    res.status(500).json({ success: false, message: "Failed to get document history" });
+  }
+};
+
+
+export const saveDocumentEdit = async (req: Request, res: Response) => {
+  try {
+    const { documentId } = req.params;
+    const userId = (req as any).user?.id;
+    const { annotations, comments } = req.body;
+
+    if (!req.file) {
+      res.status(400).json({ success: false, message: "No file provided" });
+      return;
+    }
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId }
+      })
+    );
+
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
+    }
+
+    if (document.uploadedBy !== userId &&
+        !(document.sharedWith || []).includes(userId) &&
+        (req as any).user?.role !== "admin") {
+      res.status(403).json({ success: false, message: "Edit access denied" });
+      return;
+    }
+
+    const file = req.file;
+    const fileNameWithoutSpaces = file.originalname.replace(/\s/g, "");
+    const key = `revisions/${documentId}/${Date.now()}_${fileNameWithoutSpaces}`;
+    
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME!,
+      Key: key,
+      Body: file.buffer,
+      ContentType: file.mimetype
+    };
+
+    await s3Client.send(new PutObjectCommand(params));
+    const fileUrl = `https://${params.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+    const revisionId = uuidv4();
+    const revisionData = {
+      revisionId,
+      fileUrl,
+      editedBy: userId,
+      status: 'draft',
+      timestamp: new Date().toISOString(),
+      annotations: annotations || [],
+      comments: comments || []
+    };
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression: "SET revisions = list_append(if_not_exists(revisions, :empty_list), :revision), lastModifiedBy = :userId, lastModifiedAt = :timestamp",
+        ExpressionAttributeValues: {
+          ":empty_list": [],
+          ":revision": [revisionData],
+          ":userId": userId,
+          ":timestamp": new Date().toISOString()
+        }
+      })
+    );
+
+    await logUserActivity({
+      userId,
+      action: "save_document_edit",
+      targetId: documentId,
+      details: {
+        revisionId,
+        filename: file.originalname
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Document edit saved",
+      data: {
+        revisionId,
+        fileUrl
+      }
+    });
+  } catch (error) {
+    console.error("Error saving document edit:", error);
+    res.status(500).json({ success: false, message: "Failed to save document edit" });
+  }
+};
+
+export const submitDocumentForReview = async (req: Request, res: Response) => {
+  try {
+    const { documentId } = req.params;
+    const { revisionId, message } = req.body;
+    const userId = (req as any).user?.id;
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId }
+      })
+    );
+
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
+    }
+
+    const revisions = document.revisions || [];
+    const revisionIndex = revisions.findIndex((rev: any) => rev.revisionId === revisionId);
+
+    if (revisionIndex === -1) {
+      res.status(404).json({ success: false, message: "Revision not found" });
+      return;
+    }
+
+    if (revisions[revisionIndex].editedBy !== userId && (req as any).user?.role !== "admin") {
+      res.status(403).json({ success: false, message: "Not authorized to submit this revision" });
+      return;
+    }
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression: `SET revisions[${revisionIndex}].status = :status, revisions[${revisionIndex}].submittedAt = :timestamp, revisions[${revisionIndex}].message = :message`,
+        ExpressionAttributeValues: {
+          ":status": "submitted",
+          ":timestamp": new Date().toISOString(),
+          ":message": message || ""
+        }
+      })
+    );
+
+    const notification = await createNotification(
+      document.uploadedBy,
+      "document_submitted_for_review",
+      `A document has been submitted for your review by ${userId}`,
+      {
+        documentId,
+        revisionId,
+        submittedBy: userId
+      }
+    );
+
+    getIO().to(document.uploadedBy).emit("notification", notification);
+
+    await logUserActivity({
+      userId,
+      action: "submit_document_for_review",
+      targetId: documentId,
+      details: {
+        revisionId
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Document submitted for review"
+    });
+  } catch (error) {
+    console.error("Error submitting document for review:", error);
+    res.status(500).json({ success: false, message: "Failed to submit document for review" });
+  }
+};
+
+export const reviewDocument = async (req: Request, res: Response) => {
+  try {
+    const { documentId } = req.params;
+    const { revisionId, action, comments } = req.body;
+    const userId = (req as any).user?.id;
+
+    if (!['approve', 'reject'].includes(action)) {
+      res.status(400).json({ success: false, message: "Invalid action. Use 'approve' or 'reject'" });
+      return;
+    }
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId }
+      })
+    );
+
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
+    }
+
+    if (document.uploadedBy !== userId && (req as any).user?.role !== "admin") {
+      res.status(403).json({ success: false, message: "Not authorized to review this document" });
+      return;
+    }
+
+    const revisions = document.revisions || [];
+    const revisionIndex = revisions.findIndex((rev: any) => rev.revisionId === revisionId);
+
+    if (revisionIndex === -1) {
+      res.status(404).json({ success: false, message: "Revision not found" });
+      return;
+    }
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression: `SET revisions[${revisionIndex}].status = :status, revisions[${revisionIndex}].reviewedAt = :timestamp, revisions[${revisionIndex}].reviewedBy = :reviewer, revisions[${revisionIndex}].reviewComments = :comments`,
+        ExpressionAttributeValues: {
+          ":status": action,
+          ":timestamp": new Date().toISOString(),
+          ":reviewer": userId,
+          ":comments": comments || ""
+        }
+      })
+    );
+
+    if (action === 'approve') {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: "Documents",
+          Key: { documentId },
+          UpdateExpression: "SET fileUrl = :fileUrl, approvedRevisionId = :revisionId, approvedAt = :timestamp, status = :status",
+          ExpressionAttributeValues: {
+            ":fileUrl": revisions[revisionIndex].fileUrl,
+            ":revisionId": revisionId,
+            ":timestamp": new Date().toISOString(),
+            ":status": "approved"
+          }
+        })
+      );
+    }
+
+    const notification = await createNotification(
+      revisions[revisionIndex].editedBy,
+      action === 'approve' ? "document_approved" : "document_rejected",
+      `Your document edit was ${action === 'approve' ? 'approved' : 'rejected'} by ${userId}`,
+      {
+        documentId,
+        revisionId,
+        reviewedBy: userId,
+        comments: comments || ""
+      }
+    );
+
+    getIO().to(revisions[revisionIndex].editedBy).emit("notification", notification);
+
+    await logUserActivity({
+      userId,
+      action: action === 'approve' ? "approve_document" : "reject_document",
+      targetId: documentId,
+      details: {
+        revisionId
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Document revision ${action}d`
+    });
+  } catch (error) {
+    console.error("Error reviewing document:", error);
+    res.status(500).json({ success: false, message: "Failed to review document" });
+  }
+};
+
+export const getPendingReviews = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+
+    const filterExpression = (req as any).user?.role === "admin" 
+      ? "contains(#revisions, :status)" 
+      : "#uploadedBy = :userId AND contains(#revisions, :status)";
+    
+    const expressionAttributeNames = {
+      "#revisions": "revisions",
+      ...(((req as any).user?.role !== "admin") && { "#uploadedBy": "uploadedBy" })
+    };
+
+    const expressionAttributeValues = {
+      ":status": { S: "submitted" },
+      ...(((req as any).user?.role !== "admin") && { ":userId": { S: userId } })
+    };
+
+    const documents = await docClient.send(
+      new ScanCommand({
+        TableName: "Documents",
+        FilterExpression: filterExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues
+      })
+    );
+
+    const pendingReviews = (documents.Items || []).flatMap((doc: any) => {
+      const pendingRevisions = (doc.revisions || [])
+        .filter((rev: any) => rev.status === "submitted")
+        .map((rev: any) => ({
+          ...rev,
+          documentId: doc.documentId,
+          documentName: doc.filename,
+          documentType: doc.documentType
+        }));
+      return pendingRevisions;
+    });
+
+    await logUserActivity({
+      userId,
+      action: "view_pending_reviews",
+      details: {
+        count: pendingReviews.length
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      count: pendingReviews.length,
+      data: pendingReviews
+    });
+  } catch (error) {
+    console.error("Error fetching pending reviews:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch pending reviews" });
+  }
+};
+
+export const approveRevision = async (req: Request, res: Response) => {
+  try {
+    const { documentId, revisionId } = req.params;
+    const userId = (req as any).user?.id;
+    const { comments } = req.body;
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId }
+      })
+    );
+
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
+    }
+
+    if (document.uploadedBy !== userId && (req as any).user?.role !== "admin") {
+      res.status(403).json({ success: false, message: "Not authorized to approve revisions" });
+      return;
+    }
+
+    const revisions = document.revisions || [];
+    const revisionIndex = revisions.findIndex((rev: any) => rev.revisionId === revisionId);
+
+    if (revisionIndex === -1) {
+      res.status(404).json({ success: false, message: "Revision not found" });
+      return;
+    }
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression: `SET revisions[${revisionIndex}].status = :status, 
+                             revisions[${revisionIndex}].reviewedAt = :timestamp, 
+                             revisions[${revisionIndex}].reviewedBy = :reviewer, 
+                             revisions[${revisionIndex}].reviewComments = :comments,
+                             fileUrl = :fileUrl, 
+                             approvedRevisionId = :revisionId, 
+                             approvedAt = :timestamp, 
+                             status = :docStatus`,
+        ExpressionAttributeValues: {
+          ":status": "approved",
+          ":timestamp": new Date().toISOString(),
+          ":reviewer": userId,
+          ":comments": comments || "",
+          ":fileUrl": revisions[revisionIndex].fileUrl,
+          ":revisionId": revisionId,
+          ":docStatus": "approved"
+        }
+      })
+    );
+
+    const notification = await createNotification(
+      revisions[revisionIndex].editedBy,
+      "document_approved",
+      `Your document revision was approved by ${userId}`,
+      {
+        documentId,
+        revisionId,
+        reviewedBy: userId,
+        comments: comments || ""
+      }
+    );
+
+    getIO().to(revisions[revisionIndex].editedBy).emit("notification", notification);
+
+    await logUserActivity({
+      userId,
+      action: "approve_revision",
+      targetId: documentId,
+      details: {
+        revisionId,
+        comments: comments || ""
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Document revision approved and set as current version"
+    });
+  } catch (error) {
+    console.error("Error approving revision:", error);
+    res.status(500).json({ success: false, message: "Failed to approve revision" });
+  }
+};
+
+export const rejectRevision = async (req: Request, res: Response) => {
+  try {
+    const { documentId, revisionId } = req.params;
+    const userId = (req as any).user?.id;
+    const { comments } = req.body;
+
+    if (!comments) {
+      res.status(400).json({ 
+        success: false, 
+        message: "Comments are required when rejecting a revision" 
+      });
+      return;
+    }
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId }
+      })
+    );
+
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
+    }
+
+    if (document.uploadedBy !== userId && (req as any).user?.role !== "admin") {
+      res.status(403).json({ success: false, message: "Not authorized to reject revisions" });
+      return;
+    }
+
+    const revisions = document.revisions || [];
+    const revisionIndex = revisions.findIndex((rev: any) => rev.revisionId === revisionId);
+
+    if (revisionIndex === -1) {
+      res.status(404).json({ success: false, message: "Revision not found" });
+      return;
+    }
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression: `SET revisions[${revisionIndex}].status = :status, 
+                             revisions[${revisionIndex}].reviewedAt = :timestamp, 
+                             revisions[${revisionIndex}].reviewedBy = :reviewer, 
+                             revisions[${revisionIndex}].reviewComments = :comments`,
+        ExpressionAttributeValues: {
+          ":status": "rejected",
+          ":timestamp": new Date().toISOString(),
+          ":reviewer": userId,
+          ":comments": comments
+        }
+      })
+    );
+
+    const notification = await createNotification(
+      revisions[revisionIndex].editedBy,
+      "document_rejected",
+      `Your document revision was rejected by ${userId}`,
+      {
+        documentId,
+        revisionId,
+        reviewedBy: userId,
+        comments: comments
+      }
+    );
+
+    getIO().to(revisions[revisionIndex].editedBy).emit("notification", notification);
+
+    await logUserActivity({
+      userId,
+      action: "reject_revision",
+      targetId: documentId,
+      details: {
+        revisionId,
+        comments
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Document revision rejected"
+    });
+  } catch (error) {
+    console.error("Error rejecting revision:", error);
+    res.status(500).json({ success: false, message: "Failed to reject revision" });
   }
 };

@@ -15,6 +15,13 @@ import {
   getDocumentsRequiringSignature,
   signDocumentWithCanvas,
   getDocumentById,
+  getDocumentWithRevisions,
+  saveDocumentEdit,
+  submitDocumentForReview,
+  reviewDocument,
+  getPendingReviews,
+  approveRevision,
+  rejectRevision,
 } from "../controller/document.controller";
 import { upload } from "../lib/multerconfig";
 import { userAuth } from "../middleware/userAuth";
@@ -55,9 +62,20 @@ router.post("/sign/:documentId", userAuth, signDocument);
 
 router.get("/pending-signatures", userAuth, getDocumentsRequiringSignature);
 
-router.post(
-  "/sign-with-canvas/:documentId",
-  userAuth,
-  upload.single("signature"),
-  signDocumentWithCanvas
-);
+router.post("/sign-with-canvas/:documentId", userAuth,upload.single("signature"),signDocumentWithCanvas);
+
+// New Routeeeeeeeeeeeeeeeeeeee
+
+router.get("/document-with-revisions/:documentId", userAuth, getDocumentWithRevisions);
+
+router.post("/save-edit/:documentId", userAuth, upload.single("file"), saveDocumentEdit);
+
+router.post("/submit-for-review/:documentId", userAuth, submitDocumentForReview);
+
+router.post("/review/:documentId", userAuth, reviewDocument);
+
+router.post("/approve/:documentId/:revisionId", userAuth, approveRevision);
+
+router.post("/reject/:documentId/:revisionId", userAuth, rejectRevision);
+
+router.get("/pending-reviews", userAuth, authorizeRoles("admin"), getPendingReviews);
