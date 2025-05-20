@@ -1,7 +1,6 @@
 import { Button, Card, Input, Select, message } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import teamsData from '../const/TeamsConst';
 
 const { TextArea } = Input;
 
@@ -13,6 +12,10 @@ const statusOptions = [
 
 function EditTeam() {
   const { teamId } = useParams();
+  const [users, setUsers] = useState<
+    { user_id: string; name: string; email: string; role?: string }[]
+  >([]);
+
   const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const [team, setTeam] = useState<{
@@ -21,14 +24,41 @@ function EditTeam() {
     date: string;
     status: string;
     description: string;
-    members: { name: string }[];
+    members: { name: string; user_id: string }[];
   } | null>(null);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await fetch(
+          'http://localhost:5001/api/users/getAllUser',
+          {
+            credentials: 'include',
+          }
+        );
+        const data = await response.json();
+        if (data.success) {
+          const nonAdmins = data.data.filter(
+            (user: any) => user.role !== 'admin'
+          );
+          setUsers(nonAdmins);
+        } else {
+          messageApi.error('Failed to fetch users');
+        }
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        messageApi.error('Error loading users');
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   useEffect(() => {
     const fetchTeam = async () => {
       try {
         const response = await fetch(
           `http://localhost:5001/api/team/${teamId}`,
+
           {
             credentials: 'include',
           }
@@ -60,6 +90,15 @@ function EditTeam() {
     }
     return dateStr;
   };
+  const getUserEmail = (userId: string) =>
+    users.find((u) => u.user_id === userId)?.email || '';
+
+  const extractNameFromLabel = (label: any) => {
+    if (typeof label === 'string') {
+      return label.split('(')[0].trim();
+    }
+    return ''; // fallback if label isn't a string
+  };
 
   const handleSave = async () => {
     try {
@@ -79,16 +118,28 @@ function EditTeam() {
       });
       console.log('Updated Team:', updatedTeam);
       const result = await response.json();
-      if (result.success) {
-        messageApi.success('Team updated successfully');
-        console.log('Team updated successfully');
-        setTimeout(() => {
-          navigate('/teams');
-        }, 1000);
-      } else {
+
+      if (!result.success) {
         messageApi.error('Failed to update team');
         console.error('Failed to update team:', result.message);
       }
+      if (team) {
+        for (const member of team.members) {
+          await fetch(`http://localhost:5001/api/team/${teamId}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              team_userId: member.user_id,
+            }),
+          });
+        }
+      }
+
+      messageApi.success('Team updated successfully');
+      setTimeout(() => {
+        navigate('/teams');
+      }, 1000);
     } catch (error) {
       console.error('Failed to save team:', error);
     }
@@ -165,25 +216,28 @@ function EditTeam() {
               <h3>Members</h3>
               <Select
                 mode="multiple"
+                labelInValue
                 placeholder="Please select"
-                value={team.members.map((member) => member.name)}
-                onChange={(value: string[]) =>
+                value={team.members.map((member) => ({
+                  value: member.user_id,
+                  label: `${member.name} (${getUserEmail(member.user_id)})`,
+                }))}
+                onChange={(selectedOptions) =>
                   setTeam({
                     ...team,
-                    members: value.map((name) => ({
-                      name,
+                    members: selectedOptions.map((option: any) => ({
+                      user_id: option.value,
+                      name: extractNameFromLabel(option.label),
                     })),
                   })
                 }
                 style={{ width: '100%' }}
               >
-                {teamsData
-                  .flatMap((t) => t.members)
-                  .map((member, index) => (
-                    <Select.Option key={index} value={member.name}>
-                      {member.name}
-                    </Select.Option>
-                  ))}
+                {users.map((user) => (
+                  <Select.Option key={user.user_id} value={user.user_id}>
+                    {user.name} ({user.email})
+                  </Select.Option>
+                ))}
               </Select>
             </div>
           </div>

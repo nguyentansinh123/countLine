@@ -29,6 +29,7 @@ import {
   VerifyOtpAndReset,
   VerifyOtpPage,
   ForgotPassword,
+  UserDetails,
 } from './mainImp';
 import 'antd/dist/reset.css';
 import LinkGuard from './utils/LinkGuard';
@@ -52,6 +53,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users/:user_id"
+            element={
+              <ProtectedRoute>
+                <UserDetails />
               </ProtectedRoute>
             }
           />
@@ -207,7 +216,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-            <Route
+          <Route
             path="/viewHistory/:user_id"
             element={
               <ProtectedRoute>
@@ -215,7 +224,7 @@ function App() {
               </ProtectedRoute>
             }
           />
-           <Route
+          <Route
             path="/search/:value"
             element={
               <ProtectedRoute>
@@ -224,16 +233,15 @@ function App() {
             }
           />
         </Route>
-       <Route path="tempEditor/:user_id/:file_id" element={
-          <ProtectedRoute>
-            <TempEditor/>
+        <Route
+          path="tempEditor/:user_id/:file_id"
+          element={
+            <ProtectedRoute>
+              <TempEditor />
             </ProtectedRoute>
-            }/>
-    
-       
-       
-
-        </Routes>
+          }
+        />
+      </Routes>
     </Router>
   );
 }

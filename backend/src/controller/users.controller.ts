@@ -99,6 +99,48 @@ const getSingleUser = async (req: Request, res: Response) => {
   }
 };
 
+const getUserById = async (req: Request, res: Response): Promise<void> => {
+  const { userId } = req.params;
+  try {
+    const data = await docClient.send(
+      new GetCommand({
+        TableName: "Users",
+        Key: { user_id: userId },
+      })
+    );
+
+    if (!data.Item) {
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
+    }
+
+    const { password, resetOTP, resetOTPExpireAt, ...user } = data.Item;
+    res.status(200).json({ success: true, data: user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Failed to fetch user" });
+  }
+};
+
+const getUserDocumentsById = async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  try {
+    const params = {
+      TableName: "Documents",
+      FilterExpression: "uploadedBy = :uid AND isDeleted = :deleted",
+      ExpressionAttributeValues: {
+        ":uid": userId,
+        ":deleted": false,
+      },
+    };
+
+    const data = await docClient.send(new ScanCommand(params));
+    res.status(200).json({ success: true, data: data.Items });
+  } catch (error) {
+    console.error("getUserDocumentsById error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch documents" });
+  }
+};
+
 const getAllUserDocuments = async (req: Request, res: Response) => {
   try {
     const { user_id } = req.body;
@@ -703,15 +745,15 @@ const updateUserName = async (req: Request, res: Response): Promise<void> => {
     if (!user_id) {
       res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
       return;
     }
 
-    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+    if (!name || typeof name !== "string" || name.trim().length < 2) {
       res.status(400).json({
         success: false,
-        message: "Name is required and must be at least 2 characters"
+        message: "Name is required and must be at least 2 characters",
       });
       return;
     }
@@ -734,7 +776,7 @@ const updateUserName = async (req: Request, res: Response): Promise<void> => {
     if (!updatedUser) {
       res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
       return;
     }
@@ -743,27 +785,30 @@ const updateUserName = async (req: Request, res: Response): Promise<void> => {
       userId: user_id,
       action: "update_name",
       targetId: user_id,
-      details: { 
+      details: {
         previous: updatedUser.name !== name ? updatedUser.name : undefined,
-        new: name 
-      }
+        new: name,
+      },
     });
 
     res.status(200).json({
       success: true,
       message: "Name updated successfully",
       data: {
-        name: updatedUser.name
-      }
+        name: updatedUser.name,
+      },
     });
   } catch (error) {
     console.error("Error updating user name:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update name",
-      error: process.env.NODE_ENV === 'development' ? 
-        (error instanceof Error ? error.message : String(error)) : 
-        undefined
+      error:
+        process.env.NODE_ENV === "development"
+          ? error instanceof Error
+            ? error.message
+            : String(error)
+          : undefined,
     });
   }
 };
@@ -783,5 +828,7 @@ export {
   getLoggedInUser,
   updateUserProfile,
   updateUser,
-  updateUserName
+  updateUserName,
+  getUserById,
+  getUserDocumentsById,
 };

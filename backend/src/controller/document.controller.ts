@@ -97,10 +97,15 @@ export const uploadFileToS3 = async (req: Request, res: Response): Promise<void>
       updatedAt: new Date().toISOString(),
       uploadedBy: req.originalBody.user_id,
       isDeleted: false,
-      requiresSignature: false,
-      signaturesRequired: [],
+      requiresSignature: req.body.requiresSignature === "true",
+
+      signaturesRequired:
+        req.body.requiresSignature === "true"
+          ? JSON.parse(req.body.signaturesRequired || "[]")
+          : [],
+
       signedBy: [],
-      signingStatus: "not_required",
+      signingStatus: req.body.requiresSignature === "true" ? "pending" : "not_required",
     };
 
     const putCommand = new PutCommand({
@@ -139,7 +144,7 @@ export const uploadFileToS3 = async (req: Request, res: Response): Promise<void>
     }
 
     await logUserActivity({
-      userId: req.body.user_id,
+      userId: (req as any).user.id,
       action: "upload_document",
       targetId: document.documentId,
       details: { filename: file.originalname, documentType },

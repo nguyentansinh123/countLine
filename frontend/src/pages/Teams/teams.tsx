@@ -171,7 +171,7 @@ function Teams() {
                 </div>
                 <Button
                   onClick={() =>
-                    navigate(`/users`, { state: { user: member } })
+                    navigate(`/users/${member}`, { state: { user: member } })
                   }
                 >
                   Details

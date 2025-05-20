@@ -9,7 +9,9 @@ import {
 } from 'antd';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import useFormItemStatus from 'antd/es/form/hooks/useFormItemStatus';
+import Item from 'antd/es/list/Item';
 
 interface CollapsableComponentProps {
   column: string[]; // Column headers
@@ -20,6 +22,9 @@ interface CollapsableComponentProps {
 
 function CollapsableComponent(props: CollapsableComponentProps) {
   const { column, data, menu } = props; // Destructuring the props here
+  console.log(data);
+  const [users, setUsers] = useState<any[]>([]);
+
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const columnKeyMap: Record<string, string[]> = {
@@ -31,6 +36,27 @@ function CollapsableComponent(props: CollapsableComponentProps) {
     Documents: ['documents'],
     Role: ['role'],
   };
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch('http://localhost:5001/api/users/getAllUser', {
+          credentials: 'include',
+        });
+        const data = await res.json();
+        if (data.success) {
+          setUsers(data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  const getUserById = (userId: string) =>
+    users.find((user) => user.user_id === userId);
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -91,23 +117,32 @@ function CollapsableComponent(props: CollapsableComponentProps) {
             <div>
               <div>{item.description}</div>
               <List>
-                {item.members.map((member: any, index: number) => (
-                  <List.Item
-                    key={member.id || index}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <span>{member.name}</span>
-                    <Button
-                      onClick={() => console.log('Navigate to user details')} // Update navigation logic here
+                {item.members.map((memberId: string, index: number) => {
+                  const user = getUserById(memberId);
+                  return (
+                    <List.Item
+                      key={memberId || index}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr auto',
+                        alignItems: 'center',
+                        marginTop: 10,
+                      }}
                     >
-                      Details
-                    </Button>
-                  </List.Item>
-                ))}
+                      <span style={{ fontWeight: 'bold' }}>
+                        {user?.name || 'Unknown'}
+                      </span>
+                      <span
+                        style={{ color: 'gray', textTransform: 'capitalize' }}
+                      >
+                        {user?.role || 'Member'}
+                      </span>
+                      <Button onClick={() => navigate(`/users/${memberId}`)}>
+                        Details
+                      </Button>
+                    </List.Item>
+                  );
+                })}
               </List>
             </div>
           </>
@@ -220,7 +255,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
       </div>
 
       {/* Collapsible List */}
-      <Collapse bordered={false}  style={{overflowY:'auto',height:'70vh'}}>
+      <Collapse bordered={false} style={{ overflowY: 'auto', height: '70vh' }}>
         {collapseItems.map((item) => (
           <Collapse.Panel key={item.key} header={item.label}>
             {item.children}

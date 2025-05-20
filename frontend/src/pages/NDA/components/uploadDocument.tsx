@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, Input, Upload, message, Select } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import GeneralLayout from '../../../components/General_Layout/GeneralLayout';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const fileTypes = [
   { label: 'NDA', value: 'NDA' },
@@ -18,6 +19,41 @@ const UploadDocument: React.FC = () => {
   const [selectedTypes, setSelectedTypes] = useState<string>('');
   const [messageApi, contextHolder] = message.useMessage();
 
+  const [requiresSignature, setRequiresSignature] = useState(false);
+  const [signaturesRequired, setSignaturesRequired] = useState<string[]>([]);
+
+  const [users, setUsers] = useState<
+    { user_id: string; name: string; email: string }[]
+  >([]);
+  const [loadingUsers, setLoadingUsers] = useState<boolean>(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        const response = await axios.get(
+          'http://localhost:5001/api/users/getAllUser',
+          {
+            withCredentials: true,
+          }
+        );
+        if (response.data.success) {
+          const nonAdmins = response.data.data.filter(
+            (u: any) => u.role !== 'admin'
+          );
+          setUsers(nonAdmins);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        messageApi.error('Failed to load users');
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
   const handleUpload = async () => {
     if (!file || !fileName || selectedTypes.length === 0) {
       messageApi.warning('Please fill all fields before uploading.');
@@ -28,6 +64,10 @@ const UploadDocument: React.FC = () => {
     formData.append('file', file);
     formData.append('filename', fileName);
     formData.append('documentType', selectedTypes); // Assuming only one type can be selected
+    formData.append('requiresSignature', String(requiresSignature));
+    if (requiresSignature) {
+      formData.append('signaturesRequired', JSON.stringify(signaturesRequired));
+    }
 
     console.log(formData.get);
 
@@ -84,8 +124,44 @@ const UploadDocument: React.FC = () => {
           ))}
         </Select>
       </div>
+      <div style={{ marginTop: 20 }}>
+        <div>Requires Signature?</div>
+        <Select
+          value={requiresSignature ? 'Yes' : 'No'}
+          onChange={(value) => setRequiresSignature(value === 'Yes')}
+          style={{ width: 120 }}
+        >
+          <Select.Option value="Yes">Yes</Select.Option>
+          <Select.Option value="No">No</Select.Option>
+        </Select>
+      </div>
 
-      <div style={{ padding: 20 }}>
+      {requiresSignature && (
+        <div style={{ marginTop: 20 }}>
+          <div>Select users to sign</div>
+          <Select
+            mode="multiple"
+            placeholder="Select User IDs"
+            style={{ width: '50%' }}
+            value={signaturesRequired}
+            onChange={setSignaturesRequired}
+          >
+            {loadingUsers ? (
+              <Select.Option disabled value="">
+                Loading...
+              </Select.Option>
+            ) : (
+              users.map((user) => (
+                <Select.Option key={user.user_id} value={user.user_id}>
+                  {user.name} ({user.email})
+                </Select.Option>
+              ))
+            )}
+          </Select>
+        </div>
+      )}
+
+      <div style={{ padding: 0, marginTop: 20 }}>
         <Upload
           beforeUpload={(file) => {
             const allowedTypes = [

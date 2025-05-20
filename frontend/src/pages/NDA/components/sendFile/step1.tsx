@@ -28,7 +28,9 @@ const Step1: React.FC<Step1Props> = ({
   teamsData,
   userEmail,
 }) => {
-  const [teamMembersWithData, setTeamMembersWithData] = useState<(UserData | TeamMember)[]>([]);
+  const [teamMembersWithData, setTeamMembersWithData] = useState<
+    (UserData | TeamMember)[]
+  >([]);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -40,12 +42,15 @@ const Step1: React.FC<Step1Props> = ({
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const response = await axios.get('http://localhost:5001/api/users/getAllUser', {
-          withCredentials: true
-        });
-        
+        const response = await axios.get(
+          'http://localhost:5001/api/users/getAllUser',
+          {
+            withCredentials: true,
+          }
+        );
+
         if (response.data.success) {
-          console.log("Users loaded from API:", response.data.data);
+          console.log('Users loaded from API:', response.data.data);
           setUsers(response.data.data);
         } else {
           message.error('Failed to fetch users');
@@ -57,12 +62,12 @@ const Step1: React.FC<Step1Props> = ({
         setLoading(false);
       }
     };
-    
+
     fetchUsers();
   }, []);
 
   useEffect(() => {
-    console.log("Current file data:", file);
+    console.log('Current file data:', file);
   }, [file]);
 
   useEffect(() => {
@@ -74,19 +79,22 @@ const Step1: React.FC<Step1Props> = ({
       console.log('Alternative title fields:', {
         name: file.name,
         fileName: file.fileName,
-        docName: file.docName
+        docName: file.docName,
       });
     }
   }, [file]);
 
   useEffect(() => {
     // More defensive approach to get document title
-    const documentTitle = file?.title || file?.name || file?.fileName || 
-                         (file && typeof file === 'object' ? Object.values(file)[0] : null) || 
-                         '[Document]';
-    
-    console.log("Document title being used:", documentTitle);
-                         
+    const documentTitle =
+      file?.title ||
+      file?.name ||
+      file?.fileName ||
+      (file && typeof file === 'object' ? Object.values(file)[0] : null) ||
+      '[Document]';
+
+    console.log('Document title being used:', documentTitle);
+
     setMessageContent(
       `Dear ${selectedUser || '[User]'},\n\nYou can sign the document: ${documentTitle}.\n\nBest regards,`
     );
@@ -94,23 +102,28 @@ const Step1: React.FC<Step1Props> = ({
 
   useEffect(() => {
     // Same defensive approach for team messages
-    const documentTitle = file?.title || file?.name || file?.fileName || 
-                         (file && typeof file === 'object' ? Object.values(file)[0] : null) || 
-                         '[Document]';
-                         
+    const documentTitle =
+      file?.title ||
+      file?.name ||
+      file?.fileName ||
+      (file && typeof file === 'object' ? Object.values(file)[0] : null) ||
+      '[Document]';
+
     setTeamMessageContent(
       `Dear Team,\n\nYou can sign the document: ${documentTitle}.\n\nBest regards,`
     );
   }, [file]);
 
-  const getTeamMembersWithUserData = (teamId: number): (UserData | TeamMember)[] => {
+  const getTeamMembersWithUserData = (
+    teamId: number
+  ): (UserData | TeamMember)[] => {
     const team = teamsData.find((t) => t.teamId === teamId);
 
     if (!team) {
       return [];
     }
 
-    return team.members.map((member:any) => {
+    return team.members.map((member: any) => {
       const user = users.find((u) => u.name === member.name);
       if (user) {
         return { ...user, mail: user.email || '' };
@@ -160,15 +173,17 @@ const Step1: React.FC<Step1Props> = ({
             {loading ? (
               <Spin size="small" />
             ) : (
-              <Select 
-                style={{ width: 200 }} 
+              <Select
+                style={{ width: 200 }}
                 value={selectedUser || undefined}
                 placeholder="Select a user"
                 onChange={(value, option: any) => {
                   setSelectedUser(value);
-                  
+
                   // Find the selected user's email and update state
-                  const selectedUserData = users.find(user => user.name === value);
+                  const selectedUserData = users.find(
+                    (user) => user.name === value
+                  );
                   if (selectedUserData) {
                     setSelectedUserEmail(selectedUserData.email);
                   } else {
@@ -177,7 +192,9 @@ const Step1: React.FC<Step1Props> = ({
                 }}
                 showSearch
                 filterOption={(input, option) =>
-                  (option?.children?.toString() || '').toLowerCase().includes(input.toLowerCase())
+                  (option?.children?.toString() || '')
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
                 }
               >
                 {users.map((user) => (
@@ -240,7 +257,9 @@ const Step1: React.FC<Step1Props> = ({
             <ul>
               {teamMembersWithData.map((member, index) => (
                 <li key={index}>
-                  {member.mail ? `${member.name} (${member.mail})` : member.name}
+                  {member.mail
+                    ? `${member.name} (${member.mail})`
+                    : member.name}
                 </li>
               ))}
             </ul>

@@ -24,6 +24,7 @@ import ForgotPassword from './pages/Onboarding/components/ForgotPassword';
 import VerifyOtpAndReset from './pages/Onboarding/components/VerifyOtpAndReset';
 import ProtectedRoute from './utils/ProtectedRoute';
 import VerifyOtpPage from './pages/Onboarding/components/VerifyOtpPage';
+import UserDetails from './pages/Users/components/UserDetails';
 
 export {
   HomePage,
@@ -52,4 +53,5 @@ export {
   VerifyOtpAndReset,
   ProtectedRoute,
   VerifyOtpPage,
+  UserDetails,
 };

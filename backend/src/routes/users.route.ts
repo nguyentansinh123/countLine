@@ -15,6 +15,8 @@ import {
   updateUserProfile,
   updateUser,
   updateUserName,
+  getUserById,
+  getUserDocumentsById,
 } from "../controller/users.controller";
 import { userAuth } from "../middleware/userAuth";
 import { requireAuth } from "../middleware/requireAuth";
@@ -42,4 +44,6 @@ router.post("/recent-searches", userAuth, addRecentSearch);
 router.get("/recent-searches", userAuth, getRecentSearches);
 
 router.get("/me", requireAuth, getLoggedInUser); // working
-router.put("/update-name", requireAuth, updateUserName)
+router.put("/update-name", requireAuth, updateUserName);
+router.get("/:userId", userAuth, getUserById);
+router.get("/:userId/documents", userAuth, getUserDocumentsById);
