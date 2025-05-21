@@ -4,9 +4,18 @@ import ListComponents from '../../../components/listComponents/listComponents';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 const ViewHistory = () => {
+<<<<<<< HEAD
   const [activityData, setActivityData] = useState<any[]>([]);
   const { user_id } = useParams();
   const [userName, setUserName] = useState('Unknown');
+=======
+  return (
+    <GeneralLayout title='User History' >
+    <ListComponents column={['name','activity','data','date','time']} data={userHistory} height='70vh' />
+        </GeneralLayout>
+  )
+}
+>>>>>>> Stats
 
   useEffect(() => {
     const fetchUserData = async () => {

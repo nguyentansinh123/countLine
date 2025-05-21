@@ -295,6 +295,7 @@ function UserPage() {
             <CollapsableComponent
               column={['Name', 'Role', 'Documents', 'Date']}
               data={clientUsers}
+              height='60vh'
               menu={(item) => renderUserMenu(item, 'client')}
               onDocumentRemoved={(userId, documentId) => {
                 console.log(userId, documentId);

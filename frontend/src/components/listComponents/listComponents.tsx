@@ -5,8 +5,13 @@ import type { MenuProps } from 'antd';
 interface ListComponentsProps {
   column: string[];
   data: any[];
+<<<<<<< HEAD
   menu?: (item: any) => MenuProps;
   showAction?: boolean;
+=======
+  height?:string|'70vh'
+  menu?: (item: any) => MenuProps ;
+>>>>>>> Stats
 }
 
 const formatDate = (dateStr: string) => {
@@ -59,9 +64,15 @@ const getStatusColor = (status: any): string => {
 };
 
 const ListComponents: React.FC<ListComponentsProps> = (props) => {
+<<<<<<< HEAD
   const gridTemplateColumns = `repeat(${props.column.length}, 1fr)${
     props.showAction !== false ? ' 80px' : ''
   }`;
+=======
+  const { column, data, height, menu } = props;
+
+  const gridTemplateColumns = `repeat(${props.column.length}, 1fr) 80px`;
+>>>>>>> Stats
 
   return (
     <div className="list-components">
@@ -83,6 +94,7 @@ const ListComponents: React.FC<ListComponentsProps> = (props) => {
 
       <List
         dataSource={props.data}
+<<<<<<< HEAD
         style={{ height: '70vh', overflowY: 'auto' }}
         renderItem={(item, index) => (
           <List.Item
@@ -106,6 +118,26 @@ const ListComponents: React.FC<ListComponentsProps> = (props) => {
                       : lowerCol === 'status'
                         ? 'status'
                         : lowerCol;
+=======
+        style={{
+          height:height,
+          overflowY:'auto'
+        }}
+        renderItem={(item, index) => {
+          return (
+            <List.Item
+              key={item.projectId || `item-${index}`}
+              style={{
+                display: 'grid',
+                gridTemplateColumns,
+                
+                padding: '12px 16px',
+                borderBottom: '1px solid #f0f0f0',
+              }}
+            >
+              {props.column.map((col, colIndex) => {
+                const lowerCol = col.toLowerCase();
+>>>>>>> Stats
 
               let value = '';
               if (item[fieldKey] === undefined && item['created_at']) {

@@ -8,6 +8,7 @@ function HomePage() {
   const navigate = useNavigate();
   return (
     <>
+    
       <Statistics />
       <div
         className="Activities"

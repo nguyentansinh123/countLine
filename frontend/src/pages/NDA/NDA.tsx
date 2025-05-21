@@ -47,7 +47,7 @@ const NDA: React.FC = () => {
         messageApi.error('Error fetching documents');
       }
     };
-
+    console.log(fileType)
     fetchDocuments();
   }, []);
 
