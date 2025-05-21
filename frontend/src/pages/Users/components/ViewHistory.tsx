@@ -4,18 +4,9 @@ import ListComponents from '../../../components/listComponents/listComponents';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
 const ViewHistory = () => {
-<<<<<<< HEAD
   const [activityData, setActivityData] = useState<any[]>([]);
   const { user_id } = useParams();
   const [userName, setUserName] = useState('Unknown');
-=======
-  return (
-    <GeneralLayout title='User History' >
-    <ListComponents column={['name','activity','data','date','time']} data={userHistory} height='70vh' />
-        </GeneralLayout>
-  )
-}
->>>>>>> Stats
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -31,6 +22,7 @@ const ViewHistory = () => {
         setUserName(name);
 
         // 2. Then fetch activity using that name
+        console.log("Fetching activity for user:", user_id);
         const activityRes = await axios.get(
           `http://localhost:5001/api/history/user/${user_id}`,
           {
@@ -38,6 +30,7 @@ const ViewHistory = () => {
           }
         );
 
+        console.log("Activity response:", activityRes.data);
         const items = activityRes.data.data || [];
 
         const formatted = items.reverse().map((item: any) => {
@@ -68,6 +61,10 @@ const ViewHistory = () => {
         setActivityData(formatted);
       } catch (err) {
         console.error('Failed to fetch user data or activity:', err);
+        // Display specific error details
+        if (axios.isAxiosError(err) && err.response) {
+          console.error('Error response:', err.response.data);
+        }
       }
     };
 
