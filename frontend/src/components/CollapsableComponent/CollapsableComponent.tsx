@@ -16,10 +16,11 @@ interface CollapsableComponentProps {
   data: Array<Record<string, any>>; // Data to display
   menu: (item: any) => MenuProps; // Dropdown menu generator
   onDocumentRemoved?: (userId: string, documentId: string) => void;
+  height?:string;
 }
 
 function CollapsableComponent(props: CollapsableComponentProps) {
-  const { column, data, menu } = props; // Destructuring the props here
+  const { column, height,data, menu } = props; // Destructuring the props here
   const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const columnKeyMap: Record<string, string[]> = {
@@ -33,7 +34,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
   };
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
+  
   console.log(data);
 
   const formatDate = (isoDate: string): string => {
@@ -220,7 +221,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
       </div>
 
       {/* Collapsible List */}
-      <Collapse bordered={false}  style={{overflowY:'auto',height:'70vh'}}>
+      <Collapse bordered={false}  style={{overflowY:'auto',height:height}}>
         {collapseItems.map((item) => (
           <Collapse.Panel key={item.key} header={item.label}>
             {item.children}

@@ -1,5 +1,5 @@
 import { Card, Button, List } from 'antd'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Route, useNavigate } from 'react-router-dom'
 import NDA from '../../../NDA/NDA'
 import Documents from '../const/documentConst'
@@ -7,9 +7,105 @@ import projectConst from '../const/projectConst'
 import teamConst from '../const/teamConst'
 import Users from '../const/usersConst'
 import Chart from '../../../../assets/chart.svg'
+import axios from 'axios'
+import DocumentLineChart from './BarChart'
+import DocumentBarChart from './BarChart'
+
 
 function statistics() {
-    const navigate=useNavigate();
+   const navigate = useNavigate();
+const [teamsData, setTeams] = useState<TeamStats | null>(null);
+  const [projectsData, setProjects] = useState<ProjectStats | null>(null);
+  const [documentsCount, setDocumentsCount] = useState<DocumentTypeCounts | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+const Colors: Record<string, string> = {
+  active: '#52C41A',       // green
+  inProgress: '#1890FF',   // blue
+  inactive: '#FAAD14',     // orange
+  other: '#8C8C8C',        // gray
+  total: '#722ED1',        // purple
+};
+
+  type DocumentTypeCounts = Record<string, number>;
+  type  DashboardStats= {
+  teams: {
+    current: number;
+    dismissed: number;
+    past: number;
+    total: number;
+  };
+  projects: {
+    current: number;
+    dismissed: number;
+    past: number;
+    total: number;
+  };
+}
+type TeamStats ={
+  active: number;
+  inProgress: number;
+  inactive: number;
+  other: number;
+  total: number;
+}
+type ProjectStats = {
+  finished: number;
+  inProgress: number;
+  drafted: number;
+  cancelled: number;
+  other: number;
+  total: number;
+}
+ const fetchStats= async()=> {
+      console.log("fecth started")
+      try {
+        console.log("trying")
+        setLoading(true);
+        setError('');
+
+        // Example: Replace with your actual API base URL
+        const API_BASE =  import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+        console.log(API_BASE)
+        const teamsRes=    await axios.get(`${API_BASE}/api/statistics/teams`, {
+          withCredentials: true
+        });
+        const projectsRes =await axios.get(`${API_BASE}/api/statistics/projects`, {
+          withCredentials: true
+        });
+        const dashboardRes=await axios.get(`${API_BASE}/api/statistics/dashboard`, {
+          withCredentials: true
+        });
+        const documentsRes = await axios.get(`${API_BASE}/api/statistics/documents/type-counts`,{
+          withCredentials: true});
+        
+          console.log("heelo")
+          
+        if (!teamsRes.data.success || !projectsRes.data.success || !dashboardRes.data.success || !documentsRes.data.success) {
+          throw new Error('Failed to fetch some statistics');
+        }
+        console.log("team1",teamsRes.data);
+        console.log("team2",teamsRes.data.data)
+        setTeams(teamsRes.data.data as TeamStats);
+        setProjects(projectsRes.data.data as ProjectStats);
+        setDashboardStats(dashboardRes.data.data as DashboardStats);
+        setDocumentsCount(documentsRes.data.data as DocumentTypeCounts);
+        
+    
+      } catch (err) {
+        console.error(err, 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+  useEffect(() => {
+   
+    fetchStats();
+  }, []);
+   console.log(teamsData,"team")
+   console.log(documentsCount,"docOC")
   return (
     <>
     <div
@@ -58,10 +154,9 @@ function statistics() {
 
               <div style={{ 
                 height:' 100%' }}>
-                <img src={Chart}></img>
                 {Object.entries(Documents).map(([]) => (
                   <div style={{ margin: 0 }}>
-                 
+         
                   </div>
                 ))}
                 <div
@@ -72,7 +167,8 @@ function statistics() {
                     margin: '0px 0 0 20px',
                   }}
                 >
-                  {Object.entries(Documents).map(([key]) => (
+                 
+                
                     <div
                       style={{
                         display: 'flex',
@@ -83,23 +179,18 @@ function statistics() {
                         alignContent: 'flex-start',
                       }}
                     >
+        <DocumentBarChart  data={documentsCount ? [{ name: "Documents", ...documentsCount }] : []} />
                       <div
                         style={{
                           height: 10,
                           width: 10,
-                          backgroundColor:
-                            key === 'IP'
-                              ? '#52C41A'
-                              : key === 'NDA'
-                                ? '#01B4D2'
-                                : '#FD0000',
                           display: 'flex',
                           flexDirection: 'column',
                         }}
                       ></div>
-                      <span>{key}</span>
+                      <span></span>
                     </div>
-                  ))}
+               
                 </div>
               </div>
               <Button
@@ -128,34 +219,18 @@ function statistics() {
                 flexDirection: 'column',
                 alignContent: 'flex-start',
                 minWidth: 100,
-             
                 width: '20%',
                 marginTop: 0,
                 padding: 5,
               }}
             >
               <h2 style={{ marginTop: 0, marginLeft: 10 }}>Teams</h2>
-              <div style={{ maxHeight: 220, height: 220 }}>
-                {Object.entries(teamConst).map(([key, value]) => (
-                  <div style={{ margin: 0 }}>
-                    <h4 style={{ margin: 2, marginTop: 10, marginLeft: 20 }}>
-                      {key}
-                    </h4>
-                    <div
-                      style={{
-                        margin: 2,
-                        marginTop: 10,
-                        marginLeft: 20,
-                        color:
-                          key === 'Current Team'
-                            ? '#01B4D2'
-                            : key === 'Dismissed Team'
-                              ? '#FD0000'
-                              : '#35B700',
-                      }}
-                    >
-                      {value}
-                    </div>
+              <div style={{ maxHeight: 220, height: 220, overflowY:'auto' }}>
+              {teamsData &&
+            Object.entries(teamsData).map(([key, value]) => (
+              <div key={key} style={{ marginLeft: 20, marginBottom: 8 }}>
+                <h3 style={{ margin: 0 }}>{key}</h3>
+                <div style={{ color: Colors[key] || 'white' }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -186,27 +261,12 @@ function statistics() {
               }}
             >
               <h2 style={{ marginTop: 0, marginLeft: 20, width:'100%' }}>Projects</h2>
-              <div style={{ maxHeight: 220, height: 220 }}>
-                {Object.entries(projectConst).map(([key, value]) => (
-                  <div style={{ margin: 0 }}>
-                    <h4 style={{ margin: 2, marginTop: 10, marginLeft: 20 }}>
-                      {key}
-                    </h4>
-                    <div
-                      style={{
-                        margin: 2,
-                        marginTop: 10,
-                        marginLeft: 20,
-                        color:
-                          key === 'Current Projects'
-                            ? '#01B4D2'
-                            : key === 'Dismissed Projects'
-                              ? '#FD0000'
-                              : '#35B700',
-                      }}
-                    >
-                      {value}
-                    </div>
+              <div style={{ maxHeight: 220, height: 220, overflowY:'auto' }}>
+              {projectsData &&
+            Object.entries(projectsData).map(([key, value]) => (
+              <div key={key} style={{ marginLeft: 20, marginBottom: 8 }}>
+                <h3 style={{ margin: 0 }}>{key}</h3>
+                <div style={{ color: Colors[key] || 'white' }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -224,69 +284,7 @@ function statistics() {
                 manage Projects
               </Button>
             </div>
-            <div
-              style={{
-                minHeight: '30%',
-                display: 'flex',
-                flexDirection: 'column',
-                alignContent: 'flex-start',
-                width: '30%',
-                marginTop: 0,
-                padding: 5,
-              }}
-            >
-              <h2 style={{ marginTop: 0 }}>Users</h2>
-              <div
-                style={{
-                  maxHeight: 220,
-                  height: 220,
-                  overflowY: 'auto',
-                  paddingRight: 10,
-                }}
-              >
-                <List
-                  itemLayout="horizontal"
-                  dataSource={Users}
-                  renderItem={(item) => (
-                    <List.Item
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        width: '100%',
-                      }}
-                    >
-                      <List.Item.Meta
-                        avatar={item.profilepic}
-                        title={
-                          <strong style={{ color: 'white' }}>
-                            {item.username}
-                          </strong>
-                        }
-                        description={
-                          <span style={{ color: 'white' }}>
-                            {item.userRoles.join(', ')}
-                          </span>
-                        }
-                        style={{ color: 'white' }}
-                      />
-                    </List.Item>
-                  )}
-                />
-              </div>
-              <Button
-                style={{
-                  padding: 10,
-                  margin: 10,
-                  backgroundColor: '#156CC9',
-                  border: 'none',
-                  color: 'white',
-                  width: 200,
-                }}
-                onClick={() => navigate('/users')}
-              >
-                manage Users
-              </Button>
-            </div>
+           
           </div>
         </Card>
       </div>

@@ -7,7 +7,7 @@ import { MenuProps } from 'antd'
 const ViewHistory = () => {
   return (
     <GeneralLayout title='User History' >
-    <ListComponents column={['name','activity','data','date','time']} data={userHistory} />
+    <ListComponents column={['name','activity','data','date','time']} data={userHistory} height='70vh' />
         </GeneralLayout>
   )
 }

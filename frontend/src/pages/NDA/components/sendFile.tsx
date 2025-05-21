@@ -129,6 +129,7 @@ const SendFile: React.FC = () => {
   };
 
   const fetchPdfFile = async (url: string) => {
+    console.log(url)
     try {
       console.log(`Fetching PDF from URL: ${url}`);
       const response = await fetch(url);

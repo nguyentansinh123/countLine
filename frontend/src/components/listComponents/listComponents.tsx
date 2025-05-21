@@ -5,6 +5,7 @@ import type { MenuProps } from 'antd';
 interface ListComponentsProps {
   column: string[];
   data: any[];
+  height?:string|'70vh'
   menu?: (item: any) => MenuProps ;
 }
 
@@ -60,6 +61,8 @@ const getStatusColor = (status: any): string => {
 };
 
 const ListComponents: React.FC<ListComponentsProps> = (props) => {
+  const { column, data, height, menu } = props;
+
   const gridTemplateColumns = `repeat(${props.column.length}, 1fr) 80px`;
 
   return (
@@ -83,7 +86,7 @@ const ListComponents: React.FC<ListComponentsProps> = (props) => {
       <List
         dataSource={props.data}
         style={{
-          height:'70vh',
+          height:height,
           overflowY:'auto'
         }}
         renderItem={(item, index) => {
