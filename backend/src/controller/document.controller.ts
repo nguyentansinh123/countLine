@@ -12,7 +12,7 @@ import { DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { logUserActivity } from "./activity.controller";
 import { createNotification } from "./notification.controller";
 import { getIO } from "../lib/socket";
-import { Document, DocumentRevision } from '../types/document.types';
+import { Document, DocumentRevision } from "../types/document.types";
 
 export const generatePresignedUrl = async (key: string): Promise<string> => {
   try {
@@ -670,10 +670,11 @@ export const hardDelete = async (req: Request, res: Response) => {
   }
 };
 
-export const updateDocument = async (req: Request, res: Response) => {
+export const updateDocument = async (req: Request, res: Response): Promise<void> => {
   const { documentId } = req.params;
   // @ts-ignore
   const user = req.user;
+
   try {
     const { Item: document } = await docClient.send(
       new GetCommand({
@@ -681,46 +682,62 @@ export const updateDocument = async (req: Request, res: Response) => {
         Key: { documentId },
       })
     );
+
     if (!document) {
       res.status(404).json({ success: false, message: "Document not found" });
       return;
     }
+
     if (document.uploadedBy !== user.id && user.role !== "admin") {
       res.status(403).json({ success: false, message: "Access denied" });
       return;
     }
 
-    if (!req.file) {
-      res.status(400).json({ success: false, message: "No file uploaded" });
-      return;
-    }
+    let fileUrl = document.fileUrl;
+    let fileType = req.body.documentType || document.documentType;
+    console.log(fileType);
 
-    if (document.fileUrl) {
-      const urlParts = document.fileUrl.split(".amazonaws.com/");
-      const oldKey = urlParts[1];
-      if (oldKey) {
-        await s3Client.send(
-          new DeleteObjectCommand({
-            Bucket: process.env.AWS_BUCKET_NAME!,
-            Key: oldKey,
-          })
-        );
+    let originalName = req.body.filename || document.filename;
+    console.log(originalName);
+
+    // If a new file was uploaded
+    if (req.file) {
+      const file = req.file;
+      console.log(file);
+
+      // Delete old file from S3
+      if (document.fileUrl) {
+        const urlParts = document.fileUrl.split(".amazonaws.com/");
+        const oldKey = urlParts[1];
+        if (oldKey) {
+          await s3Client.send(
+            new DeleteObjectCommand({
+              Bucket: process.env.AWS_BUCKET_NAME!,
+              Key: oldKey,
+            })
+          );
+        }
       }
+
+      // Upload new file to S3
+      const fileNameWithoutSpaces = file.originalname.replace(/\s/g, "");
+      const s3Key = `uploads/${Date.now()}_${fileNameWithoutSpaces}`;
+
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME!,
+          Key: s3Key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+        })
+      );
+
+      fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`;
+      //fileType = file.mimetype;
+      //originalName = file.originalname;
     }
 
-    const file = req.file;
-    const fileNameWithoutSpaces = file.originalname.replace(/\s/g, "");
-    const params = {
-      Bucket: process.env.AWS_BUCKET_NAME!,
-      Key: `uploads/${Date.now()}_${fileNameWithoutSpaces}`,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-    };
-    const command = new PutObjectCommand(params);
-    await s3Client.send(command);
-
-    const fileUrl = `https://${params.Bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${params.Key}`;
-
+    // Update document metadata
     await docClient.send(
       new UpdateCommand({
         TableName: "Documents",
@@ -728,13 +745,13 @@ export const updateDocument = async (req: Request, res: Response) => {
         UpdateExpression: "set #f = :f, #ft = :ft, #fn = :fn",
         ExpressionAttributeNames: {
           "#f": "fileUrl",
-          "#ft": "fileType",
+          "#ft": "documentType",
           "#fn": "filename",
         },
         ExpressionAttributeValues: {
           ":f": fileUrl,
-          ":ft": file.mimetype,
-          ":fn": file.originalname,
+          ":ft": fileType,
+          ":fn": originalName,
         },
       })
     );
@@ -744,12 +761,13 @@ export const updateDocument = async (req: Request, res: Response) => {
       action: "update_document",
       targetId: documentId,
       details: {
-        filename: file.originalname,
-        fileType: file.mimetype,
+        filename: originalName,
+        fileType: fileType,
+        changedFile: !!req.file,
       },
     });
 
-    res.status(200).json({ success: true, message: "Document file updated" });
+    res.status(200).json({ success: true, message: "Document updated successfully" });
   } catch (error) {
     console.error("updateDocument error:", error);
     res.status(500).json({ success: false, message: "Failed to update document" });
@@ -1103,39 +1121,43 @@ export const getDocumentWithRevisions = async (req: Request, res: Response) => {
     const { documentId } = req.params;
     const userId = (req as any).user?.id;
 
-    const { Item: document } = await docClient.send(
+    const { Item: document } = (await docClient.send(
       new GetCommand({
         TableName: "Documents",
-        Key: { documentId }
+        Key: { documentId },
       })
-    ) as { Item?: Document };
+    )) as { Item?: Document };
 
     if (!document) {
       res.status(404).json({ success: false, message: "Document not found" });
       return;
     }
 
-    if (document.uploadedBy !== userId &&
-        !(document.sharedWith || []).includes(userId) &&
-        (req as any).user?.role !== "admin") {
+    if (
+      document.uploadedBy !== userId &&
+      !(document.sharedWith || []).includes(userId) &&
+      (req as any).user?.role !== "admin"
+    ) {
       res.status(403).json({ success: false, message: "Access denied" });
       return;
     }
 
     const baseUrl = document.fileUrl.split(".amazonaws.com/")[1];
     const presignedUrl = await generatePresignedUrl(baseUrl);
-    
+
     const revisions = document.revisions || [];
-    const revisionsWithUrls = await Promise.all(revisions.map(async (rev: DocumentRevision) => {
-      const revUrl = rev.fileUrl.split(".amazonaws.com/")[1];
-      const presignedRevUrl = await generatePresignedUrl(revUrl);
-      return { ...rev, presignedUrl: presignedRevUrl };
-    }));
+    const revisionsWithUrls = await Promise.all(
+      revisions.map(async (rev: DocumentRevision) => {
+        const revUrl = rev.fileUrl.split(".amazonaws.com/")[1];
+        const presignedRevUrl = await generatePresignedUrl(revUrl);
+        return { ...rev, presignedUrl: presignedRevUrl };
+      })
+    );
 
     await logUserActivity({
       userId,
       action: "view_document_history",
-      targetId: documentId
+      targetId: documentId,
     });
 
     res.status(200).json({
@@ -1143,15 +1165,14 @@ export const getDocumentWithRevisions = async (req: Request, res: Response) => {
       data: {
         ...document,
         presignedUrl,
-        revisions: revisionsWithUrls
-      }
+        revisions: revisionsWithUrls,
+      },
     });
   } catch (error) {
     console.error("Error in getDocumentWithRevisions:", error);
     res.status(500).json({ success: false, message: "Failed to get document history" });
   }
 };
-
 
 export const saveDocumentEdit = async (req: Request, res: Response) => {
   try {
@@ -1167,7 +1188,7 @@ export const saveDocumentEdit = async (req: Request, res: Response) => {
     const { Item: document } = await docClient.send(
       new GetCommand({
         TableName: "Documents",
-        Key: { documentId }
+        Key: { documentId },
       })
     );
 
@@ -1176,9 +1197,11 @@ export const saveDocumentEdit = async (req: Request, res: Response) => {
       return;
     }
 
-    if (document.uploadedBy !== userId &&
-        !(document.sharedWith || []).includes(userId) &&
-        (req as any).user?.role !== "admin") {
+    if (
+      document.uploadedBy !== userId &&
+      !(document.sharedWith || []).includes(userId) &&
+      (req as any).user?.role !== "admin"
+    ) {
       res.status(403).json({ success: false, message: "Edit access denied" });
       return;
     }
@@ -1186,12 +1209,12 @@ export const saveDocumentEdit = async (req: Request, res: Response) => {
     const file = req.file;
     const fileNameWithoutSpaces = file.originalname.replace(/\s/g, "");
     const key = `revisions/${documentId}/${Date.now()}_${fileNameWithoutSpaces}`;
-    
+
     const params = {
       Bucket: process.env.AWS_BUCKET_NAME!,
       Key: key,
       Body: file.buffer,
-      ContentType: file.mimetype
+      ContentType: file.mimetype,
     };
 
     await s3Client.send(new PutObjectCommand(params));
@@ -1202,23 +1225,24 @@ export const saveDocumentEdit = async (req: Request, res: Response) => {
       revisionId,
       fileUrl,
       editedBy: userId,
-      status: 'draft',
+      status: "draft",
       timestamp: new Date().toISOString(),
       annotations: annotations || [],
-      comments: comments || []
+      comments: comments || [],
     };
 
     await docClient.send(
       new UpdateCommand({
         TableName: "Documents",
         Key: { documentId },
-        UpdateExpression: "SET revisions = list_append(if_not_exists(revisions, :empty_list), :revision), lastModifiedBy = :userId, lastModifiedAt = :timestamp",
+        UpdateExpression:
+          "SET revisions = list_append(if_not_exists(revisions, :empty_list), :revision), lastModifiedBy = :userId, lastModifiedAt = :timestamp",
         ExpressionAttributeValues: {
           ":empty_list": [],
           ":revision": [revisionData],
           ":userId": userId,
-          ":timestamp": new Date().toISOString()
-        }
+          ":timestamp": new Date().toISOString(),
+        },
       })
     );
 
@@ -1228,8 +1252,8 @@ export const saveDocumentEdit = async (req: Request, res: Response) => {
       targetId: documentId,
       details: {
         revisionId,
-        filename: file.originalname
-      }
+        filename: file.originalname,
+      },
     });
 
     res.status(200).json({
@@ -1237,8 +1261,8 @@ export const saveDocumentEdit = async (req: Request, res: Response) => {
       message: "Document edit saved",
       data: {
         revisionId,
-        fileUrl
-      }
+        fileUrl,
+      },
     });
   } catch (error) {
     console.error("Error saving document edit:", error);
@@ -1255,7 +1279,7 @@ export const submitDocumentForReview = async (req: Request, res: Response) => {
     const { Item: document } = await docClient.send(
       new GetCommand({
         TableName: "Documents",
-        Key: { documentId }
+        Key: { documentId },
       })
     );
 
@@ -1285,8 +1309,8 @@ export const submitDocumentForReview = async (req: Request, res: Response) => {
         ExpressionAttributeValues: {
           ":status": "submitted",
           ":timestamp": new Date().toISOString(),
-          ":message": message || ""
-        }
+          ":message": message || "",
+        },
       })
     );
 
@@ -1297,7 +1321,7 @@ export const submitDocumentForReview = async (req: Request, res: Response) => {
       {
         documentId,
         revisionId,
-        submittedBy: userId
+        submittedBy: userId,
       }
     );
 
@@ -1308,13 +1332,13 @@ export const submitDocumentForReview = async (req: Request, res: Response) => {
       action: "submit_document_for_review",
       targetId: documentId,
       details: {
-        revisionId
-      }
+        revisionId,
+      },
     });
 
     res.status(200).json({
       success: true,
-      message: "Document submitted for review"
+      message: "Document submitted for review",
     });
   } catch (error) {
     console.error("Error submitting document for review:", error);
@@ -1328,15 +1352,17 @@ export const reviewDocument = async (req: Request, res: Response) => {
     const { revisionId, action, comments } = req.body;
     const userId = (req as any).user?.id;
 
-    if (!['approve', 'reject'].includes(action)) {
-      res.status(400).json({ success: false, message: "Invalid action. Use 'approve' or 'reject'" });
+    if (!["approve", "reject"].includes(action)) {
+      res
+        .status(400)
+        .json({ success: false, message: "Invalid action. Use 'approve' or 'reject'" });
       return;
     }
 
     const { Item: document } = await docClient.send(
       new GetCommand({
         TableName: "Documents",
-        Key: { documentId }
+        Key: { documentId },
       })
     );
 
@@ -1367,36 +1393,37 @@ export const reviewDocument = async (req: Request, res: Response) => {
           ":status": action,
           ":timestamp": new Date().toISOString(),
           ":reviewer": userId,
-          ":comments": comments || ""
-        }
+          ":comments": comments || "",
+        },
       })
     );
 
-    if (action === 'approve') {
+    if (action === "approve") {
       await docClient.send(
         new UpdateCommand({
           TableName: "Documents",
           Key: { documentId },
-          UpdateExpression: "SET fileUrl = :fileUrl, approvedRevisionId = :revisionId, approvedAt = :timestamp, status = :status",
+          UpdateExpression:
+            "SET fileUrl = :fileUrl, approvedRevisionId = :revisionId, approvedAt = :timestamp, status = :status",
           ExpressionAttributeValues: {
             ":fileUrl": revisions[revisionIndex].fileUrl,
             ":revisionId": revisionId,
             ":timestamp": new Date().toISOString(),
-            ":status": "approved"
-          }
+            ":status": "approved",
+          },
         })
       );
     }
 
     const notification = await createNotification(
       revisions[revisionIndex].editedBy,
-      action === 'approve' ? "document_approved" : "document_rejected",
-      `Your document edit was ${action === 'approve' ? 'approved' : 'rejected'} by ${userId}`,
+      action === "approve" ? "document_approved" : "document_rejected",
+      `Your document edit was ${action === "approve" ? "approved" : "rejected"} by ${userId}`,
       {
         documentId,
         revisionId,
         reviewedBy: userId,
-        comments: comments || ""
+        comments: comments || "",
       }
     );
 
@@ -1404,16 +1431,16 @@ export const reviewDocument = async (req: Request, res: Response) => {
 
     await logUserActivity({
       userId,
-      action: action === 'approve' ? "approve_document" : "reject_document",
+      action: action === "approve" ? "approve_document" : "reject_document",
       targetId: documentId,
       details: {
-        revisionId
-      }
+        revisionId,
+      },
     });
 
     res.status(200).json({
       success: true,
-      message: `Document revision ${action}d`
+      message: `Document revision ${action}d`,
     });
   } catch (error) {
     console.error("Error reviewing document:", error);
@@ -1425,18 +1452,19 @@ export const getPendingReviews = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
 
-    const filterExpression = (req as any).user?.role === "admin" 
-      ? "contains(#revisions, :status)" 
-      : "#uploadedBy = :userId AND contains(#revisions, :status)";
-    
+    const filterExpression =
+      (req as any).user?.role === "admin"
+        ? "contains(#revisions, :status)"
+        : "#uploadedBy = :userId AND contains(#revisions, :status)";
+
     const expressionAttributeNames = {
       "#revisions": "revisions",
-      ...(((req as any).user?.role !== "admin") && { "#uploadedBy": "uploadedBy" })
+      ...((req as any).user?.role !== "admin" && { "#uploadedBy": "uploadedBy" }),
     };
 
     const expressionAttributeValues = {
       ":status": { S: "submitted" },
-      ...(((req as any).user?.role !== "admin") && { ":userId": { S: userId } })
+      ...((req as any).user?.role !== "admin" && { ":userId": { S: userId } }),
     };
 
     const documents = await docClient.send(
@@ -1444,7 +1472,7 @@ export const getPendingReviews = async (req: Request, res: Response) => {
         TableName: "Documents",
         FilterExpression: filterExpression,
         ExpressionAttributeNames: expressionAttributeNames,
-        ExpressionAttributeValues: expressionAttributeValues
+        ExpressionAttributeValues: expressionAttributeValues,
       })
     );
 
@@ -1455,7 +1483,7 @@ export const getPendingReviews = async (req: Request, res: Response) => {
           ...rev,
           documentId: doc.documentId,
           documentName: doc.filename,
-          documentType: doc.documentType
+          documentType: doc.documentType,
         }));
       return pendingRevisions;
     });
@@ -1464,14 +1492,14 @@ export const getPendingReviews = async (req: Request, res: Response) => {
       userId,
       action: "view_pending_reviews",
       details: {
-        count: pendingReviews.length
-      }
+        count: pendingReviews.length,
+      },
     });
 
     res.status(200).json({
       success: true,
       count: pendingReviews.length,
-      data: pendingReviews
+      data: pendingReviews,
     });
   } catch (error) {
     console.error("Error fetching pending reviews:", error);
@@ -1488,7 +1516,7 @@ export const approveRevision = async (req: Request, res: Response) => {
     const { Item: document } = await docClient.send(
       new GetCommand({
         TableName: "Documents",
-        Key: { documentId }
+        Key: { documentId },
       })
     );
 
@@ -1529,8 +1557,8 @@ export const approveRevision = async (req: Request, res: Response) => {
           ":comments": comments || "",
           ":fileUrl": revisions[revisionIndex].fileUrl,
           ":revisionId": revisionId,
-          ":docStatus": "approved"
-        }
+          ":docStatus": "approved",
+        },
       })
     );
 
@@ -1542,7 +1570,7 @@ export const approveRevision = async (req: Request, res: Response) => {
         documentId,
         revisionId,
         reviewedBy: userId,
-        comments: comments || ""
+        comments: comments || "",
       }
     );
 
@@ -1554,13 +1582,13 @@ export const approveRevision = async (req: Request, res: Response) => {
       targetId: documentId,
       details: {
         revisionId,
-        comments: comments || ""
-      }
+        comments: comments || "",
+      },
     });
 
     res.status(200).json({
       success: true,
-      message: "Document revision approved and set as current version"
+      message: "Document revision approved and set as current version",
     });
   } catch (error) {
     console.error("Error approving revision:", error);
@@ -1575,9 +1603,9 @@ export const rejectRevision = async (req: Request, res: Response) => {
     const { comments } = req.body;
 
     if (!comments) {
-      res.status(400).json({ 
-        success: false, 
-        message: "Comments are required when rejecting a revision" 
+      res.status(400).json({
+        success: false,
+        message: "Comments are required when rejecting a revision",
       });
       return;
     }
@@ -1585,7 +1613,7 @@ export const rejectRevision = async (req: Request, res: Response) => {
     const { Item: document } = await docClient.send(
       new GetCommand({
         TableName: "Documents",
-        Key: { documentId }
+        Key: { documentId },
       })
     );
 
@@ -1619,8 +1647,8 @@ export const rejectRevision = async (req: Request, res: Response) => {
           ":status": "rejected",
           ":timestamp": new Date().toISOString(),
           ":reviewer": userId,
-          ":comments": comments
-        }
+          ":comments": comments,
+        },
       })
     );
 
@@ -1632,7 +1660,7 @@ export const rejectRevision = async (req: Request, res: Response) => {
         documentId,
         revisionId,
         reviewedBy: userId,
-        comments: comments
+        comments: comments,
       }
     );
 
@@ -1644,13 +1672,13 @@ export const rejectRevision = async (req: Request, res: Response) => {
       targetId: documentId,
       details: {
         revisionId,
-        comments
-      }
+        comments,
+      },
     });
 
     res.status(200).json({
       success: true,
-      message: "Document revision rejected"
+      message: "Document revision rejected",
     });
   } catch (error) {
     console.error("Error rejecting revision:", error);

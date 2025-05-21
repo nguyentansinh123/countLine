@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Input, Select, Button, Alert, Layout } from 'antd';
+import { Input, Select, Button, Alert, Layout, message } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
@@ -20,6 +20,7 @@ const { Sider, Content } = Layout;
 pdfjsLib.GlobalWorkerOptions.workerPort = new pdfjsWorker();
 
 const EditDocument: React.FC = () => {
+  const [messageApi, contextHolder] = message.useMessage();
   const navigate = useNavigate();
   const { category, file_id } = useParams<{
     category: string;
@@ -48,7 +49,8 @@ const EditDocument: React.FC = () => {
         if (res.ok && result.success) {
           setTitle(result.data.filename.replace(/\.[^/.]+$/, ''));
           setFile(result.data);
-          setDocumentType(result.data.documentType); // assuming backend returns it
+          setNewFile(result.data);
+          setDocumentType(result.data.documentType);
         } else {
           setError(result.message || 'Failed to load document');
         }
@@ -68,12 +70,20 @@ const EditDocument: React.FC = () => {
 
   const handleSave = async () => {
     if (!newFile) {
-      setError('Please select a file to upload');
+      messageApi.error('Please select a file to upload');
       return;
     }
 
     const formData = new FormData();
-    formData.append('file', newFile);
+    console.log(newFile);
+
+    formData.append('filename', title);
+    formData.append('documentType', documentType);
+    console.log('doc', documentType);
+
+    if (newFile instanceof File) {
+      formData.append('file', newFile);
+    }
 
     try {
       const res = await fetch(
@@ -87,18 +97,21 @@ const EditDocument: React.FC = () => {
 
       const result = await res.json();
       if (res.ok && result.success) {
-        alert('Document updated successfully');
-        navigate('/non-disclosure-agreement'); // Or wherever you want to go
+        messageApi.success('Document updated successfully');
+        setTimeout(() => {
+          navigate('/non-disclosure-agreement'); //
+        }, 1000);
       } else {
         setError(result.message || 'Update failed');
       }
     } catch (err) {
       console.error(err);
-      setError('Something went wrong');
+      messageApi.error('Something went wrong');
     }
   };
   return (
     <GeneralLayout title="Edit Document">
+      {contextHolder}
       <Content style={{ padding: '20px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div
