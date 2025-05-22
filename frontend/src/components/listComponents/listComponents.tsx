@@ -136,9 +136,7 @@ const ListComponents: React.FC<ListComponentsProps> = (props) => {
               if (lowerCol === 'date') {
                 return (
                   <div key={`item-${index}-${colIndex}`}>
-                    {typeof value === 'string'
-                      ? formatDate(value)
-                      : safeToString(value)}
+                   {value}
                   </div>
                 );
               }

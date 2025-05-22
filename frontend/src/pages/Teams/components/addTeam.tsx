@@ -42,6 +42,7 @@ function AddTeam() {
       message.error('Failed to add team. Please try again.');
     }
   };
+console.log("date ne "+ new Date());
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', margin: 40 }}>

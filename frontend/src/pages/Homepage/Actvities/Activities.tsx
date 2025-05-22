@@ -7,7 +7,12 @@ import GeneralLayout from '../../../components/General_Layout/GeneralLayout';
 import ListComponents from '../../../components/listComponents/listComponents';
 import { useNavigate } from 'react-router-dom';
 
-const onChange = (key: string) => {
+
+
+function Activities() {
+   const navigate = useNavigate(); // Use navigate here
+
+   const onChange = (key: string) => {
   console.log(key);
 };
 
@@ -31,7 +36,7 @@ const menuItems = (item: any): MenuProps => ({
 });
 
 const handleMenuClick = (key: string, item: any) => {
-  const navigate = useNavigate(); // Use navigate here
+ 
   if (key === 'View') {
     console.log('View:', item);
     // You can redirect to an edit page here if needed
@@ -44,7 +49,8 @@ const handleMenuClick = (key: string, item: any) => {
 };
 
 const ActivityList = ({ data }: { data: any[] }) => (
-  <ListComponents column={['username', 'Document', 'Date', 'Status']} data={data} menu={menuItems} />
+  
+  <ListComponents column={['username', 'Document', 'Date', 'Status']} data={data} menu={menuItems} height='65vh' />
 );
 
 const items: TabsProps['items'] = [
@@ -64,8 +70,6 @@ const items: TabsProps['items'] = [
     children: <ActivityList data={pendingActivities} />,
   },
 ];
-
-function Activities() {
   return (
     <GeneralLayout title="All Activities" buttonLabel="" navigateLocation="">
       <Tabs defaultActiveKey="1" items={items} onChange={onChange} style={{ marginTop: 0, width: '100%' }} />

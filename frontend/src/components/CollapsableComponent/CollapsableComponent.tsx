@@ -63,14 +63,18 @@ function CollapsableComponent(props: CollapsableComponentProps) {
   
   console.log(data);
 
-  const formatDate = (isoDate: string): string => {
-    const date = new Date(isoDate);
-    return date.toLocaleDateString('en-AU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
+const formatDate = (isoDate: string): string => {
+  const date = new Date(isoDate);
+  console.log('daetadsad',date)
+  return isNaN(date.getTime())
+    ? 'Invalid Date'
+    : date.toLocaleDateString('en-AU', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+};
+
 
   // Create the collapseItems array based on the data
   const collapseItems = data.map((item, index) => ({
@@ -88,18 +92,16 @@ function CollapsableComponent(props: CollapsableComponentProps) {
           const resolvedKey = keys.find((key) => item[key] !== undefined); // pick first valid key
 
           const value = resolvedKey ? item[resolvedKey] : undefined;
-
+console.log('Resolved key:', resolvedKey, 'Value:', value);
           return (
             <span key={idx}>
-              {Array.isArray(value)
-                ? `${value.length}`
-                : value !== undefined
-                  ? resolvedKey?.toLowerCase().includes('date') ||
-                    resolvedKey === 'created_at'
-                    ? formatDate(value)
-                    : value
-                  : 'N/A'}
-            </span>
+        {Array.isArray(value)
+          ? value.join(', ')
+          : value !== undefined && value !== null
+            ? value
+            : 'N/A'}
+      </span>
+
           );
         })}
         {/* Dropdown menu button */}
