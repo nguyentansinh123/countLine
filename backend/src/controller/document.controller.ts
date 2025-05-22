@@ -1685,3 +1685,37 @@ export const rejectRevision = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: "Failed to reject revision" });
   }
 };
+
+export const newSendFile = async (req: Request, res: Response): Promise<void> => {
+  const { documentId } = req.params;
+  const { recipients } = req.body; // array of userIds or teamIds
+  const admin = req.body.user;
+
+  if (!recipients || !Array.isArray(recipients)) {
+    res.status(400).json({ success: false, message: "Recipients are required" });
+    return;
+  }
+
+  try {
+    // Simulate DB logic (replace with real DB logic)
+    for (const recipient of recipients) {
+      await docClient.send(
+        new PutCommand({
+          TableName: "DocumentAssignments",
+          Item: {
+            documentId,
+            recipientId: recipient,
+            sentBy: admin.id,
+            sentAt: new Date().toISOString(),
+            status: "PENDING_REVIEW",
+          },
+        })
+      );
+    }
+
+    res.status(200).json({ success: true, message: "Document sent to recipients" });
+  } catch (error) {
+    console.error("Send file error:", error);
+    res.status(500).json({ success: false, message: "Failed to send file" });
+  }
+};

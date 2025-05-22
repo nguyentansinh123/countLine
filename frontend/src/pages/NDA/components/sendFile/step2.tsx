@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { PDFDocument, rgb, StandardFonts, PDFFont, PDFPage, PDFImage } from 'pdf-lib';
+import {
+  PDFDocument,
+  rgb,
+  StandardFonts,
+  PDFFont,
+  PDFPage,
+  PDFImage,
+} from 'pdf-lib';
 import PdfEditor from '../../../../components/Editor/PdfEditor';
 
 interface Step2Props {
@@ -18,13 +25,14 @@ const Step2: React.FC<Step2Props> = ({
   userAdress,
 }) => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  
 
   const modifyPdf = async () => {
     if (!file) return;
 
     try {
-      const pdfBytes = await fetch(file.location).then((res) => res.arrayBuffer());
+      const pdfBytes = await fetch(file.location).then((res) =>
+        res.arrayBuffer()
+      );
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const firstPage = pdfDoc.getPages()[0];
       const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -44,10 +52,9 @@ const Step2: React.FC<Step2Props> = ({
 
   return (
     <>
-      <PdfEditor fileUrl={file.location}/>
+      <PdfEditor fileUrl={file.fileUrl} />
     </>
   );
 };
 
 export default Step2;
-

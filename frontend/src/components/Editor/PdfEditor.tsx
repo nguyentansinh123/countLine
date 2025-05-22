@@ -21,7 +21,8 @@ const PdfEditor: React.FC<{ fileUrl: string }> = ({ fileUrl }) => {
       try {
         const fetchedFile = await fetch(fileUrl);
         const arrayBuffer = await fetchedFile.arrayBuffer();
-        const loadedPdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const loadedPdf = await pdfjsLib.getDocument({ data: arrayBuffer })
+          .promise;
         const pages: any[] = [];
 
         for (let pageNum = 1; pageNum <= loadedPdf.numPages; pageNum++) {
@@ -110,100 +111,103 @@ const PdfEditor: React.FC<{ fileUrl: string }> = ({ fileUrl }) => {
     if (selectedBoxId === id) setSelectedBoxId(null);
   };
 
+  const handleSave = async () => {
+    try {
+      const fetchedFile = await fetch(fileUrl);
+      const arrayBuffer = await fetchedFile.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-  
-const handleSave = async () => {
-  try {
-    const fetchedFile = await fetch(fileUrl);
-    const arrayBuffer = await fetchedFile.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(arrayBuffer);
-    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const scale = 1.5; // Should match your rendering scale
 
-    const scale = 1.5; // Should match your rendering scale
+      for (const box of inputBoxes) {
+        try {
+          const page = pdfDoc.getPage(box.pageNum - 1); // pdf-lib uses 0-based indexing
+          const { width: pageWidth, height: pageHeight } = page.getSize();
 
-    for (const box of inputBoxes) {
-      try {
-        const page = pdfDoc.getPage(box.pageNum - 1); // pdf-lib uses 0-based indexing
-        const { width: pageWidth, height: pageHeight } = page.getSize();
+          // Validate coordinates and dimensions
+          const validX = Number.isFinite(box.x) ? box.x : 0;
+          const validY = Number.isFinite(box.y) ? box.y : 0;
+          const validWidth = Number.isFinite(box.width)
+            ? box.width
+            : box.type === 'signature'
+              ? 200
+              : 100;
+          const validHeight = Number.isFinite(box.height)
+            ? box.height
+            : box.type === 'signature'
+              ? 100
+              : 30;
 
-        // Validate coordinates and dimensions
-        const validX = Number.isFinite(box.x) ? box.x : 0;
-        const validY = Number.isFinite(box.y) ? box.y : 0;
-        const validWidth = Number.isFinite(box.width) ? box.width : (box.type === 'signature' ? 200 : 100);
-        const validHeight = Number.isFinite(box.height) ? box.height : (box.type === 'signature' ? 100 : 30);
+          // Convert canvas coordinates to PDF coordinates
+          // pdf-lib has (0,0) at bottom-left, while canvas has it at top-left
+          const pdfX = validX / scale;
+          const pdfY = pageHeight - (validY + validHeight) / scale;
 
-        // Convert canvas coordinates to PDF coordinates
-        // pdf-lib has (0,0) at bottom-left, while canvas has it at top-left
-        const pdfX = validX / scale;
-        const pdfY = pageHeight - (validY + validHeight) / scale;
+          if (box.type === 'signature' && box.value?.startsWith('data:image')) {
+            // Process signature image
+            const base64Data = box.value.split(',')[1];
+            const byteString = atob(base64Data);
+            const byteArray = new Uint8Array(byteString.length);
 
-        if (box.type === 'signature' && box.value?.startsWith('data:image')) {
-          // Process signature image
-          const base64Data = box.value.split(',')[1];
-          const byteString = atob(base64Data);
-          const byteArray = new Uint8Array(byteString.length);
-          
-          for (let i = 0; i < byteString.length; i++) {
-            byteArray[i] = byteString.charCodeAt(i);
+            for (let i = 0; i < byteString.length; i++) {
+              byteArray[i] = byteString.charCodeAt(i);
+            }
+
+            // Embed image (PNG or JPG)
+            const image = box.value.startsWith('data:image/png')
+              ? await pdfDoc.embedPng(byteArray)
+              : await pdfDoc.embedJpg(byteArray);
+
+            // Calculate dimensions while maintaining aspect ratio
+            const imgAspectRatio = image.width / image.height;
+            let drawWidth = validWidth / scale;
+            let drawHeight = drawWidth / imgAspectRatio;
+
+            // If the calculated height is too big for the box, scale down
+            if (drawHeight > validHeight / scale) {
+              drawHeight = validHeight / scale;
+              drawWidth = drawHeight * imgAspectRatio;
+            }
+
+            page.drawImage(image, {
+              x: pdfX,
+              y: pdfY,
+              width: drawWidth,
+              height: drawHeight,
+            });
+          } else if (box.value) {
+            // Handle text fields
+            page.drawText(box.value, {
+              x: pdfX,
+              y: pdfY + validHeight / scale - 2, // Adjust text baseline
+              size: (box.fontSize || 12) / scale,
+            });
           }
-
-          // Embed image (PNG or JPG)
-          const image = box.value.startsWith('data:image/png')
-            ? await pdfDoc.embedPng(byteArray)
-            : await pdfDoc.embedJpg(byteArray);
-
-          // Calculate dimensions while maintaining aspect ratio
-          const imgAspectRatio = image.width / image.height;
-          let drawWidth = validWidth / scale;
-          let drawHeight = drawWidth / imgAspectRatio;
-
-          // If the calculated height is too big for the box, scale down
-          if (drawHeight > validHeight / scale) {
-            drawHeight = validHeight / scale;
-            drawWidth = drawHeight * imgAspectRatio;
-          }
-
-          page.drawImage(image, {
-            x: pdfX,
-            y: pdfY,
-            width: drawWidth,
-            height: drawHeight,
-          });
-        } else if (box.value) {
-          // Handle text fields
-          page.drawText(box.value, {
-            x: pdfX,
-            y: pdfY + (validHeight / scale) - 2, // Adjust text baseline
-            size: (box.fontSize || 12) / scale,
-
-          });
+        } catch (error) {
+          console.error(`Error processing box ${box.id}:`, error);
         }
-      } catch (error) {
-        console.error(`Error processing box ${box.id}:`, error);
       }
+
+      // Save and download
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'signed-document.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('PDF save failed:', err);
+      alert('Failed to save PDF. Check console for details.');
     }
-
-    // Save and download
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'signed-document.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-  } catch (err) {
-    console.error("PDF save failed:", err);
-    alert("Failed to save PDF. Check console for details.");
-  }
-};
-
+  };
 
   return (
-    <div style={{display:'flex'}}>
+    <div style={{ display: 'flex' }}>
       <Toolbar
         addInputBox={addInputBox}
         addSignatureBox={() => addInputBox('signature')}
@@ -215,87 +219,102 @@ const handleSave = async () => {
 
       <div
         ref={canvasWrapperRef}
-        style={{ height: '70vh', overflowY: 'auto', position: 'relative', backgroundColor:'grey' }}
+        style={{
+          height: '70vh',
+          overflowY: 'auto',
+          position: 'relative',
+          backgroundColor: 'grey',
+        }}
       >
         {pdfPages.map((page) => (
-  <div key={page.pageNum} style={{ marginBottom: 20, position: 'relative' }}>
-    <canvas ref={(el) => { if (el) el.replaceWith(page.canvas); }} />
-    {inputBoxes
-      .filter((box) => box.pageNum === page.pageNum)
-      .map((box) =>
-        box.type === 'signature' ? (
-          <SignatureBox
-          key={box.id}
-          id={box.id}
-          box={box}
-          canvasWrapperRef={canvasWrapperRef}
-          isActive={box.id === selectedBoxId}
-          onSave={(dataUrl: string) => {
-             setInputBoxes((prev) =>
-      prev.map((b) =>
-        b.id === box.id
-          ? { ...b, value: dataUrl } // Store in value instead of image
-          : b
+          <div
+            key={page.pageNum}
+            style={{ marginBottom: 20, position: 'relative' }}
+          >
+            <canvas
+              ref={(el) => {
+                if (el) el.replaceWith(page.canvas);
+              }}
+            />
+            {inputBoxes
+              .filter((box) => box.pageNum === page.pageNum)
+              .map((box) =>
+                box.type === 'signature' ? (
+                  <SignatureBox
+                    key={box.id}
+                    id={box.id}
+                    box={box}
+                    canvasWrapperRef={canvasWrapperRef}
+                    isActive={box.id === selectedBoxId}
+                    onSave={(dataUrl: string) => {
+                      setInputBoxes((prev) =>
+                        prev.map((b) =>
+                          b.id === box.id
+                            ? { ...b, value: dataUrl } // Store in value instead of image
+                            : b
+                        )
+                      );
+                    }}
+                    onDelete={() => deleteInputBox(box.id)}
+                    onConfirm={(id, value) => {
+                      setInputBoxes((prev) =>
+                        prev.map((b) => (b.id === id ? { ...b, value } : b))
+                      );
+                    }}
+                    onUpdatePosition={(id: string, x: number, y: number) => {
+                      setInputBoxes((prev) =>
+                        prev.map((b) => (b.id === id ? { ...b, x, y } : b))
+                      );
+                    }}
+                    onUpdateSize={(
+                      id: string,
+                      width: number,
+                      height: number
+                    ) => {
+                      setInputBoxes((prev) =>
+                        prev.map((b) =>
+                          b.id === id ? { ...b, width, height } : b
+                        )
+                      );
+                    }}
+                    width={100}
+                    height={box.height}
+                  />
+                ) : (
+                  <InputBox
+                    key={box.id}
+                    box={box}
+                    canvasWrapperRef={canvasWrapperRef}
+                    isActive={box.id === selectedBoxId}
+                    onConfirm={(id, value) => {
+                      setInputBoxes((prev) =>
+                        prev.map((b) => (b.id === id ? { ...b, value } : b))
+                      );
+                    }}
+                    onDelete={(id) => {
+                      setInputBoxes((prev) => prev.filter((b) => b.id !== id));
+                      if (selectedBoxId === id) setSelectedBoxId(null);
+                    }}
+                    onUpdatePosition={(id, x, y) =>
+                      setInputBoxes((prev) =>
+                        prev.map((b) => (b.id === id ? { ...b, x, y } : b))
+                      )
+                    }
+                    onUpdateSize={(id, width, height) =>
+                      setInputBoxes((prev) =>
+                        prev.map((b) =>
+                          b.id === id ? { ...b, width, height } : b
+                        )
+                      )
+                    }
+                    onDoubleClick={(id) => setSelectedBoxId(id)}
+                  />
                 )
-              );
-          }}
-          onDelete={() => deleteInputBox(box.id)}
-          onConfirm={(id, value) => {
-            setInputBoxes((prev) =>
-              prev.map((b) => (b.id === id ? { ...b, value } : b))
-            );
-          }}
-          onUpdatePosition={(id: string, x: number, y: number) => {
-            setInputBoxes((prev) =>
-              prev.map((b) => (b.id === id ? { ...b, x, y } : b))
-            );
-          }}
-          onUpdateSize={(id: string, width: number, height: number) => {
-            setInputBoxes((prev) =>
-              prev.map((b) => (b.id === id ? { ...b, width, height } : b))
-            );
-          }}
-          width={100}
-          height={box.height}
-        />
-        
-        
-        
-        ) : (
-          <InputBox
-            key={box.id}
-            box={box}
-            canvasWrapperRef={canvasWrapperRef}
-            isActive={box.id === selectedBoxId}
-            onConfirm={(id, value) => {
-              setInputBoxes((prev) =>
-                prev.map((b) => (b.id === id ? { ...b, value } : b))
-              );
-            }}
-            onDelete={(id) => {
-              setInputBoxes((prev) => prev.filter((b) => b.id !== id));
-              if (selectedBoxId === id) setSelectedBoxId(null);
-            }}
-            onUpdatePosition={(id, x, y) =>
-              setInputBoxes((prev) =>
-                prev.map((b) => (b.id === id ? { ...b, x, y } : b))
-              )
-            }
-            onUpdateSize={(id, width, height) =>
-              setInputBoxes((prev) =>
-                prev.map((b) => (b.id === id ? { ...b, width, height } : b))
-              )
-            }
-            onDoubleClick={(id) => setSelectedBoxId(id)}
-          />
-        )
-      )}
-  </div>
-))}
-
-            </div>
+              )}
           </div>
-
+        ))}
+      </div>
+    </div>
   );
 };
 

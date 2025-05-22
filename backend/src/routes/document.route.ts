@@ -22,6 +22,7 @@ import {
   getPendingReviews,
   approveRevision,
   rejectRevision,
+  newSendFile,
 } from "../controller/document.controller";
 import { upload } from "../lib/multerconfig";
 import { userAuth } from "../middleware/userAuth";
@@ -62,7 +63,12 @@ router.post("/sign/:documentId", userAuth, signDocument);
 
 router.get("/pending-signatures", userAuth, getDocumentsRequiringSignature);
 
-router.post("/sign-with-canvas/:documentId", userAuth,upload.single("signature"),signDocumentWithCanvas);
+router.post(
+  "/sign-with-canvas/:documentId",
+  userAuth,
+  upload.single("signature"),
+  signDocumentWithCanvas
+);
 
 // New Routeeeeeeeeeeeeeeeeeeee
 
@@ -79,3 +85,5 @@ router.post("/approve/:documentId/:revisionId", userAuth, approveRevision);
 router.post("/reject/:documentId/:revisionId", userAuth, rejectRevision);
 
 router.get("/pending-reviews", userAuth, authorizeRoles("admin"), getPendingReviews);
+
+router.post("/senf-file/:documentId", userAuth, newSendFile);
