@@ -310,7 +310,6 @@ const updateProfilePic = async (req: Request, res: Response) => {
   try {
     const user_id = (req as any).user?.id;
     
-    // Check if file was uploaded
     if (!req.file) {
       res.status(400).json({
         success: false,
@@ -321,7 +320,6 @@ const updateProfilePic = async (req: Request, res: Response) => {
 
     console.log("File received:", req.file.originalname, req.file.mimetype, req.file.size);
     
-    // Convert buffer to base64 for Cloudinary
     const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     
     const uploadResponse = await v2.uploader.upload(base64Image, {

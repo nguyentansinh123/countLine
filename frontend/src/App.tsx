@@ -37,6 +37,7 @@ import PdfEditor from './TempWebsite/pdf editor/TempEditor';
 import TempEditor from './TempWebsite/pdf editor/TempEditor';
 import ViewHistory from './pages/Users/components/ViewHistory';
 import { SearchResults } from './pages/SearchResults/SeacrhResults';
+import SharedDocumentsPage from './pages/SharedDocumentsPage/SharedDocumentsPage';
 
 function App() {
   return (
@@ -229,6 +230,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <SearchResults />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shared-documents"
+            element={
+              <ProtectedRoute>
+                <SharedDocumentsPage />
               </ProtectedRoute>
             }
           />

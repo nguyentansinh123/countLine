@@ -1,9 +1,11 @@
 import { Divider, Menu } from 'antd';
-import { Link } from 'react-router-dom'; // Import Link to map menu items to routes
+import { Link } from 'react-router-dom';
+import { ShareAltOutlined } from '@ant-design/icons'; 
 
 type MenuItem = {
   key: string;
   label: React.ReactNode;
+  icon?: React.ReactNode; 
 };
 
 const mainItems: MenuItem[] = [
@@ -13,6 +15,11 @@ const mainItems: MenuItem[] = [
   { key: '4', label: 'Teams' },
   { key: '5', label: 'Overview' },
   { key: '6', label: 'Users' },
+  {
+    key: 'shared-documents',
+    label: <Link to="/shared-documents">Shared With Me</Link>,
+    icon: <ShareAltOutlined />,
+  },
 ];
 
 const footerItems: MenuItem[] = [
@@ -61,16 +68,20 @@ function SideBar() {
           }}
         >
           {mainItems.map((item) => (
-            <Menu.Item key={item.key}>
-              <Link
-                to={
-                         `/${String(item.label)
-                        .toLowerCase()
-                        .replace(/\s+/g, '-')}`
-                }
-              >
-                {item.label}
-              </Link>
+            <Menu.Item key={item.key} icon={item.icon}>
+              {item.key !== 'shared-documents' ? (
+                <Link
+                  to={
+                    `/${String(item.label)
+                      .toLowerCase()
+                      .replace(/\s+/g, '-')}`
+                  }
+                >
+                  {item.label}
+                </Link>
+              ) : (
+                item.label // Just render the label directly since it already contains a Link component
+              )}
             </Menu.Item>
           ))}
         </Menu>
