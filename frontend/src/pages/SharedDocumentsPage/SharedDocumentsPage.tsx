@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
   Card, 
   Table, 
@@ -11,7 +12,8 @@ import {
   Modal,
   Spin,
   Avatar,
-  Divider
+  Divider,
+  message
 } from 'antd';
 import { 
   DownloadOutlined, 
@@ -25,99 +27,62 @@ import {
   UserOutlined,
   InfoCircleOutlined,
   ClockCircleOutlined,
-  ShareAltOutlined
+  ShareAltOutlined,
+  LeftOutlined,
+  RightOutlined,
+  FileExclamationOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { Document, Page, pdfjs } from 'react-pdf';
+
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 dayjs.extend(relativeTime);
 const { Title, Text, Paragraph } = Typography;
 
-const mockDocuments = [
-  {
-    documentId: '1',
-    filename: 'Project_Proposal.pdf',
-    documentType: 'PDF Document',
-    fileSize: '2.5 MB',
-    sharedBy: 'John Smith',
-    sharedByAvatar: null,
-    sharedAt: dayjs().subtract(2, 'day').toISOString(),
-    signingStatus: 'pending',
-    signaturesRequired: ['current-user-id'],
-    signedBy: [],
-    userId: 'current-user-id',
-    description: 'Final project proposal for client approval',
-    presignedUrl: 'https://example.com/sample.pdf'
-  },
-  {
-    documentId: '2',
-    filename: 'Financial_Report_2024.xlsx',
-    documentType: 'Excel Spreadsheet',
-    fileSize: '1.8 MB',
-    sharedBy: 'Jane Wilson',
-    sharedByAvatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-    sharedAt: dayjs().subtract(1, 'week').toISOString(),
-    signingStatus: 'completed',
-    signaturesRequired: ['current-user-id'],
-    signedBy: ['current-user-id'],
-    userId: 'current-user-id',
-    description: 'Q2 financial report with projections',
-    presignedUrl: 'https://example.com/sample.xlsx'
-  },
-  {
-    documentId: '3',
-    filename: 'Team_Photo.jpg',
-    documentType: 'Image',
-    fileSize: '3.2 MB',
-    sharedBy: 'Michael Brown',
-    sharedByAvatar: 'https://randomuser.me/api/portraits/men/22.jpg',
-    sharedAt: dayjs().subtract(3, 'hour').toISOString(),
-    signingStatus: 'not_required',
-    signaturesRequired: [],
-    signedBy: [],
-    userId: 'current-user-id',
-    description: 'Company retreat team photo',
-    presignedUrl: 'https://example.com/sample.jpg'
-  },
-  {
-    documentId: '4',
-    filename: 'Contract_Agreement.docx',
-    documentType: 'Word Document',
-    fileSize: '1.1 MB',
-    sharedBy: 'Sarah Davis',
-    sharedByAvatar: 'https://randomuser.me/api/portraits/women/65.jpg',
-    sharedAt: dayjs().subtract(5, 'day').toISOString(),
-    signingStatus: 'pending',
-    signaturesRequired: ['current-user-id', 'other-user-id'],
-    signedBy: [],
-    userId: 'current-user-id',
-    description: 'Legal contract for new partnership agreement',
-    presignedUrl: 'https://example.com/sample.docx'
-  },
-  {
-    documentId: '5',
-    filename: 'Marketing_Presentation.pptx',
-    documentType: 'Presentation',
-    fileSize: '5.7 MB',
-    sharedBy: 'Robert Johnson',
-    sharedByAvatar: null,
-    sharedAt: dayjs().subtract(12, 'hour').toISOString(),
-    signingStatus: 'not_required',
-    signaturesRequired: [],
-    signedBy: [],
-    userId: 'current-user-id',
-    description: 'Q3 marketing strategy presentation',
-    presignedUrl: 'https://example.com/sample.pptx'
-  }
-];
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 function SharedDocumentsPage() {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [documents, setDocuments] = useState<any[]>(mockDocuments);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [documents, setDocuments] = useState<any[]>([]);
   const [viewDocument, setViewDocument] = useState<any>(null);
   const [viewModalVisible, setViewModalVisible] = useState<boolean>(false);
   const [infoModalVisible, setInfoModalVisible] = useState<boolean>(false);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [documentError, setDocumentError] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetchSharedDocuments();
+  }, []);
+
+  const fetchSharedDocuments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.get('http://localhost:5001/api/document/shared-with-me', {
+        withCredentials: true
+      });
+      
+      if (response.data.success) {
+        setDocuments(response.data.data || []);
+      } else {
+        setError('Failed to load shared documents');
+        message.error('Failed to load shared documents');
+      }
+    } catch (err) {
+      console.error('Error fetching shared documents:', err);
+      setError('Error loading shared documents');
+      message.error('Error loading shared documents');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleViewDocument = (document: any) => {
     setViewDocument(document);
@@ -129,26 +94,63 @@ function SharedDocumentsPage() {
     setInfoModalVisible(true);
   };
 
-  const handleSignDocument = (documentId: string) => {
-    const updatedDocs = documents.map(doc => {
-      if (doc.documentId === documentId) {
-        return {
-          ...doc,
-          signingStatus: 'completed',
-          signedBy: [...(doc.signedBy || []), 'current-user-id']
-        };
-      }
-      return doc;
-    });
+  const handleViewSpecificRevision = (revision: any, parentDoc: any) => {
+    const viewObj = {
+      ...parentDoc,
+      currentRevision: revision,
+      presignedUrl: revision.presignedUrl || revision.fileUrl
+    };
     
-    setDocuments(updatedDocs);
-    
-    if (selectedDocument?.documentId === documentId) {
-      setSelectedDocument({
-        ...selectedDocument,
-        signingStatus: 'completed',
-        signedBy: [...(selectedDocument.signedBy || []), 'current-user-id']
+    setViewDocument(viewObj);
+    setViewModalVisible(true);
+  };
+
+  const handleSignDocument = async (documentId: string) => {
+    try {
+      const response = await axios.post(`http://localhost:5001/api/documents/sign/${documentId}`, {}, {
+        withCredentials: true
       });
+      
+      if (response.data.success) {
+        message.success('Document signed successfully');
+        fetchSharedDocuments(); 
+      } else {
+        message.error(response.data.message || 'Failed to sign document');
+      }
+    } catch (error) {
+      console.error('Error signing document:', error);
+      message.error('Error signing document');
+    }
+  };
+
+  const handleDownloadDocument = async (documentId: string, filename: string) => {
+    try {
+      setLoading(true);
+      
+      const response = await axios.get(`http://localhost:5001/api/document/download/${documentId}`, {
+        withCredentials: true,
+        responseType: 'blob' 
+      });
+      
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = filename || `document-${documentId}.pdf`; 
+      document.body.appendChild(a);
+      a.click();
+      
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      message.success('Document download started');
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      message.error('Failed to download document');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -166,6 +168,25 @@ function SharedDocumentsPage() {
         return <FileUnknownOutlined style={{ fontSize: '24px', color: '#faad14' }} />;
     }
   };
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+    setDocumentError(false);
+  };
+
+  const onDocumentLoadError = () => {
+    setDocumentError(true);
+  };
+
+  const changePage = (offset: number) => {
+    setPageNumber(prevPageNumber => {
+      const newPageNumber = prevPageNumber + offset;
+      return Math.min(Math.max(1, newPageNumber), numPages || 1);
+    });
+  };
+
+  const previousPage = () => changePage(-1);
+  const nextPage = () => changePage(1);
 
   const columns = [
     {
@@ -255,7 +276,10 @@ function SharedDocumentsPage() {
             <Button 
               shape="circle" 
               icon={<DownloadOutlined />} 
-              onClick={() => window.open(record.presignedUrl, '_blank')} 
+              onClick={(e) => {
+                e.stopPropagation(); 
+                handleDownloadDocument(record.documentId, record.filename);
+              }} 
             />
           </Tooltip>
           
@@ -328,47 +352,172 @@ function SharedDocumentsPage() {
         title={
           <Space>
             {viewDocument && getDocumentIcon(viewDocument.documentType)}
-            <span>Document Preview</span>
+            <span>
+              Document Preview
+              {viewDocument?.currentRevision && (
+                <Tag color="blue" style={{ marginLeft: '8px' }}>
+                  Version {viewDocument.currentRevision.version || '1.0'}
+                </Tag>
+              )}
+            </span>
           </Space>
         }
         open={viewModalVisible}
-        onCancel={() => setViewModalVisible(false)}
+        onCancel={() => {
+          setViewModalVisible(false);
+          setPageNumber(1);
+          setNumPages(null);
+          setDocumentError(false);
+        }}
         footer={[
-          <Button key="close" onClick={() => setViewModalVisible(false)}>
+          <Button key="close" onClick={() => {
+            setViewModalVisible(false);
+            setPageNumber(1);
+            setNumPages(null);
+            setDocumentError(false);
+          }}>
             Close
           </Button>,
+          numPages && numPages > 1 ? (
+            <div key="pagination" style={{ display: 'inline-flex', alignItems: 'center', marginRight: 16 }}>
+              <Button 
+                icon={<LeftOutlined />} 
+                disabled={pageNumber <= 1}
+                onClick={previousPage}
+                size="small"
+              />
+              <Text style={{ margin: '0 8px' }}>
+                Page {pageNumber} of {numPages}
+              </Text>
+              <Button 
+                icon={<RightOutlined />} 
+                disabled={pageNumber >= numPages}
+                onClick={nextPage}
+                size="small"
+              />
+            </div>
+          ) : null,
           <Button 
             key="download" 
             type="primary" 
             icon={<DownloadOutlined />}
-            onClick={() => viewDocument && window.open(viewDocument.presignedUrl, '_blank')}
+            onClick={() => viewDocument && handleDownloadDocument(viewDocument.documentId, viewDocument.filename)}
+            loading={loading}
           >
             Download
           </Button>
         ]}
-        width={800}
+        width={900}
       >
         {viewDocument && (
           <div>
             <div style={{ marginBottom: '16px' }}>
               <Text strong>Document Name:</Text> {viewDocument.filename}
+              {viewDocument.currentRevision && (
+                <div style={{ marginTop: '8px' }}>
+                  <Text type="secondary">
+                    Created {dayjs(viewDocument.currentRevision.createdAt || viewDocument.createdAt).format('MMM D, YYYY')}
+                    {viewDocument.currentRevision.createdBy && ` by ${viewDocument.currentRevision.createdBy}`}
+                  </Text>
+                </div>
+              )}
             </div>
             
             <div style={{ 
               background: '#f5f5f5', 
               padding: '20px', 
               textAlign: 'center', 
-              height: '400px',
+              minHeight: '500px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              flexDirection: 'column'
+              flexDirection: 'column',
+              borderRadius: '4px',
+              overflow: 'auto'
             }}>
-              <div style={{ fontSize: '64px', marginBottom: '24px' }}>
-                {getDocumentIcon(viewDocument.documentType)}
-              </div>
-              <Text>Document preview would appear here in the actual implementation.</Text>
-              <Text type="secondary">Click Download to view the actual file.</Text>
+              {viewDocument.presignedUrl ? (
+                viewDocument.documentType?.toLowerCase().includes('pdf') ? (
+                  <Document
+                    file={viewDocument.presignedUrl}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    onLoadError={onDocumentLoadError}
+                    error={
+                      <div>
+                        <FileExclamationOutlined style={{ fontSize: '64px', color: '#ff4d4f', marginBottom: '16px' }} />
+                        <Text>Failed to load PDF. The file might be corrupted or require authentication.</Text>
+                        <Button 
+                          type="primary" 
+                          style={{ marginTop: '16px' }}
+                          onClick={() => window.open(viewDocument.presignedUrl, '_blank')}
+                        >
+                          Open in new tab
+                        </Button>
+                      </div>
+                    }
+                    loading={
+                      <div>
+                        <Spin size="large" />
+                        <Text style={{ display: 'block', marginTop: '16px' }}>Loading document...</Text>
+                      </div>
+                    }
+                  >
+                    <Page 
+                      pageNumber={pageNumber} 
+                      scale={1.2} 
+                      renderTextLayer={true}
+                      renderAnnotationLayer={true}
+                      error={
+                        <Text type="danger">Error loading page {pageNumber}</Text>
+                      }
+                    />
+                  </Document>
+                ) : viewDocument.documentType?.toLowerCase().includes('image') ? (
+                  <img 
+                    src={viewDocument.presignedUrl} 
+                    alt={viewDocument.filename}
+                    style={{ maxWidth: '100%', maxHeight: '70vh' }}
+                    onError={() => setDocumentError(true)}
+                  />
+                ) : documentError ? (
+                  <div>
+                    <FileExclamationOutlined style={{ fontSize: '64px', color: '#ff4d4f', marginBottom: '16px' }} />
+                    <Text>This document type cannot be previewed directly.</Text>
+                    <Text type="secondary" style={{ display: 'block', margin: '8px 0 16px' }}>
+                      Please download the file to view it in its native application.
+                    </Text>
+                    <Button 
+                      type="primary"
+                      onClick={() => window.open(viewDocument.presignedUrl, '_blank')}
+                    >
+                      Open in new tab
+                    </Button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: '64px', marginBottom: '24px' }}>
+                      {getDocumentIcon(viewDocument.documentType)}
+                    </div>
+                    <Text>Loading preview...</Text>
+                    <Text type="secondary" style={{ display: 'block', margin: '8px 0 16px' }}>
+                      If the preview doesn't load, this file type may not be supported for in-browser viewing.
+                    </Text>
+                    <iframe 
+                      src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(viewDocument.presignedUrl)}`}
+                      style={{ width: '100%', height: '500px', border: 'none' }}
+                      onLoad={() => setDocumentError(false)}
+                      onError={() => setDocumentError(true)}
+                    />
+                  </div>
+                )
+              ) : (
+                <div>
+                  <div style={{ fontSize: '64px', marginBottom: '24px' }}>
+                    {getDocumentIcon(viewDocument.documentType)}
+                  </div>
+                  <Text>Document preview is not available.</Text>
+                  <Text type="secondary">Click Download to view the actual file.</Text>
+                </div>
+              )}
             </div>
           </div>
         )}

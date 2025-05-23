@@ -23,6 +23,7 @@ import {
   approveRevision,
   rejectRevision,
   newSendFile,
+  getFilesSharedWithUser,
 } from "../controller/document.controller";
 import { upload } from "../lib/multerconfig";
 import { userAuth } from "../middleware/userAuth";
@@ -70,6 +71,7 @@ router.post(
   signDocumentWithCanvas
 );
 
+router.get("/shared-with-me", userAuth, getFilesSharedWithUser);
 // New Routeeeeeeeeeeeeeeeeeeee
 
 router.get("/document-with-revisions/:documentId", userAuth, getDocumentWithRevisions);
