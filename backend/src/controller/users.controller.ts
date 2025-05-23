@@ -309,9 +309,9 @@ const updateUserProfile = async (req: Request, res: Response) => {
 const updateProfilePic = async (req: Request, res: Response) => {
   try {
     const user_id = (req as any).user?.id;
-    const { name, email, profilePicture } = req.body;
-
-    if (!profilePicture) {
+    
+    // Check if file was uploaded
+    if (!req.file) {
       res.status(400).json({
         success: false,
         message: "Profile picture is required",
@@ -319,7 +319,12 @@ const updateProfilePic = async (req: Request, res: Response) => {
       return;
     }
 
-    const uploadResponse = await v2.uploader.upload(profilePicture, {
+    console.log("File received:", req.file.originalname, req.file.mimetype, req.file.size);
+    
+    // Convert buffer to base64 for Cloudinary
+    const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    
+    const uploadResponse = await v2.uploader.upload(base64Image, {
       folder: "profile-pictures",
       transformation: { width: 500, height: 500, crop: "fill" },
     });

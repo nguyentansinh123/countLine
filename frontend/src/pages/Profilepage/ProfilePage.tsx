@@ -109,45 +109,37 @@ function ProfilePage() {
       });
   };
 
-  const handleProfilePicChange = (file: Blob) => {
-    const maxSizeMB = 5; 
-    const maxSizeBytes = maxSizeMB * 1024 * 1024;
-
-    if (file.size > maxSizeBytes) {
-      Modal.error({
-        title: 'File Too Large',
-        content: `The image you selected is ${(file.size / (1024 * 1024)).toFixed(2)} MB, which exceeds the maximum allowed size of ${maxSizeMB} MB. Please select a smaller image.`,
-        okText: 'Try Again'
-      });
-      return false;
+  const handleProfilePicChange = (info: any) => {
+    if (info.file.status === 'uploading') {
+      return;
     }
-
-    message.loading({ content: 'Preparing image...', key: 'profilePicUpload' });
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        if (file.size > 1024 * 1024) {
-          compressImage(reader.result, 800, 0.7).then(compressedImage => {
-            uploadProfilePic(compressedImage);
-          }).catch(err => {
-            console.error("Compression error:", err);
-            message.error({ 
-              content: 'Failed to compress image', 
-              key: 'profilePicUpload' 
+    
+    if (info.file.originFileObj) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          if (info.file.size > 1024 * 1024) {
+            compressImage(reader.result, 800, 0.7).then(compressedImage => {
+              uploadProfilePic(compressedImage);
+            }).catch(err => {
+              console.error("Compression error:", err);
+              message.error({ 
+                content: 'Failed to compress image', 
+                key: 'profilePicUpload' 
+              });
             });
-          });
+          } else {
+            uploadProfilePic(reader.result);
+          }
         } else {
-          uploadProfilePic(reader.result);
+          message.error({ 
+            content: 'Failed to read the file', 
+            key: 'profilePicUpload' 
+          });
         }
-      } else {
-        message.error({ 
-          content: 'Failed to read the file', 
-          key: 'profilePicUpload' 
-        });
-      }
-    };
-    reader.readAsDataURL(file);
+      };
+      reader.readAsDataURL(info.file.originFileObj);
+    }
     return false;
   };
 
@@ -257,13 +249,33 @@ function ProfilePage() {
   const uploadProfilePic = (imageData: string) => {
     message.loading({ content: 'Uploading profile picture...', key: 'profilePicUpload' });
     
+    // Create a file from the base64 string
+    const byteString = atob(imageData.split(',')[1]);
+    const mimeString = imageData.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    
+    const blob = new Blob([ab], { type: mimeString });
+    const file = new File([blob], "profile-picture." + mimeString.split('/')[1], { type: mimeString });
+    
+    // Create FormData
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+    
     axios
       .put(
         'http://localhost:5001/api/users/update-profile',
-        {
-          profilePicture: imageData
-        },
-        { withCredentials: true }
+        formData,
+        { 
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
       )
       .then((res) => {
         if (res.data.success) {
@@ -378,7 +390,10 @@ function ProfilePage() {
                 
                 <Upload
                   accept="image/*"
-                  beforeUpload={handleProfilePicChange}
+                  beforeUpload={(file) => {
+                    handleProfilePicChange({ file: { originFileObj: file } });
+                    return false;  // Prevent automatic upload
+                  }}
                   showUploadList={false}
                 >
                   <Button icon={<UploadOutlined />} type="primary" ghost>

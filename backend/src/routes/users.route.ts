@@ -21,29 +21,29 @@ import {
 import { userAuth } from "../middleware/userAuth";
 import { requireAuth } from "../middleware/requireAuth";
 import authorizeRoles from "../middleware/roleMiddleware";
+import { upload } from "../lib/multerconfig";
 
 export const router = express.Router();
+
+router.get("/me", requireAuth, getLoggedInUser);
+router.put("/update-profile", requireAuth,upload.single('profilePicture'), updateProfilePic); 
+router.put("/update-name", requireAuth, updateUserName);
+router.get("/SingleUserDocument/:documentID", userAuth, getSingleUserDocument);
+router.get("/getUserByName", userAuth, getUserByName);
+router.get("/search", userAuth, searchUsersByName);
+router.post("/recent-searches", userAuth, addRecentSearch);
+router.get("/recent-searches", userAuth, getRecentSearches);
 
 // Admin-only routes
 router.get("/getAllUser", userAuth, authorizeRoles("admin"), getAllUser);
 router.get("/AllUserDocuments", userAuth, authorizeRoles("admin"), getAllUserDocuments);
 router.delete("/delete-user/:id", userAuth, authorizeRoles("admin"), deleteUser);
 router.put("/reassign-role", userAuth, authorizeRoles("admin"), reassignUserRole);
-router.put("/:user_id", userAuth, authorizeRoles("admin"), updateUser);
 
 // Routes for admin and employee
 router.get("/getUserById/:id", userAuth, authorizeRoles("admin", "employee"), getSingleUser);
 
-// Routes for all authenticated users
-router.get("/SingleUserDocument/:documentID", userAuth, getSingleUserDocument);
-router.put("/update-profile", userAuth, updateProfilePic);
-
-router.get("/getUserByName", userAuth, getUserByName);
-router.get("/search", userAuth, searchUsersByName);
-router.post("/recent-searches", userAuth, addRecentSearch);
-router.get("/recent-searches", userAuth, getRecentSearches);
-
-router.get("/me", requireAuth, getLoggedInUser); // working
-router.put("/update-name", requireAuth, updateUserName);
+// Put catch-all parameter routes at the end
 router.get("/:userId", userAuth, getUserById);
 router.get("/:userId/documents", userAuth, getUserDocumentsById);
+router.put("/:user_id", userAuth, authorizeRoles("admin"), updateUser); 
