@@ -24,6 +24,7 @@ import {
   rejectRevision,
   newSendFile,
   getFilesSharedWithUser,
+  SendFileToTeam,
 } from "../controller/document.controller";
 import { upload } from "../lib/multerconfig";
 import { userAuth } from "../middleware/userAuth";
@@ -53,6 +54,7 @@ router.put("/update/:documentId", userAuth, upload.single("file"), updateDocumen
 router.get("/alltask", userAuth, authorizeRoles("admin", "employee"), getAllTask);
 
 router.post("/sendFileToUser/:IdOfUser", userAuth, SendFileToAUser);
+router.post("/sendFileToTeam/:IdOfTeam", userAuth, SendFileToTeam);
 
 router.post("/share-document/:IdOfUser", userAuth, SendFileToAUser);
 

@@ -11,6 +11,7 @@ import { Document } from './sendFile/types';
 import Step1 from './sendFile/step1';
 import Step2 from './sendFile/step2';
 import Step3 from './sendFile/step3';
+import { Team } from './sendFile/types';
 
 const SendFile: React.FC = () => {
   const [step, setStep] = useState<number>(1);
@@ -25,7 +26,7 @@ const SendFile: React.FC = () => {
   );
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
-  const [selectedTeam, setSelectedTeam] = useState<string>('');
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -274,6 +275,8 @@ const SendFile: React.FC = () => {
       const editedPdfBlob = await generateEditedPdfBlob(signedUrl, []);
       const formData = new FormData();
       formData.append('file', editedPdfBlob);
+
+      // 1. Save the edited PDF
       const res = await fetch(
         `http://localhost:5001/api/document/save-edit/${file_id}`,
         {
@@ -284,11 +287,62 @@ const SendFile: React.FC = () => {
       );
 
       const result = await res.json();
-      if (res.ok && result.success) {
-        setStep(3);
-      } else {
+      if (!res.ok || !result.success) {
         messageApi.error(result.message || 'Failed to edit document');
+        return;
       }
+
+      // 2. Then send file to user (if selected)
+      if (selectedUser) {
+        const userRes = await fetch(
+          `http://localhost:5001/api/document/sendFileToUser/${selectedUser}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              documentId: file_id,
+              requestSignature: true,
+              user_id: file?.uploadedBy,
+            }),
+          }
+        );
+        const userResult = await userRes.json();
+        if (!userRes.ok || !userResult.success) {
+          messageApi.error(userResult.message || 'Failed to send file to user');
+          return;
+        }
+      }
+
+      // 3. Or send file to team (if selected)
+      else if (selectedTeam) {
+        console.log(selectedTeam);
+
+        const teamRes = await fetch(
+          `http://localhost:5001/api/document/sendFileToTeam/${selectedTeam.teamId}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              documentId: file_id,
+              requestSignature: true,
+              user_id: file?.uploadedBy,
+            }),
+          }
+        );
+        const teamResult = await teamRes.json();
+        if (!teamRes.ok || !teamResult.success) {
+          messageApi.error(teamResult.message || 'Failed to send file to team');
+          return;
+        }
+      }
+
+      // 4. Proceed to Step 3
       setStep(3);
     } else if (step == 3) {
       navigate('/non-disclosure-agreement');
@@ -327,6 +381,8 @@ const SendFile: React.FC = () => {
             setSelectedUser={setSelectedUser}
             teamsData={[]} // needs to be fixed after teams and users
             userEmail={userEmail}
+            selectedTeam={selectedTeam}
+            setSelectedTeam={setSelectedTeam}
           />
         )}
 
@@ -347,7 +403,7 @@ const SendFile: React.FC = () => {
         )}
         {step === 3 && (
           <Step3
-            recipient={selectedUser || selectedTeam}
+            recipient={selectedUser || selectedTeam?.teamName || ''}
             onClose={() => navigate('/non-disclosure-agreement')}
           ></Step3>
         )}
