@@ -41,42 +41,42 @@ const SignatureBox: React.FC<SignatureBoxProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const moveableRef = useRef<Moveable>(null);
 
-useEffect(() => {
-  const canvas = canvasRef.current;
-  if (!canvas) return;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  // If the signature is finalized, do nothing — avoid clearing/redrawing
-  if (isFinalized) return;
+    // If the signature is finalized, do nothing — avoid clearing/redrawing
+    if (isFinalized) return;
 
-  const setupCanvas = () => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const setupCanvas = () => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    // Handle high DPI displays
-    const scale = window.devicePixelRatio || 1.5;
-    canvas.width = box.width * scale;
-    canvas.height = box.height * scale;
-    canvas.style.width = `${box.width}px`;
-    canvas.style.height = `${box.height}px`;
+      // Handle high DPI displays
+      const scale = window.devicePixelRatio || 1.5;
+      canvas.width = box.width * scale;
+      canvas.height = box.height * scale;
+      canvas.style.width = `${box.width}px`;
+      canvas.style.height = `${box.height}px`;
 
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
-    ctx.scale(scale, scale);
-    ctx.lineWidth = 1;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#000000';
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
+      ctx.scale(scale, scale);
+      ctx.lineWidth = 1;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#000000';
 
-    // Re-draw the signature after resize if it exists
-    if (signatureData && mode === 'draw') {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, box.width, box.height);
-      };
-      img.src = signatureData;
-    }
-  };
+      // Re-draw the signature after resize if it exists
+      if (signatureData && mode === 'draw') {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, box.width, box.height);
+        };
+        img.src = signatureData;
+      }
+    };
 
-  setupCanvas();
-}, [box.width, box.height, mode, signatureData, isFinalized]);
+    setupCanvas();
+  }, [box.width, box.height, mode, signatureData, isFinalized]);
 
   // Drawing functions
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
@@ -99,7 +99,8 @@ useEffect(() => {
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing || !canvasRef.current || isFinalized || mode !== 'draw') return;
+    if (!isDrawing || !canvasRef.current || isFinalized || mode !== 'draw')
+      return;
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -188,47 +189,45 @@ useEffect(() => {
   // Handle resizing with aspect ratio preservation
   const handleResize = ({ width, height, drag }: any) => {
     if (!containerRef.current) return;
-    
+
     containerRef.current.style.width = `${width}px`;
     containerRef.current.style.height = `${height}px`;
-    
+
     if (drag) {
       containerRef.current.style.left = `${box.x + drag.left}px`;
       containerRef.current.style.top = `${box.y + drag.top}px`;
     }
   };
 
- const handleResizeEnd = ({ target, width, height, drag }: any) => {
-  if (!target) return;
-  
-  const newWidth = Math.max(100, width); // Minimum width
-  const newHeight = Math.max(50, height); // Minimum height
-  
-  onUpdateSize(box.id, newWidth, newHeight);
+  const handleResizeEnd = ({ target, width, height, drag }: any) => {
+    if (!target) return;
 
-  if (drag) {
-    onUpdatePosition(box.id, box.x + drag.left, box.y + drag.top);
-  }
+    const newWidth = Math.max(100, width); // Minimum width
+    const newHeight = Math.max(50, height); // Minimum height
 
-  // Reset transform after resize
-  target.style.transform = 'translate(0px, 0px)';
+    onUpdateSize(box.id, newWidth, newHeight);
 
-  // Ensure the canvas retains the signature after resizing
-  const canvas = canvasRef.current;
-  if (canvas && signatureData) {
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before re-drawing
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, box.width, box.height);
-      };
-      img.src = signatureData;
+    if (drag) {
+      onUpdatePosition(box.id, box.x + drag.left, box.y + drag.top);
     }
-  }
-};
-;
 
+    // Reset transform after resize
+    target.style.transform = 'translate(0px, 0px)';
+
+    // Ensure the canvas retains the signature after resizing
+    const canvas = canvasRef.current;
+    if (canvas && signatureData) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before re-drawing
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, box.width, box.height);
+        };
+        img.src = signatureData;
+      }
+    }
+  };
   return (
     <>
       {/* Signature Box Container */}
@@ -279,11 +278,14 @@ useEffect(() => {
             >
               Upload
             </Button>
-            <Button 
-              type="primary" 
-              size="small" 
+            <Button
+              type="primary"
+              size="small"
               onClick={finalizeSignature}
-              disabled={(mode === 'draw' && !hasDrawn) || (mode === 'upload' && !uploadedUrl)}
+              disabled={
+                (mode === 'draw' && !hasDrawn) ||
+                (mode === 'upload' && !uploadedUrl)
+              }
             >
               ✓
             </Button>
@@ -297,10 +299,11 @@ useEffect(() => {
               style={{
                 display: 'block',
                 touchAction: 'none',
-                backgroundColor:'white',
+                backgroundColor: 'transparent',
                 cursor: isFinalized ? 'default' : 'crosshair',
                 width: '100%',
                 height: '100%',
+                border: isFinalized ? 'none' : '1px dashed #1890ff',
               }}
               onMouseDown={startDrawing}
               onMouseMove={draw}
@@ -321,18 +324,20 @@ useEffect(() => {
               }}
             />
           ) : (
-            <div style={{ 
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              height: '100%'
-            }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+              }}
+            >
               <Upload
                 accept="image/*"
                 showUploadList={false}
                 beforeUpload={beforeUpload}
                 customRequest={({ file, onSuccess }) => {
-                  setTimeout(() => onSuccess?.("ok"), 0);
+                  setTimeout(() => onSuccess?.('ok'), 0);
                 }}
                 onChange={handleUpload}
               >
@@ -347,12 +352,14 @@ useEffect(() => {
 
       {/* Delete Button */}
       {isFinalized && (
-        <div style={{ 
-          position: 'absolute', 
-          top: box.y + box.height + 5, 
-          left: box.x,
-          zIndex: 100,
-        }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: box.y + box.height + 5,
+            left: box.x,
+            zIndex: 100,
+          }}
+        >
           <Button danger size="small" onClick={() => onDelete(box.id)}>
             Delete
           </Button>

@@ -60,21 +60,20 @@ function CollapsableComponent(props: CollapsableComponentProps) {
     users.find((user) => user.user_id === userId);
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  
+
   console.log(data);
 
-const formatDate = (isoDate: string): string => {
-  const date = new Date(isoDate);
-  console.log('daetadsad',date)
-  return isNaN(date.getTime())
-    ? 'Invalid Date'
-    : date.toLocaleDateString('en-AU', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-};
-
+  const formatDate = (isoDate: string): string => {
+    const date = new Date(isoDate);
+    console.log('daetadsad', date);
+    return isNaN(date.getTime())
+      ? 'Invalid Date'
+      : date.toLocaleDateString('en-AU', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
+  };
 
   // Create the collapseItems array based on the data
   const collapseItems = data.map((item, index) => ({
@@ -92,16 +91,15 @@ const formatDate = (isoDate: string): string => {
           const resolvedKey = keys.find((key) => item[key] !== undefined); // pick first valid key
 
           const value = resolvedKey ? item[resolvedKey] : undefined;
-console.log('Resolved key:', resolvedKey, 'Value:', value);
+          console.log('Resolved key:', resolvedKey, 'Value:', value);
           return (
             <span key={idx}>
-        {Array.isArray(value)
-          ? value.join(', ')
-          : value !== undefined && value !== null
-            ? value
-            : 'N/A'}
-      </span>
-
+              {Array.isArray(value)
+                ? value.length
+                : value !== undefined && value !== null
+                  ? value
+                  : 'N/A'}
+            </span>
           );
         })}
         {/* Dropdown menu button */}
@@ -258,7 +256,10 @@ console.log('Resolved key:', resolvedKey, 'Value:', value);
       </div>
 
       {/* Collapsible List */}
-      <Collapse bordered={false} style={{overflowY:'auto', height: height || '70vh'}}>
+      <Collapse
+        bordered={false}
+        style={{ overflowY: 'auto', height: height || '70vh' }}
+      >
         {collapseItems.map((item) => (
           <Collapse.Panel key={item.key} header={item.label}>
             {item.children}

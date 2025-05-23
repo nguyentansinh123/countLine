@@ -36,6 +36,7 @@ const SendFile: React.FC = () => {
   }>();
   const navigate = useNavigate();
   const [file, setFile] = useState<any>(null);
+  const [signedUrl, setSignedUrl] = useState<string>('');
   const fileUrl = file?.presignedUrl || file?.fileUrl;
 
   useEffect(() => {
@@ -131,10 +132,16 @@ const SendFile: React.FC = () => {
   };
 
   const fetchPdfFile = async (url: string) => {
-    console.log(url)
+    console.log(url);
     try {
       console.log(`Fetching PDF from URL: ${url}`);
-      const response = await fetch(url);
+      const response = await fetch(
+        `http://localhost:5001/api/document/presigned-url/${file_id}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+        }
+      );
       console.log('Response status:', response.status);
       if (!response.ok) {
         console.error(
@@ -145,8 +152,18 @@ const SendFile: React.FC = () => {
         );
       }
 
+      const data = await response.json();
+      const signedUrl = data.presignedUrl;
+      setSignedUrl(signedUrl);
+
+      const fileResponse = await fetch(signedUrl);
+
+      if (!fileResponse.ok) {
+        throw new Error('Failed to fetch the file');
+      }
+
       console.log('Response OK, processing blob...');
-      const blob = await response.blob();
+      const blob = await fileResponse.blob();
       console.log('Blob received, creating file...');
       const file = new File([blob], 'file.pdf', { type: 'application/pdf' });
 
@@ -252,6 +269,7 @@ const SendFile: React.FC = () => {
               userName={userName}
               userEmail={userEmail}
               file={file}
+              signedUrl={signedUrl}
               userAdress="useraddress"
             />
           </>

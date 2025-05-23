@@ -15,6 +15,7 @@ interface Step2Props {
   userEmail: string;
   file: any;
   userAdress: string;
+  signedUrl: string;
 }
 
 const Step2: React.FC<Step2Props> = ({
@@ -23,9 +24,10 @@ const Step2: React.FC<Step2Props> = ({
   userEmail,
   file,
   userAdress,
+  signedUrl,
 }) => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-
+  const signedUr = signedUrl;
   const modifyPdf = async () => {
     if (!file) return;
 
@@ -52,7 +54,7 @@ const Step2: React.FC<Step2Props> = ({
 
   return (
     <>
-      <PdfEditor fileUrl={file.fileUrl} />
+      <PdfEditor fileUrl={signedUr} />
     </>
   );
 };

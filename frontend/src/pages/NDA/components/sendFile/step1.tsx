@@ -157,7 +157,7 @@ const Step1: React.FC<Step1Props> = ({
             <div style={{ display: 'flex', gap: 10, width: '100%' }}>
               <div style={{ width: 100 }}>File Name</div>
               <div style={{ width: '100%' }}>
-                <Input contentEditable={false} value={file?.title || ''} />
+                <Input contentEditable={false} value={file?.filename || ''} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, width: '100%' }}>
