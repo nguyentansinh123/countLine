@@ -16,6 +16,8 @@ interface Step2Props {
   file: any;
   userAdress: string;
   signedUrl: string;
+  inputBoxes: any[];
+  setInputBoxes: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const Step2: React.FC<Step2Props> = ({
@@ -25,6 +27,8 @@ const Step2: React.FC<Step2Props> = ({
   file,
   userAdress,
   signedUrl,
+  inputBoxes,
+  setInputBoxes,
 }) => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const signedUr = signedUrl;
@@ -54,7 +58,11 @@ const Step2: React.FC<Step2Props> = ({
 
   return (
     <>
-      <PdfEditor fileUrl={signedUr} />
+      <PdfEditor
+        fileUrl={signedUr}
+        inputBoxes={inputBoxes}
+        setInputBoxes={setInputBoxes}
+      />
     </>
   );
 };

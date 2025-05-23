@@ -2,6 +2,7 @@
 import { Alert, Button, Card, message } from 'antd';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 import clientUserConst from '../../Users/const/clientUserConst';
 import executiveDocumentTemplates from '../const/executiveDocuments';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -38,6 +39,7 @@ const SendFile: React.FC = () => {
   const [file, setFile] = useState<any>(null);
   const [signedUrl, setSignedUrl] = useState<string>('');
   const fileUrl = file?.presignedUrl || file?.fileUrl;
+  const [inputBoxes, setInputBoxes] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -131,6 +133,62 @@ const SendFile: React.FC = () => {
     }
   };
 
+  const generateEditedPdfBlob = async (
+    fileUrl: string,
+    inputBoxes: any[]
+  ): Promise<Blob> => {
+    const fetchedFile = await fetch(fileUrl);
+    const arrayBuffer = await fetchedFile.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(arrayBuffer);
+    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const scale = 1.5;
+
+    for (const box of inputBoxes) {
+      const page = pdfDoc.getPage(box.pageNum - 1);
+      const { width: pageWidth, height: pageHeight } = page.getSize();
+
+      const pdfX = box.x / scale;
+      const pdfY = pageHeight - (box.y + box.height) / scale;
+
+      if (box.type === 'signature' && box.value?.startsWith('data:image')) {
+        const base64Data = box.value.split(',')[1];
+        const byteString = atob(base64Data);
+        const byteArray = new Uint8Array(byteString.length);
+        for (let i = 0; i < byteString.length; i++) {
+          byteArray[i] = byteString.charCodeAt(i);
+        }
+        const image = box.value.startsWith('data:image/png')
+          ? await pdfDoc.embedPng(byteArray)
+          : await pdfDoc.embedJpg(byteArray);
+
+        const aspectRatio = image.width / image.height;
+        let drawWidth = box.width / scale;
+        let drawHeight = drawWidth / aspectRatio;
+        if (drawHeight > box.height / scale) {
+          drawHeight = box.height / scale;
+          drawWidth = drawHeight * aspectRatio;
+        }
+
+        page.drawImage(image, {
+          x: pdfX,
+          y: pdfY,
+          width: drawWidth,
+          height: drawHeight,
+        });
+      } else if (box.value) {
+        page.drawText(box.value, {
+          x: pdfX,
+          y: pdfY + box.height / scale - 2,
+          size: (box.fontSize || 12) / scale,
+          font: helvetica,
+        });
+      }
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    return new Blob([pdfBytes], { type: 'application/pdf' });
+  };
+
   const fetchPdfFile = async (url: string) => {
     console.log(url);
     try {
@@ -208,7 +266,7 @@ const SendFile: React.FC = () => {
 
   const [messageApi, contextHolder] = message.useMessage();
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (step === 1) {
       if (!selectedUser && !selectedTeam) {
         messageApi.info('Please select a user or a team.');
@@ -220,8 +278,26 @@ const SendFile: React.FC = () => {
       }
       setStep(2);
     } else if (step === 2) {
+      const editedPdfBlob = await generateEditedPdfBlob(signedUrl, []);
+      const formData = new FormData();
+      formData.append('file', editedPdfBlob);
+      const res = await fetch(
+        `http://localhost:5001/api/document/save-edit/${file_id}`,
+        {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        }
+      );
+
+      const result = await res.json();
+      if (res.ok && result.success) {
+        setStep(3);
+      } else {
+        messageApi.error(result.message || 'Failed to edit document');
+      }
       setStep(3);
-    } else {
+    } else if (step == 3) {
       navigate('/non-disclosure-agreement');
     }
   };
@@ -271,10 +347,17 @@ const SendFile: React.FC = () => {
               file={file}
               signedUrl={signedUrl}
               userAdress="useraddress"
+              inputBoxes={inputBoxes}
+              setInputBoxes={setInputBoxes}
             />
           </>
         )}
-        {step === 3}
+        {step === 3 && (
+          <Step3
+            recipient={selectedUser || selectedTeam}
+            onClose={() => navigate('/non-disclosure-agreement')}
+          ></Step3>
+        )}
 
         <div style={{ display: 'flex', gap: 20, margin: 0 }}>
           {step !== 3 && (
@@ -289,13 +372,7 @@ const SendFile: React.FC = () => {
             </Button>
           )}
           <Button type="primary" onClick={handleNextStep}>
-            {step === 1
-              ? 'Next'
-              : step === 2
-                ? 'Next'
-                : step === 3
-                  ? 'Finish'
-                  : 'Close'}
+            {step === 1 ? 'Next' : step === 2 ? 'Next' : 'Close'}
           </Button>
         </div>
       </Card>

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+} from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import Toolbar from './components/Toolbar';
@@ -6,10 +12,13 @@ import { InputBoxType } from './components/types';
 import InputBox from './components/InputFeilds/InputBox';
 import SignatureBox from './components/InputFeilds/SignatureBox';
 
-const PdfEditor: React.FC<{ fileUrl: string }> = ({ fileUrl }) => {
+const PdfEditor: React.FC<{
+  fileUrl: string;
+  inputBoxes: any[];
+  setInputBoxes: React.Dispatch<React.SetStateAction<any[]>>;
+}> = ({ fileUrl, inputBoxes, setInputBoxes }) => {
   const [loading, setLoading] = useState(true);
   const [pdfPages, setPdfPages] = useState<any[]>([]);
-  const [inputBoxes, setInputBoxes] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
 
