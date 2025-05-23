@@ -11,9 +11,10 @@ interface TempToolbarProps {
   selectedBoxId: string | null;
   inputBoxes: InputBoxType[];
   updateInputBox: (id: string, updates: Partial<InputBoxType>) => void;
+  saving?: boolean; // New prop
 }
 
-const TempToolbar: React.FC<TempToolbarProps> = ({ addInputBox, addSignatureBox, handleSave, selectedBoxId, inputBoxes,  addSelection }) => {
+const TempToolbar: React.FC<TempToolbarProps> = ({ addInputBox, addSignatureBox, handleSave, selectedBoxId, inputBoxes,  addSelection, saving }) => {
   return (
     <div style={{ width: '200px', padding: '16px', borderRight: '1px solid #f0f0f0' }}>
       <h3>Form Fields</h3>
@@ -47,12 +48,13 @@ const TempToolbar: React.FC<TempToolbarProps> = ({ addInputBox, addSignatureBox,
 
       <div style={{ marginTop: '32px' }}>
         <Button
-          type="primary"
           onClick={handleSave}
+          loading={saving} // Use the saving prop here
+          type="primary"
           block
           disabled={inputBoxes.length === 0}
         >
-          Save Form
+          {saving ? 'Signing...' : 'Sign & Save'}
         </Button>
       </div>
     </div>

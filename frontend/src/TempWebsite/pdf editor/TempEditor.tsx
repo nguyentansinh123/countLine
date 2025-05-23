@@ -6,58 +6,102 @@ import { InputBoxType } from './components/tempTypes';
 import InputBox from './components/TempInputFields/TempInputBox';
 import SignatureBox from './components/TempInputFields/TempSignaturBox';
 import SelectText from './components/TempInputFields/TempSelectText';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Mockdata } from '../Mocakdatat/mockdata';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
 import GeneralLayout from '../../components/General_Layout/GeneralLayout';
+import { message } from 'antd';
+import axios from 'axios';
 
 pdfjsLib.GlobalWorkerOptions.workerPort = new pdfjsWorker();
 
 
 
-const TempEditor: React.FC<{}> = ({  }) => {
+const TempEditor: React.FC<{}> = () => {
   const [loading, setLoading] = useState(true);
   const [pdfPages, setPdfPages] = useState<any[]>([]);
   const [inputBoxes, setInputBoxes] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
+  const [documentData, setDocumentData] = useState<any>(null);
+  const [fileUrl, setFileUrl] = useState<string>('');
   const { user_id, file_id } = useParams();
+  const navigate = useNavigate();
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
-
-  if (!file_id) {
-    return <div>No document ID provided.</div>;
-  }
-
-  const documentData = Mockdata.find((doc) => doc.file_id === file_id);
-  console.log(documentData)
-  if (!documentData) {
-    return <div>Document not found.</div>;
-  }
-
-    const isClient = documentData.client.id === user_id;
-    console.log(isClient)
-  if (!isClient) {
-    return <div>You are not authorized to view this document.</div>;
-  }
-
-const fileUrl=documentData.location;
-
-
   useEffect(() => {
+    console.log('TempEditor params:', { user_id, file_id });
+    
+    if (!file_id) {
+      message.error('No document ID provided');
+      navigate('/shared-documents');
+      return;
+    }
+    
+    const fetchDocument = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch document data from API
+        const response = await axios.get(
+          `http://localhost:5001/api/document/singleTask/${file_id}`,
+          { withCredentials: true }
+        );
+        
+        console.log('Document data response:', response.data);
+        
+        if (!response.data || !response.data.success) {
+          throw new Error('Failed to fetch document data');
+        }
+        
+        const document = response.data.data;
+        setDocumentData(document);
+        
+        // Get presigned URL for the document
+        const urlResponse = await axios.get(
+          `http://localhost:5001/api/document/presigned-url/${file_id}`,
+          { withCredentials: true }
+        );
+        
+        console.log('Presigned URL response:', urlResponse.data);
+        
+        if (!urlResponse.data || !urlResponse.data.success) {
+          throw new Error('Failed to get document URL');
+        }
+        
+        setFileUrl(urlResponse.data.presignedUrl);
+      } catch (error) {
+        console.error('Error fetching document:', error);
+        message.error('Failed to load document. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDocument();
+  }, [file_id, user_id, navigate]);
+  
+  // Render PDF when fileUrl changes
+  useEffect(() => {
+    if (!fileUrl) return;
     
     const fetchAndRenderPdf = async () => {
       setLoading(true);
       try {
         const fetchedFile = await fetch(fileUrl);
-        console.log("fetched"+ fetchedFile)
+        console.log("Fetched file response:", fetchedFile.status);
+        
+        if (!fetchedFile.ok) {
+          throw new Error(`Failed to fetch PDF: ${fetchedFile.status} ${fetchedFile.statusText}`);
+        }
+        
         const arrayBuffer = await fetchedFile.arrayBuffer();
         const loadedPdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const pages: any[] = [];
-        console.log("pag'e", pages)
+        console.log("PDF loaded with", loadedPdf.numPages, "pages");
 
         for (let pageNum = 1; pageNum <= loadedPdf.numPages; pageNum++) {
-        console.log('pahe: '+pageNum)
+          console.log('Rendering page:', pageNum);
           const page = await loadedPdf.getPage(pageNum);
           const viewport = page.getViewport({ scale: 1.5 });
 
@@ -73,8 +117,10 @@ const fileUrl=documentData.location;
         }
 
         setPdfPages(pages);
+        console.log("PDF rendering complete");
       } catch (err) {
-        console.error(err);
+        console.error("Error rendering PDF:", err);
+        message.error("Failed to render document");
       } finally {
         setLoading(false);
       }
@@ -82,32 +128,7 @@ const fileUrl=documentData.location;
 
     fetchAndRenderPdf();
   }, [fileUrl]);
-
-  useEffect(() => {
-    const wrapper = canvasWrapperRef.current;
-    if (!wrapper) return;
-
-    const handleScroll = () => {
-      const scrollTop = wrapper.scrollTop;
-      let visible = 1;
-      let offset = 0;
-
-      for (const page of pdfPages) {
-        const height = page.viewport.height + 20;
-        if (scrollTop < offset + height) {
-          visible = page.pageNum;
-          break;
-        }
-        offset += height;
-      }
-
-      setCurrentPage(visible);
-    };
-
-    wrapper.addEventListener('scroll', handleScroll);
-    return () => wrapper.removeEventListener('scroll', handleScroll);
-  }, [pdfPages]);
-
+  
   const addInputBox = (type: 'text' | 'number' | 'date' | 'signature'|'selection') => {
     const page = pdfPages.find((p) => p.pageNum === currentPage);
     if (!page) return;
@@ -157,6 +178,9 @@ const fileUrl=documentData.location;
 
 const handleSave = async () => {
   try {
+    setLoading(true);
+    
+    // First, modify the PDF as you're already doing
     const fetchedFile = await fetch(fileUrl);
     const arrayBuffer = await fetchedFile.arrayBuffer();
     const pdfDoc = await PDFDocument.load(arrayBuffer);
@@ -164,6 +188,7 @@ const handleSave = async () => {
 
     const scale = 1.5; // Should match your rendering scale
 
+    // Process input boxes
     for (const box of inputBoxes) {
       try {
         const page = pdfDoc.getPage(box.pageNum - 1); // pdf-lib uses 0-based indexing
@@ -226,43 +251,107 @@ const handleSave = async () => {
       }
     }
 
-    // Save and download
+    // Save the PDF and upload to server
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'signed-document.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    
+    // Create FormData for the API call
+    const formData = new FormData();
+    formData.append('file', blob, 'signed-document.pdf');
+    
+    // Add metadata about the edit
+    const annotations = inputBoxes.map(box => ({
+      type: box.type,
+      position: { x: box.x, y: box.y, page: box.pageNum },
+      value: box.type === 'signature' ? 'signature-added' : box.value
+    }));
+    
+    formData.append('annotations', JSON.stringify(annotations));
+    formData.append('comments', JSON.stringify([{
+      text: 'Document signed',
+      timestamp: new Date().toISOString()
+    }]));
+    
+    console.log('Saving document edit...');
+    
+    // Upload to server
+    const saveResponse = await axios.post(
+      `http://localhost:5001/api/document/save-edit/${file_id}`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        withCredentials: true
+      }
+    );
+    
+    console.log('Save response:', saveResponse.data);
+    
+    if (saveResponse.data.success) {
+      // Mark document as signed
+      await axios.post(
+        `http://localhost:5001/api/document/sign/${file_id}`,
+        {},
+        { withCredentials: true }
+      );
+      
+      message.success('Document signed and saved successfully!');
+      
+      // Return to documents page
+      navigate('/shared-documents');
+    } else {
+      message.error('Failed to save document. Please try again.');
+    }
 
   } catch (err) {
     console.error("PDF save failed:", err);
-    alert("Failed to save PDF. Check console for details.");
+    message.error("Failed to save document. Please try again.");
+  } finally {
+    setLoading(false);
   }
 };
 
+  if (loading && !documentData) {
+    return (
+      <GeneralLayout title="Loading Document...">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+          <div className="loading-indicator">Loading document...</div>
+        </div>
+      </GeneralLayout>
+    );
+  }
+
+  if (!documentData) {
+    return (
+      <GeneralLayout title="Document Not Found">
+        <div style={{ textAlign: 'center', padding: '50px' }}>
+          <h2>Document Not Found</h2>
+          <p>The document you're looking for could not be found.</p>
+          <button onClick={() => navigate('/shared-documents')}>
+            Return to Documents
+          </button>
+        </div>
+      </GeneralLayout>
+    );
+  }
 
   return (
-    <GeneralLayout title={documentData.name}>
-    <div style={{display:'flex'}}>
-      <Toolbar
-                  addInputBox={addInputBox}
-                  addSignatureBox={() => addInputBox('signature')}
-                  handleSave={handleSave}
-                  selectedBoxId={selectedBoxId}
-                  inputBoxes={inputBoxes}
-                  updateInputBox={updateInputBox}
-                  addSelection={() => addInputBox('selection')}
-                   />
+    <GeneralLayout title={documentData.name || 'Document Editor'}>
+      <div style={{ display: 'flex' }}>
+        <Toolbar
+          addInputBox={addInputBox}
+          addSignatureBox={() => addInputBox('signature')}
+          handleSave={handleSave}
+          selectedBoxId={selectedBoxId}
+          inputBoxes={inputBoxes}
+          updateInputBox={updateInputBox}
+          addSelection={() => addInputBox('selection')}
+        />
 
-      <div
-        ref={canvasWrapperRef}
-        style={{ height: '70vh', overflowY: 'auto', position: 'relative', backgroundColor:'grey' }}
-      >
-        {pdfPages.map((page) => (
+        <div
+          ref={canvasWrapperRef}
+          style={{ height: '70vh', overflowY: 'auto', position: 'relative', backgroundColor: 'grey' }}
+        >
+          {pdfPages.map((page) => (
   <div key={page.pageNum} style={{ marginBottom: 20, position: 'relative' }}>
     <canvas ref={(el) => { if (el) el.replaceWith(page.canvas); }} />
     {inputBoxes

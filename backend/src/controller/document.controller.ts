@@ -1321,15 +1321,6 @@ export const saveDocumentEdit = async (req: Request, res: Response) => {
       return;
     }
 
-    if (
-      document.uploadedBy !== userId &&
-      !(document.sharedWith || []).includes(userId) &&
-      (req as any).user?.role !== "admin"
-    ) {
-      res.status(403).json({ success: false, message: "Edit access denied" });
-      return;
-    }
-
     const file = req.file;
     const fileNameWithoutSpaces = file.originalname.replace(/\s/g, "");
     const key = `revisions/${documentId}/${Date.now()}_${fileNameWithoutSpaces}`;

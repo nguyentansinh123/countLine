@@ -37,6 +37,7 @@ import {
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { useNavigate } from 'react-router-dom';
 
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
@@ -60,6 +61,7 @@ function SharedDocumentsPage() {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [documentError, setDocumentError] = useState<boolean>(false);
   const [refreshingUrl, setRefreshingUrl] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchSharedDocuments();
@@ -178,7 +180,6 @@ function SharedDocumentsPage() {
     setLoading(true);
     
     try {
-      // Try to get a fresh URL for the revision
       if (!revision.presignedUrl) {
         const freshUrl = await refreshPresignedUrl(parentDoc.documentId);
         if (freshUrl) {
@@ -198,22 +199,9 @@ function SharedDocumentsPage() {
     }
   };
 
-  const handleSignDocument = async (documentId: string) => {
-    try {
-      const response = await axios.post(`http://localhost:5001/api/document/sign/${documentId}`, {}, {
-        withCredentials: true
-      });
-      
-      if (response.data.success) {
-        message.success('Document signed successfully');
-        fetchSharedDocuments(); 
-      } else {
-        message.error(response.data.message || 'Failed to sign document');
-      }
-    } catch (error) {
-      console.error('Error signing document:', error);
-      message.error('Error signing document');
-    }
+  const handleSignDocument = (documentId: string, userId: string) => {
+    console.log('Navigating to TempEditor with:', { documentId, userId });
+    navigate(`/tempEditor/${userId}/${documentId}`);
   };
 
   const handleDownloadDocument = async (documentId: string, filename: string) => {
@@ -235,7 +223,6 @@ function SharedDocumentsPage() {
       document.body.appendChild(a);
       a.click();
       
-      // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
@@ -385,7 +372,7 @@ function SharedDocumentsPage() {
                 type="primary" 
                 shape="circle" 
                 icon={<SignatureOutlined />} 
-                onClick={() => handleSignDocument(record.documentId)} 
+                onClick={() => handleSignDocument(record.documentId, record.userId)}
                 style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
               />
             </Tooltip>
@@ -537,7 +524,6 @@ function SharedDocumentsPage() {
               ) : viewDocument.presignedUrl ? (
                 viewDocument.documentType?.toLowerCase().includes('pdf') ? (
                   <div style={{ width: '100%', height: '600px', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-                    {/* Direct iframe embedding */}
                     <iframe 
                       src={viewDocument.presignedUrl}
                       style={{ 
@@ -659,7 +645,6 @@ function SharedDocumentsPage() {
         )}
       </Modal>
       
-      {/* Document Info Modal - Unchanged */}
       <Modal
         title="Document Information"
         open={infoModalVisible}
@@ -731,7 +716,7 @@ function SharedDocumentsPage() {
                   type="primary" 
                   icon={<SignatureOutlined />} 
                   onClick={() => {
-                    handleSignDocument(selectedDocument.documentId);
+                    handleSignDocument(selectedDocument.documentId, selectedDocument.userId);
                     setInfoModalVisible(false);
                   }}
                   size="large"
