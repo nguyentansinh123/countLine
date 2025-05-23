@@ -1,19 +1,10 @@
-import {
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-} from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { upload } from "../lib/multerconfig";
 import { s3Client } from "../lib/s3";
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { docClient } from "../lib/dynamoClient";
-import {
-  GetCommand,
-  PutCommand,
-  UpdateCommand,
-  UpdateCommandInput,
-} from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, UpdateCommand, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
 import { ScanCommand } from "@aws-sdk/lib-dynamodb";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
@@ -22,6 +13,7 @@ import { logUserActivity } from "./activity.controller";
 import { createNotification } from "./notification.controller";
 import { getIO } from "../lib/socket";
 import { Document, DocumentRevision } from "../types/document.types";
+import { log } from "console";
 
 export const generatePresignedUrl = async (key: string): Promise<string> => {
   try {
@@ -39,10 +31,7 @@ export const generatePresignedUrl = async (key: string): Promise<string> => {
   }
 };
 
-export const uploadFileToS3 = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const uploadFileToS3 = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
       res.status(400).json({ success: false, message: "No file uploaded" });
@@ -74,9 +63,7 @@ export const uploadFileToS3 = async (
         gif: "Image",
       };
 
-      documentType = fileExtension
-        ? extensionMap[fileExtension] || "Unknown"
-        : "Unknown";
+      documentType = fileExtension ? extensionMap[fileExtension] || "Unknown" : "Unknown";
 
       if (documentType === "Unknown") {
         const mimeTypeMap: { [key: string]: string } = {
@@ -85,8 +72,7 @@ export const uploadFileToS3 = async (
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
             "Word Document",
           "application/vnd.ms-excel": "Excel Spreadsheet",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            "Excel Spreadsheet",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Excel Spreadsheet",
           "text/plain": "Text Document",
           "image/jpeg": "Image",
           "image/png": "Image",
@@ -137,8 +123,7 @@ export const uploadFileToS3 = async (
           : [],
 
       signedBy: [],
-      signingStatus:
-        req.body.requiresSignature === "true" ? "pending" : "not_required",
+      signingStatus: req.body.requiresSignature === "true" ? "pending" : "not_required",
     };
 
     const putCommand = new PutCommand({
@@ -152,8 +137,7 @@ export const uploadFileToS3 = async (
       new UpdateCommand({
         TableName: "Users",
         Key: { user_id: document.uploadedBy },
-        UpdateExpression:
-          "SET documents = list_append(if_not_exists(documents, :emptyList), :doc)",
+        UpdateExpression: "SET documents = list_append(if_not_exists(documents, :emptyList), :doc)",
         ExpressionAttributeValues: {
           ":doc": [
             {
@@ -274,9 +258,7 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
     const userRole = req.user.role;
 
     if (!documentId) {
-      res
-        .status(400)
-        .json({ success: false, message: "Document ID is required" });
+      res.status(400).json({ success: false, message: "Document ID is required" });
       return;
     }
 
@@ -294,18 +276,14 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
       }
 
       if (document.uploadedBy !== userId && userRole !== "admin") {
-        res
-          .status(403)
-          .json({
-            success: false,
-            message: "Not authorized to request signatures",
-          });
+        res.status(403).json({
+          success: false,
+          message: "Not authorized to request signatures",
+        });
         return;
       }
     } else if (userRole !== "admin") {
-      res
-        .status(403)
-        .json({ success: false, message: "Only admins can share documents" });
+      res.status(403).json({ success: false, message: "Only admins can share documents" });
       return;
     }
 
@@ -348,14 +326,9 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
       );
     }
 
-    const notification = await createNotification(
-      IdOfUser,
-      notificationType,
-      notificationMessage,
-      {
-        documentId,
-      }
-    );
+    const notification = await createNotification(IdOfUser, notificationType, notificationMessage, {
+      documentId,
+    });
 
     if (IdOfUser) {
       getIO().to(IdOfUser).emit("notification", notification);
@@ -384,10 +357,142 @@ export const SendFileToAUser = async (req: Request, res: Response) => {
   }
 };
 
-export const downloadFile = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const SendFileToTeam = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { IdOfTeam: teamId } = req.params;
+    const { documentId, requestSignature } = req.body;
+    const senderId = req.body.user_id;
+    // @ts-ignore
+    const userRole = req.user.role;
+
+    if (!documentId) {
+      res.status(400).json({ success: false, message: "Document ID is required" });
+      return;
+    }
+    console.log("before doc");
+
+    // Fetch the document
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId },
+      })
+    );
+
+    console.log("after doc");
+
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
+    }
+
+    if (requestSignature === true) {
+      if (document.uploadedBy !== senderId && userRole !== "admin") {
+        res.status(403).json({
+          success: false,
+          message: "Not authorized to request signatures",
+        });
+        return;
+      }
+    } else if (userRole !== "admin") {
+      res.status(403).json({ success: false, message: "Only admins can share documents" });
+      return;
+    }
+
+    console.log(teamId);
+
+    // Fetch team members
+    const { Item: team } = await docClient.send(
+      new GetCommand({
+        TableName: "Teams",
+        Key: { teamId },
+        ProjectionExpression: "members, teamName, isDeleted",
+      })
+    );
+
+    console.log("after team");
+
+    if (!team || team.isDeleted) {
+      res.status(404).json({ success: false, message: "Team not found or deleted" });
+      return;
+    }
+
+    const teamMembers = team.members || [];
+
+    if (teamMembers.length === 0) {
+      res.status(400).json({ success: false, message: "No members in the team" });
+      return;
+    }
+
+    // Share document with each team member
+    await Promise.all(
+      teamMembers.map(async (user_id: string) => {
+        await docClient.send(
+          new UpdateCommand({
+            TableName: "Users",
+            Key: { user_id },
+            UpdateExpression:
+              "SET documents = list_append(if_not_exists(documents, :empty_list), :docId)",
+            ExpressionAttributeValues: {
+              ":docId": [documentId],
+              ":empty_list": [],
+            },
+          })
+        );
+
+        const notification = await createNotification(
+          user_id,
+          requestSignature ? "signature_requested" : "file_sent",
+          requestSignature
+            ? "You've been requested to sign a document."
+            : "A file was sent to your team.",
+          { documentId }
+        );
+
+        getIO().to(user_id).emit("notification", notification);
+      })
+    );
+
+    // Update document's signature tracking
+    if (requestSignature) {
+      await docClient.send(
+        new UpdateCommand({
+          TableName: "Documents",
+          Key: { documentId },
+          UpdateExpression:
+            "SET requiresSignature = :req, signaturesRequired = list_append(if_not_exists(signaturesRequired, :empty_list), :uids), signingStatus = :status",
+          ExpressionAttributeValues: {
+            ":req": true,
+            ":uids": teamMembers,
+            ":status": "pending",
+            ":empty_list": [],
+          },
+        })
+      );
+    }
+
+    await logUserActivity({
+      userId: senderId,
+      action: requestSignature ? "request_signature_team" : "send_file_to_team",
+      targetId: teamId,
+      details: { documentId, memberCount: teamMembers.length },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: requestSignature
+        ? "Signature request sent to team successfully"
+        : "File sent to team successfully",
+      sentTo: teamMembers,
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Internal server error";
+    console.error("Error in SendFileToTeam:", msg);
+    res.status(500).json({ success: false, message: msg });
+  }
+};
+
+export const downloadFile = async (req: Request, res: Response): Promise<void> => {
   try {
     const { documentId } = req.params;
 
@@ -422,17 +527,12 @@ export const downloadFile = async (
     const { Body, ContentType } = await s3Client.send(command);
 
     if (!Body) {
-      res
-        .status(404)
-        .json({ success: false, message: "File content not found" });
+      res.status(404).json({ success: false, message: "File content not found" });
       return;
     }
 
     res.setHeader("Content-Type", ContentType || "application/octet-stream");
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="${document.filename}"`
-    );
+    res.setHeader("Content-Disposition", `inline; filename="${document.filename}"`);
 
     if (typeof (Body as any).pipe === "function") {
       (Body as any).pipe(res);
@@ -462,9 +562,7 @@ export const getPresignedUrl = async (req: Request, res: Response): Promise<void
       TableName: "Documents",
       Key: { documentId },
     };
-    const { Item: document } = await docClient.send(
-      new GetCommand(getDocParams)
-    );
+    const { Item: document } = await docClient.send(new GetCommand(getDocParams));
 
     if (!document) {
       res.status(404).json({ success: false, message: "Document not found" });
@@ -550,16 +648,11 @@ export const getMyDocuments = async (req: Request, res: Response) => {
     res.status(200).json({ success: true, data: data.Items });
   } catch (error) {
     console.error("getMyDocuments error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch your documents" });
+    res.status(500).json({ success: false, message: "Failed to fetch your documents" });
   }
 };
 
-export const getDocumentById = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getDocumentById = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
 
   try {
@@ -606,9 +699,7 @@ export const getDocumentById = async (
     res.status(200).json({ success: true, data: data.Item });
   } catch (error) {
     console.error("Error fetching document by ID:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch document" });
+    res.status(500).json({ success: false, message: "Failed to fetch document" });
   }
 };
 
@@ -673,9 +764,7 @@ export const deleteDocument = async (req: Request, res: Response) => {
       message: "Document soft deleted and references removed",
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to delete document" });
+    res.status(500).json({ success: false, message: "Failed to delete document" });
   }
 };
 
@@ -706,9 +795,7 @@ export const hardDelete = async (req: Request, res: Response) => {
       })
     );
 
-    const scanResult = await docClient.send(
-      new ScanCommand({ TableName: "Users" })
-    );
+    const scanResult = await docClient.send(new ScanCommand({ TableName: "Users" }));
 
     // Step 2: Filter only users who have the documentId in their documents array
     const usersWithDoc = (scanResult.Items || []).filter((user: any) =>
@@ -739,21 +826,14 @@ export const hardDelete = async (req: Request, res: Response) => {
       details: { filename: document.filename },
     });
 
-    res
-      .status(200)
-      .json({ success: true, message: "Document and references deleted" });
+    res.status(200).json({ success: true, message: "Document and references deleted" });
   } catch (error) {
     console.error("hardDelete error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to delete document" });
+    res.status(500).json({ success: false, message: "Failed to delete document" });
   }
 };
 
-export const updateDocument = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const updateDocument = async (req: Request, res: Response): Promise<void> => {
   const { documentId } = req.params;
   // @ts-ignore
   const user = req.user;
@@ -850,14 +930,10 @@ export const updateDocument = async (
       },
     });
 
-    res
-      .status(200)
-      .json({ success: true, message: "Document updated successfully" });
+    res.status(200).json({ success: true, message: "Document updated successfully" });
   } catch (error) {
     console.error("updateDocument error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to update document" });
+    res.status(500).json({ success: false, message: "Failed to update document" });
   }
 };
 
@@ -911,7 +987,8 @@ export const requestDocumentSignatures = async (req: Request, res: Response): Pr
       new UpdateCommand({
         TableName: "Documents",
         Key: { documentId },
-        UpdateExpression: "SET requiresSignature = :req, signaturesRequired = :uids, signingStatus = :status",
+        UpdateExpression:
+          "SET requiresSignature = :req, signaturesRequired = :uids, signingStatus = :status",
         ExpressionAttributeValues: {
           ":req": true,
           ":uids": userIds,
@@ -930,7 +1007,8 @@ export const requestDocumentSignatures = async (req: Request, res: Response): Pr
             Key: {
               user_id: userId,
             },
-            UpdateExpression: "SET documents = list_append(if_not_exists(documents, :empty_list), :documentId)",
+            UpdateExpression:
+              "SET documents = list_append(if_not_exists(documents, :empty_list), :documentId)",
             ExpressionAttributeValues: {
               ":documentId": [documentId],
               ":empty_list": [],
@@ -957,8 +1035,8 @@ export const requestDocumentSignatures = async (req: Request, res: Response): Pr
       action: "request_signatures",
       targetId: documentId,
       details: {
-        affectedUsers: userIds
-      }
+        affectedUsers: userIds,
+      },
     });
 
     res.status(200).json({
@@ -1009,9 +1087,7 @@ export const signDocument = async (req: Request, res: Response) => {
 
     const updatedSignedBy = [...document.signedBy, userId];
 
-    const allSigned = document.signaturesRequired.every((id: any) =>
-      updatedSignedBy.includes(id)
-    );
+    const allSigned = document.signaturesRequired.every((id: any) => updatedSignedBy.includes(id));
 
     const signingStatus = allSigned ? "completed" : "pending";
 
@@ -1054,9 +1130,7 @@ export const signDocument = async (req: Request, res: Response) => {
         { documentId }
       );
 
-      getIO()
-        .to(document.uploadedBy)
-        .emit("notification", completeNotification);
+      getIO().to(document.uploadedBy).emit("notification", completeNotification);
     }
 
     res.status(200).json({
@@ -1072,10 +1146,7 @@ export const signDocument = async (req: Request, res: Response) => {
   }
 };
 
-export const getDocumentsRequiringSignature = async (
-  req: Request,
-  res: Response
-) => {
+export const getDocumentsRequiringSignature = async (req: Request, res: Response) => {
   try {
     const userId = req.body.user_id;
 
@@ -1142,9 +1213,7 @@ export const signDocumentWithCanvas = async (req: Request, res: Response) => {
     }
 
     if (!req.file) {
-      res
-        .status(400)
-        .json({ success: false, message: "No signature file provided" });
+      res.status(400).json({ success: false, message: "No signature file provided" });
       return;
     }
 
@@ -1164,9 +1233,7 @@ export const signDocumentWithCanvas = async (req: Request, res: Response) => {
 
     const updatedSignedBy = [...document.signedBy, userId];
 
-    const allSigned = document.signaturesRequired.every((id: any) =>
-      updatedSignedBy.includes(id)
-    );
+    const allSigned = document.signaturesRequired.every((id: any) => updatedSignedBy.includes(id));
 
     const signingStatus = allSigned ? "completed" : "pending";
 
@@ -1219,9 +1286,7 @@ export const signDocumentWithCanvas = async (req: Request, res: Response) => {
         { documentId }
       );
 
-      getIO()
-        .to(document.uploadedBy)
-        .emit("notification", completeNotification);
+      getIO().to(document.uploadedBy).emit("notification", completeNotification);
     }
 
     res.status(200).json({
@@ -1292,9 +1357,7 @@ export const getDocumentWithRevisions = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error in getDocumentWithRevisions:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to get document history" });
+    res.status(500).json({ success: false, message: "Failed to get document history" });
   }
 };
 
@@ -1381,9 +1444,7 @@ export const saveDocumentEdit = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error saving document edit:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to save document edit" });
+    res.status(500).json({ success: false, message: "Failed to save document edit" });
   }
 };
 
@@ -1406,25 +1467,18 @@ export const submitDocumentForReview = async (req: Request, res: Response) => {
     }
 
     const revisions = document.revisions || [];
-    const revisionIndex = revisions.findIndex(
-      (rev: any) => rev.revisionId === revisionId
-    );
+    const revisionIndex = revisions.findIndex((rev: any) => rev.revisionId === revisionId);
 
     if (revisionIndex === -1) {
       res.status(404).json({ success: false, message: "Revision not found" });
       return;
     }
 
-    if (
-      revisions[revisionIndex].editedBy !== userId &&
-      (req as any).user?.role !== "admin"
-    ) {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to submit this revision",
-        });
+    if (revisions[revisionIndex].editedBy !== userId && (req as any).user?.role !== "admin") {
+      res.status(403).json({
+        success: false,
+        message: "Not authorized to submit this revision",
+      });
       return;
     }
 
@@ -1469,12 +1523,10 @@ export const submitDocumentForReview = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error submitting document for review:", error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to submit document for review",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Failed to submit document for review",
+    });
   }
 };
 
@@ -1485,12 +1537,10 @@ export const reviewDocument = async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
 
     if (!["approve", "reject"].includes(action)) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          message: "Invalid action. Use 'approve' or 'reject'",
-        });
+      res.status(400).json({
+        success: false,
+        message: "Invalid action. Use 'approve' or 'reject'",
+      });
       return;
     }
 
@@ -1507,19 +1557,15 @@ export const reviewDocument = async (req: Request, res: Response) => {
     }
 
     if (document.uploadedBy !== userId && (req as any).user?.role !== "admin") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to review this document",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Not authorized to review this document",
+      });
       return;
     }
 
     const revisions = document.revisions || [];
-    const revisionIndex = revisions.findIndex(
-      (rev: any) => rev.revisionId === revisionId
-    );
+    const revisionIndex = revisions.findIndex((rev: any) => rev.revisionId === revisionId);
 
     if (revisionIndex === -1) {
       res.status(404).json({ success: false, message: "Revision not found" });
@@ -1560,9 +1606,7 @@ export const reviewDocument = async (req: Request, res: Response) => {
     const notification = await createNotification(
       revisions[revisionIndex].editedBy,
       action === "approve" ? "document_approved" : "document_rejected",
-      `Your document edit was ${
-        action === "approve" ? "approved" : "rejected"
-      } by ${userId}`,
+      `Your document edit was ${action === "approve" ? "approved" : "rejected"} by ${userId}`,
       {
         documentId,
         revisionId,
@@ -1571,9 +1615,7 @@ export const reviewDocument = async (req: Request, res: Response) => {
       }
     );
 
-    getIO()
-      .to(revisions[revisionIndex].editedBy)
-      .emit("notification", notification);
+    getIO().to(revisions[revisionIndex].editedBy).emit("notification", notification);
 
     await logUserActivity({
       userId,
@@ -1590,9 +1632,7 @@ export const reviewDocument = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error reviewing document:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to review document" });
+    res.status(500).json({ success: false, message: "Failed to review document" });
   }
 };
 
@@ -1653,9 +1693,7 @@ export const getPendingReviews = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error fetching pending reviews:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch pending reviews" });
+    res.status(500).json({ success: false, message: "Failed to fetch pending reviews" });
   }
 };
 
@@ -1678,19 +1716,15 @@ export const approveRevision = async (req: Request, res: Response) => {
     }
 
     if (document.uploadedBy !== userId && (req as any).user?.role !== "admin") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to approve revisions",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Not authorized to approve revisions",
+      });
       return;
     }
 
     const revisions = document.revisions || [];
-    const revisionIndex = revisions.findIndex(
-      (rev: any) => rev.revisionId === revisionId
-    );
+    const revisionIndex = revisions.findIndex((rev: any) => rev.revisionId === revisionId);
 
     if (revisionIndex === -1) {
       res.status(404).json({ success: false, message: "Revision not found" });
@@ -1733,9 +1767,7 @@ export const approveRevision = async (req: Request, res: Response) => {
       }
     );
 
-    getIO()
-      .to(revisions[revisionIndex].editedBy)
-      .emit("notification", notification);
+    getIO().to(revisions[revisionIndex].editedBy).emit("notification", notification);
 
     await logUserActivity({
       userId,
@@ -1753,9 +1785,7 @@ export const approveRevision = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error approving revision:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to approve revision" });
+    res.status(500).json({ success: false, message: "Failed to approve revision" });
   }
 };
 
@@ -1786,19 +1816,15 @@ export const rejectRevision = async (req: Request, res: Response) => {
     }
 
     if (document.uploadedBy !== userId && (req as any).user?.role !== "admin") {
-      res
-        .status(403)
-        .json({
-          success: false,
-          message: "Not authorized to reject revisions",
-        });
+      res.status(403).json({
+        success: false,
+        message: "Not authorized to reject revisions",
+      });
       return;
     }
 
     const revisions = document.revisions || [];
-    const revisionIndex = revisions.findIndex(
-      (rev: any) => rev.revisionId === revisionId
-    );
+    const revisionIndex = revisions.findIndex((rev: any) => rev.revisionId === revisionId);
 
     if (revisionIndex === -1) {
       res.status(404).json({ success: false, message: "Revision not found" });
@@ -1834,9 +1860,7 @@ export const rejectRevision = async (req: Request, res: Response) => {
       }
     );
 
-    getIO()
-      .to(revisions[revisionIndex].editedBy)
-      .emit("notification", notification);
+    getIO().to(revisions[revisionIndex].editedBy).emit("notification", notification);
 
     await logUserActivity({
       userId,
@@ -1854,24 +1878,17 @@ export const rejectRevision = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("Error rejecting revision:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to reject revision" });
+    res.status(500).json({ success: false, message: "Failed to reject revision" });
   }
 };
 
-export const newSendFile = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const newSendFile = async (req: Request, res: Response): Promise<void> => {
   const { documentId } = req.params;
   const { recipients } = req.body; // array of userIds or teamIds
   const admin = req.body.user;
 
   if (!recipients || !Array.isArray(recipients)) {
-    res
-      .status(400)
-      .json({ success: false, message: "Recipients are required" });
+    res.status(400).json({ success: false, message: "Recipients are required" });
     return;
   }
 
@@ -1892,9 +1909,7 @@ export const newSendFile = async (
       );
     }
 
-    res
-      .status(200)
-      .json({ success: true, message: "Document sent to recipients" });
+    res.status(200).json({ success: true, message: "Document sent to recipients" });
   } catch (error) {
     console.error("Send file error:", error);
     res.status(500).json({ success: false, message: "Failed to send file" });
@@ -1922,8 +1937,7 @@ export const getFilesSharedWithUser = async (req: Request, res: Response) => {
 
     if (userDocumentIds.length > 0) {
       for (const docRef of userDocumentIds) {
-        let documentId =
-          typeof docRef === "object" ? docRef.documentId : docRef;
+        let documentId = typeof docRef === "object" ? docRef.documentId : docRef;
 
         if (!documentId) continue;
 
@@ -1956,9 +1970,7 @@ export const getFilesSharedWithUser = async (req: Request, res: Response) => {
           const revisionsWithUrls = await Promise.all(
             revisions.map(async (rev: any) => {
               const revUrl = rev.fileUrl?.split(".amazonaws.com/")[1];
-              const presignedRevUrl = revUrl
-                ? await generatePresignedUrl(revUrl)
-                : null;
+              const presignedRevUrl = revUrl ? await generatePresignedUrl(revUrl) : null;
               return { ...rev, presignedUrl: presignedRevUrl };
             })
           );
@@ -1980,8 +1992,7 @@ export const getFilesSharedWithUser = async (req: Request, res: Response) => {
     const { Items: signatureDocuments } = await docClient.send(
       new ScanCommand({
         TableName: "Documents",
-        FilterExpression:
-          "contains(signaturesRequired, :uid) AND isDeleted = :deleted",
+        FilterExpression: "contains(signaturesRequired, :uid) AND isDeleted = :deleted",
         ExpressionAttributeValues: {
           ":uid": userId,
           ":deleted": false,
@@ -2017,9 +2028,7 @@ export const getFilesSharedWithUser = async (req: Request, res: Response) => {
           const revisionsWithUrls = await Promise.all(
             revisions.map(async (rev: any) => {
               const revUrl = rev.fileUrl?.split(".amazonaws.com/")[1];
-              const presignedRevUrl = revUrl
-                ? await generatePresignedUrl(revUrl)
-                : null;
+              const presignedRevUrl = revUrl ? await generatePresignedUrl(revUrl) : null;
               return { ...rev, presignedUrl: presignedRevUrl };
             })
           );

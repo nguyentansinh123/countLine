@@ -10,6 +10,8 @@ interface Step1Props {
   setSelectedUser: React.Dispatch<React.SetStateAction<string>>;
   teamsData: any[];
   userEmail: string;
+  selectedTeam: Team | null;
+  setSelectedTeam: React.Dispatch<React.SetStateAction<Team | null>>;
 }
 
 interface ApiUser {
@@ -27,6 +29,8 @@ const Step1: React.FC<Step1Props> = ({
   setSelectedUser,
   teamsData,
   userEmail,
+  selectedTeam,
+  setSelectedTeam,
 }) => {
   const [teamMembersWithData, setTeamMembersWithData] = useState<
     (UserData | TeamMember)[]
@@ -140,40 +144,37 @@ const Step1: React.FC<Step1Props> = ({
     );
   }, [file]);
 
-  const getTeamMembersWithUserData = (
-    teamId: number
-  ): (UserData | TeamMember)[] => {
-    const team = teamsData.find((t) => t.teamId === teamId);
+  const handleTeamChange = async (teamName: string) => {
+    console.log(teamName);
 
-    if (!team) {
-      return [];
-    }
+    const selectedTeam = teams.find((team) => team.teamName === teamName);
+    console.log(selectedTeam);
 
-    return team.members.map((member: any) => {
-      const user = users.find((u) => u.name === member.name);
-      if (user) {
-        return { ...user, mail: user.email || '' };
-      } else {
-        return { ...member, mail: '' };
-      }
-    });
-  };
-
-  useEffect(() => {
-    if (selectedTeamId !== null) {
-      const members = getTeamMembersWithUserData(selectedTeamId);
-      setTeamMembersWithData(members);
-    }
-  }, [selectedTeamId, users]);
-
-  const handleTeamChange = (teamName: string) => {
-    const selectedTeam = teamsData.find((team) => team.team === teamName);
     if (selectedTeam) {
+      setSelectedTeam(selectedTeam);
       setSelectedTeamId(selectedTeam.teamId);
+      try {
+        const res = await axios.get(
+          `http://localhost:5001/api/team/${selectedTeam.teamId}/members`,
+          { withCredentials: true }
+        );
+
+        if (res.data.success) {
+          const members = res.data.data.members;
+          console.log(members);
+
+          setTeamMembersWithData(members);
+        } else {
+          message.error('Failed to fetch team members');
+        }
+      } catch (error) {
+        console.error('Error fetching team members:', error);
+        message.error('Error loading team members');
+      }
     }
   };
 
-  console.log(file);
+  console.log(teamMembersWithData);
 
   const items = [
     {
@@ -271,9 +272,15 @@ const Step1: React.FC<Step1Props> = ({
 
           <div>
             <h4>Team</h4>
-            <Select style={{ width: 200 }} onChange={handleTeamChange}>
+            <Select
+              style={{ width: 200 }}
+              onChange={(value) => handleTeamChange(value)}
+            >
               {teams.map((team) => (
-                <Select.Option key={team.teamId.toString()} value={team.team}>
+                <Select.Option
+                  key={team.teamId.toString()}
+                  value={team?.teamName}
+                >
                   {team.teamName}
                 </Select.Option>
               ))}
@@ -285,8 +292,8 @@ const Step1: React.FC<Step1Props> = ({
             <ul>
               {teamMembersWithData.map((member, index) => (
                 <li key={index}>
-                  {member.mail
-                    ? `${member.name} (${member.mail})`
+                  {member.email
+                    ? `${member.name} (${member.email})`
                     : member.name}
                 </li>
               ))}

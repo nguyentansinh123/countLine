@@ -1,11 +1,14 @@
 // types.ts
 export interface TeamMember {
   name: string;
+  email?: string;
+
   mail?: string;
 }
 export interface UserData {
   name: string;
   mail: string;
+  email: string;
 }
 
 export interface Team {

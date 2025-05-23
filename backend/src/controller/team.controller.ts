@@ -18,9 +18,7 @@ const addTeam = async (req: Request, res: Response) => {
     const { user_id } = req.body;
 
     if (!teamName || teamName.trim() === "") {
-      res
-        .status(400)
-        .json({ success: false, message: "Team name is required" });
+      res.status(400).json({ success: false, message: "Team name is required" });
       return;
     }
 
@@ -74,8 +72,7 @@ const addTeam = async (req: Request, res: Response) => {
     const updateUserParams = {
       TableName: "Users",
       Key: { user_id },
-      UpdateExpression:
-        "SET teams = list_append(if_not_exists(teams, :empty_list), :team)",
+      UpdateExpression: "SET teams = list_append(if_not_exists(teams, :empty_list), :team)",
       ExpressionAttributeValues: {
         ":team": [teamData.teamId],
         ":empty_list": [],
@@ -85,20 +82,17 @@ const addTeam = async (req: Request, res: Response) => {
     try {
       await docClient.send(new UpdateCommand(updateUserParams));
     } catch (userUpdateError) {
-      console.warn(
-        "Team created but failed to update user's teams array:",
-        userUpdateError
-      );
+      console.warn("Team created but failed to update user's teams array:", userUpdateError);
     }
 
     await logUserActivity({
       userId: user_id,
       action: "create_team",
       targetId: teamData.teamId,
-      details: { 
+      details: {
         teamName: teamData.teamName,
-        teamSize: teamData.teamSize
-      }
+        teamSize: teamData.teamSize,
+      },
     });
 
     res.status(201).json({
@@ -135,7 +129,7 @@ const getTeam = async (req: Request, res: Response) => {
     await logUserActivity({
       userId: req.body.user_id,
       action: "view_team",
-      targetId: teamId
+      targetId: teamId,
     });
 
     res.json({ success: true, data: Item });
@@ -172,18 +166,16 @@ const updateTeam = async (req: Request, res: Response) => {
       ReturnValues: "ALL_NEW",
     };
 
-    const { Attributes } = await docClient.send(
-      new UpdateCommand(updateParams)
-    );
+    const { Attributes } = await docClient.send(new UpdateCommand(updateParams));
 
     await logUserActivity({
       userId: req.body.user_id,
       action: "update_team",
       targetId: teamId,
-      details: { 
+      details: {
         teamName,
-        updatedFields: Object.keys(req.body).filter(key => key !== 'user_id')
-      }
+        updatedFields: Object.keys(req.body).filter((key) => key !== "user_id"),
+      },
     });
 
     res.json({
@@ -219,16 +211,12 @@ const addTeamMember = async (req: Request, res: Response) => {
     }
 
     if (team.members.includes(team_userId)) {
-      res
-        .status(400)
-        .json({ success: false, message: "User is already a team member" });
+      res.status(400).json({ success: false, message: "User is already a team member" });
       return;
     }
 
     if (team.members.length >= team.teamSize) {
-      res
-        .status(400)
-        .json({ success: false, message: "Team size limit reached" });
+      res.status(400).json({ success: false, message: "Team size limit reached" });
       return;
     }
 
@@ -242,15 +230,12 @@ const addTeamMember = async (req: Request, res: Response) => {
       ReturnValues: ReturnValue.ALL_NEW,
     };
 
-    const { Attributes } = await docClient.send(
-      new UpdateCommand(updateParams)
-    );
+    const { Attributes } = await docClient.send(new UpdateCommand(updateParams));
 
     const updateUserParams: UpdateCommandInput = {
       TableName: "Users",
       Key: { user_id: team_userId },
-      UpdateExpression:
-        "SET teams = list_append(if_not_exists(teams, :empty_list), :team)",
+      UpdateExpression: "SET teams = list_append(if_not_exists(teams, :empty_list), :team)",
       ExpressionAttributeValues: {
         ":team": [teamId],
         ":empty_list": [],
@@ -264,10 +249,10 @@ const addTeamMember = async (req: Request, res: Response) => {
       userId: req.body.user_id,
       action: "add_team_member",
       targetId: teamId,
-      details: { 
+      details: {
         addedMember: team_userId,
-        memberCount: (Attributes?.members || []).length
-      }
+        memberCount: (Attributes?.members || []).length,
+      },
     });
 
     res.json({
@@ -337,8 +322,7 @@ const deleteTeam = async (req: Request, res: Response) => {
       new UpdateCommand({
         TableName: "Teams",
         Key: { teamId },
-        UpdateExpression:
-          "SET isDeleted = :deleted, members = :empty, updatedAt = :updated",
+        UpdateExpression: "SET isDeleted = :deleted, members = :empty, updatedAt = :updated",
         ExpressionAttributeValues: {
           ":deleted": true,
           ":empty": [],
@@ -352,9 +336,9 @@ const deleteTeam = async (req: Request, res: Response) => {
       userId: req.body.user_id,
       action: "delete_team",
       targetId: teamId,
-      details: { 
-        teamName: team.teamName
-      }
+      details: {
+        teamName: team.teamName,
+      },
     });
 
     res.json({
@@ -422,9 +406,7 @@ const removeTeamMember = async (req: Request, res: Response) => {
     );
 
     if ((user as { teams?: string[] })?.teams) {
-      const updatedTeams = (user as { teams: string[] }).teams.filter(
-        (t: string) => t !== teamId
-      );
+      const updatedTeams = (user as { teams: string[] }).teams.filter((t: string) => t !== teamId);
       await docClient.send(
         new UpdateCommand({
           TableName: "Users",
@@ -441,10 +423,10 @@ const removeTeamMember = async (req: Request, res: Response) => {
       userId: req.body.user_id,
       action: "remove_team_member",
       targetId: teamId,
-      details: { 
+      details: {
         removedMember: userId,
-        remainingCount: updatedMembers.length
-      }
+        remainingCount: updatedMembers.length,
+      },
     });
 
     res.json({
@@ -481,9 +463,9 @@ const getAllTeams = async (req: Request, res: Response): Promise<void> => {
     await logUserActivity({
       userId: req.body.user_id,
       action: "view_all_teams",
-      details: { 
-        count: result.Items?.length || 0
-      }
+      details: {
+        count: result.Items?.length || 0,
+      },
     });
 
     res.status(200).json({
@@ -517,10 +499,7 @@ interface ApiResponse<T> {
   data?: T;
 }
 
-const getTeamMembers = async (
-  req: Request,
-  res: Response<ApiResponse<TeamResponse>>
-) => {
+const getTeamMembers = async (req: Request, res: Response<ApiResponse<TeamResponse>>) => {
   try {
     const { teamId } = req.params as { teamId: string };
 
@@ -561,7 +540,11 @@ const getTeamMembers = async (
         RequestItems: {
           Users: {
             Keys: teamMembers.map((user_id) => ({ user_id })),
-            ProjectionExpression: "user_id, name, email, profilePicture, role",
+            ProjectionExpression: "#name, #role, user_id, email, profilePicture",
+            ExpressionAttributeNames: {
+              "#name": "name",
+              "#role": "role",
+            },
           },
         },
       })
@@ -581,8 +564,8 @@ const getTeamMembers = async (
       action: "view_team_members",
       targetId: teamId,
       details: {
-        memberCount: members.length
-      }
+        memberCount: members.length,
+      },
     });
 
     res.json({
@@ -632,16 +615,14 @@ const getMyTeams = async (req: Request, res: Response) => {
     await logUserActivity({
       userId: userId,
       action: "view_my_teams",
-      details: { 
-        count: teams.length
-      }
+      details: {
+        count: teams.length,
+      },
     });
 
     res.json({ success: true, data: teams });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch your teams" });
+    res.status(500).json({ success: false, message: "Failed to fetch your teams" });
   }
 };
 
@@ -667,16 +648,14 @@ const changeTeamStatus = async (req: Request, res: Response) => {
       userId: req.body.user_id,
       action: "change_team_status",
       targetId: teamId,
-      details: { 
-        newStatus: status
-      }
+      details: {
+        newStatus: status,
+      },
     });
 
     res.json({ success: true, message: "Status updated", data: Attributes });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to update status" });
+    res.status(500).json({ success: false, message: "Failed to update status" });
   }
 };
 
@@ -702,9 +681,9 @@ const exportTeamsCsv = async (req: Request, res: Response) => {
     await logUserActivity({
       userId: req.body.user_id,
       action: "export_teams_csv",
-      details: { 
-        count: teams.length
-      }
+      details: {
+        count: teams.length,
+      },
     });
 
     res.setHeader("Content-Type", "text/csv");
