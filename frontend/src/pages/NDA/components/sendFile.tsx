@@ -220,18 +220,11 @@ const SendFile: React.FC = () => {
         throw new Error('Failed to fetch the file');
       }
 
-      console.log('Response OK, processing blob...');
       const blob = await fileResponse.blob();
-      console.log('Blob received, creating file...');
       const file = new File([blob], 'file.pdf', { type: 'application/pdf' });
 
-      console.log('File created, extracting text...');
       const text = await extractTextFromPDF(file);
-      console.log('Text extraction successful.');
       setTxtContent(text);
-      console.log('txtContent set in fetchPdfFile:', text);
-      console.log('fetchPdfFile completed');
-      console.log('Loading state set to false');
       setLoading(false);
     } catch (error) {
       console.error('Error loading PDF:', error);
