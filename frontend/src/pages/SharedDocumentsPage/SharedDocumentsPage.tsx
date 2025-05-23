@@ -13,7 +13,8 @@ import {
   Spin,
   Avatar,
   Divider,
-  message
+  message,
+  Alert
 } from 'antd';
 import { 
   DownloadOutlined, 
@@ -30,7 +31,8 @@ import {
   ShareAltOutlined,
   LeftOutlined,
   RightOutlined,
-  FileExclamationOutlined
+  FileExclamationOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -44,6 +46,8 @@ const { Title, Text, Paragraph } = Typography;
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
+
+
 function SharedDocumentsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [documents, setDocuments] = useState<any[]>([]);
@@ -55,6 +59,7 @@ function SharedDocumentsPage() {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [documentError, setDocumentError] = useState<boolean>(false);
+  const [refreshingUrl, setRefreshingUrl] = useState<boolean>(false);
 
   useEffect(() => {
     fetchSharedDocuments();
@@ -84,9 +89,75 @@ function SharedDocumentsPage() {
     }
   };
 
-  const handleViewDocument = (document: any) => {
-    setViewDocument(document);
-    setViewModalVisible(true);
+  const refreshPresignedUrl = async (documentId: string) => {
+    try {
+      setRefreshingUrl(true);
+      
+      console.log(`Refreshing URL for document: ${documentId}`);
+      
+      const response = await axios.get(`http://localhost:5001/api/document/presigned-url/${documentId}`, {
+        withCredentials: true
+      });
+      
+      console.log('Presigned URL response:', response.data);
+      
+      if (response.data.success) {
+        message.success('Document link refreshed');
+        setDocumentError(false);
+        return response.data.presignedUrl;
+      }
+      
+      message.warning('Could not refresh document link');
+      return null;
+    } catch (error) {
+      console.error('Error refreshing URL:', error);
+      message.error('Could not access document. You may not have permission.');
+      return null;
+    } finally {
+      setRefreshingUrl(false);
+    }
+  };
+
+  const handleViewDocument = async (document: any) => {
+    console.log('Opening document directly:', document);
+    setLoading(true);
+    
+    try {
+      const freshUrl = await refreshPresignedUrl(document.documentId);
+      
+      if (freshUrl) {
+        window.open(freshUrl, '_blank');
+        message.success('Opening document in new tab');
+      } else if (document.presignedUrl) {
+        window.open(document.presignedUrl, '_blank');
+        message.info('Opening document with existing link');
+      } else {
+        message.error('Unable to get document URL');
+      }
+    } catch (error) {
+      console.error('Error preparing document view:', error);
+      message.error('Error opening document');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefreshView = async () => {
+    if (!viewDocument) return;
+    
+    setLoading(true);
+    const freshUrl = await refreshPresignedUrl(viewDocument.documentId);
+    
+    if (freshUrl) {
+      setViewDocument((prev:any) => ({
+        ...prev,
+        presignedUrl: freshUrl
+      }));
+      setDocumentError(false);
+    } else {
+      setDocumentError(true);
+    }
+    setLoading(false);
   };
 
   const handleInfoClick = (document: any) => {
@@ -94,7 +165,7 @@ function SharedDocumentsPage() {
     setInfoModalVisible(true);
   };
 
-  const handleViewSpecificRevision = (revision: any, parentDoc: any) => {
+  const handleViewSpecificRevision = async (revision: any, parentDoc: any) => {
     const viewObj = {
       ...parentDoc,
       currentRevision: revision,
@@ -103,11 +174,33 @@ function SharedDocumentsPage() {
     
     setViewDocument(viewObj);
     setViewModalVisible(true);
+    setDocumentError(false);
+    setLoading(true);
+    
+    try {
+      // Try to get a fresh URL for the revision
+      if (!revision.presignedUrl) {
+        const freshUrl = await refreshPresignedUrl(parentDoc.documentId);
+        if (freshUrl) {
+          setViewDocument((prev:any) => ({
+            ...prev,
+            presignedUrl: freshUrl
+          }));
+        } else {
+          setDocumentError(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing revision URL:', error);
+      setDocumentError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignDocument = async (documentId: string) => {
     try {
-      const response = await axios.post(`http://localhost:5001/api/documents/sign/${documentId}`, {}, {
+      const response = await axios.post(`http://localhost:5001/api/document/sign/${documentId}`, {}, {
         withCredentials: true
       });
       
@@ -142,6 +235,7 @@ function SharedDocumentsPage() {
       document.body.appendChild(a);
       a.click();
       
+      // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
@@ -167,15 +261,6 @@ function SharedDocumentsPage() {
       default:
         return <FileUnknownOutlined style={{ fontSize: '24px', color: '#faad14' }} />;
     }
-  };
-
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setDocumentError(false);
-  };
-
-  const onDocumentLoadError = () => {
-    setDocumentError(true);
   };
 
   const changePage = (offset: number) => {
@@ -268,7 +353,8 @@ function SharedDocumentsPage() {
               type="primary" 
               shape="circle" 
               icon={<EyeOutlined />} 
-              onClick={() => handleViewDocument(record)} 
+              onClick={() => handleViewDocument(record)}
+              loading={loading && viewDocument?.documentId === record.documentId} 
             />
           </Tooltip>
           
@@ -398,6 +484,14 @@ function SharedDocumentsPage() {
             </div>
           ) : null,
           <Button 
+            key="refresh"
+            onClick={handleRefreshView}
+            icon={<ReloadOutlined />}
+            loading={refreshingUrl}
+          >
+            Refresh
+          </Button>,
+          <Button 
             key="download" 
             type="primary" 
             icon={<DownloadOutlined />}
@@ -435,42 +529,59 @@ function SharedDocumentsPage() {
               borderRadius: '4px',
               overflow: 'auto'
             }}>
-              {viewDocument.presignedUrl ? (
+              {loading ? (
+                <div>
+                  <Spin size="large" />
+                  <Text style={{ display: 'block', marginTop: '16px' }}>Loading document...</Text>
+                </div>
+              ) : viewDocument.presignedUrl ? (
                 viewDocument.documentType?.toLowerCase().includes('pdf') ? (
-                  <Document
-                    file={viewDocument.presignedUrl}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    onLoadError={onDocumentLoadError}
-                    error={
-                      <div>
-                        <FileExclamationOutlined style={{ fontSize: '64px', color: '#ff4d4f', marginBottom: '16px' }} />
-                        <Text>Failed to load PDF. The file might be corrupted or require authentication.</Text>
-                        <Button 
-                          type="primary" 
-                          style={{ marginTop: '16px' }}
-                          onClick={() => window.open(viewDocument.presignedUrl, '_blank')}
-                        >
-                          Open in new tab
-                        </Button>
-                      </div>
-                    }
-                    loading={
-                      <div>
-                        <Spin size="large" />
-                        <Text style={{ display: 'block', marginTop: '16px' }}>Loading document...</Text>
-                      </div>
-                    }
-                  >
-                    <Page 
-                      pageNumber={pageNumber} 
-                      scale={1.2} 
-                      renderTextLayer={true}
-                      renderAnnotationLayer={true}
-                      error={
-                        <Text type="danger">Error loading page {pageNumber}</Text>
-                      }
+                  <div style={{ width: '100%', height: '600px', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                    {/* Direct iframe embedding */}
+                    <iframe 
+                      src={viewDocument.presignedUrl}
+                      style={{ 
+                        width: '100%', 
+                        height: '450px', 
+                        border: '1px solid #d9d9d9',
+                        borderRadius: '4px',
+                        backgroundColor: 'white'
+                      }}
+                      title="PDF Preview"
                     />
-                  </Document>
+                    
+                    {/* Keep your existing controls */}
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      gap: '10px',
+                      padding: '10px',
+                      marginTop: '15px',
+                      background: '#f0f0f0',
+                      borderRadius: '4px'
+                    }}>
+                      <Button 
+                        type="primary" 
+                        icon={<EyeOutlined />}
+                        onClick={() => window.open(viewDocument.presignedUrl, '_blank')}
+                      >
+                        Open in New Tab
+                      </Button>
+                      <Button 
+                        icon={<DownloadOutlined />}
+                        onClick={() => handleDownloadDocument(viewDocument.documentId, viewDocument.filename)}
+                      >
+                        Download PDF
+                      </Button>
+                      <Button
+                        icon={<ReloadOutlined />}
+                        onClick={handleRefreshView}
+                        loading={refreshingUrl}
+                      >
+                        Refresh Link
+                      </Button>
+                    </div>
+                  </div>
                 ) : viewDocument.documentType?.toLowerCase().includes('image') ? (
                   <img 
                     src={viewDocument.presignedUrl} 
@@ -485,19 +596,28 @@ function SharedDocumentsPage() {
                     <Text type="secondary" style={{ display: 'block', margin: '8px 0 16px' }}>
                       Please download the file to view it in its native application.
                     </Text>
-                    <Button 
-                      type="primary"
-                      onClick={() => window.open(viewDocument.presignedUrl, '_blank')}
-                    >
-                      Open in new tab
-                    </Button>
+                    <Space>
+                      <Button 
+                        type="primary"
+                        onClick={() => window.open(viewDocument.presignedUrl, '_blank')}
+                      >
+                        Open in new tab
+                      </Button>
+                      <Button
+                        onClick={handleRefreshView}
+                        icon={<ReloadOutlined />}
+                        loading={refreshingUrl}
+                      >
+                        Refresh Link
+                      </Button>
+                    </Space>
                   </div>
                 ) : (
                   <div>
                     <div style={{ fontSize: '64px', marginBottom: '24px' }}>
                       {getDocumentIcon(viewDocument.documentType)}
                     </div>
-                    <Text>Loading preview...</Text>
+                    <Text>Trying to load preview...</Text>
                     <Text type="secondary" style={{ display: 'block', margin: '8px 0 16px' }}>
                       If the preview doesn't load, this file type may not be supported for in-browser viewing.
                     </Text>
@@ -509,6 +629,22 @@ function SharedDocumentsPage() {
                     />
                   </div>
                 )
+              ) : documentError ? (
+                <div>
+                  <FileExclamationOutlined style={{ fontSize: '64px', color: '#ff4d4f', marginBottom: '16px' }} />
+                  <Text>Could not load document preview.</Text>
+                  <Text type="secondary" style={{ display: 'block', margin: '8px 0 16px' }}>
+                    The document URL might have expired or you don't have access.
+                  </Text>
+                  <Button 
+                    type="primary"
+                    onClick={handleRefreshView}
+                    icon={<ReloadOutlined />}
+                    loading={refreshingUrl}
+                  >
+                    Try Again
+                  </Button>
+                </div>
               ) : (
                 <div>
                   <div style={{ fontSize: '64px', marginBottom: '24px' }}>
@@ -523,6 +659,7 @@ function SharedDocumentsPage() {
         )}
       </Modal>
       
+      {/* Document Info Modal - Unchanged */}
       <Modal
         title="Document Information"
         open={infoModalVisible}

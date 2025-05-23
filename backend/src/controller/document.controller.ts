@@ -452,14 +452,11 @@ export const downloadFile = async (
   }
 };
 
-export const getPresignedUrl = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
+export const getPresignedUrl = async (req: Request, res: Response): Promise<void> => {
   try {
     const { documentId } = req.params;
-    // @ts-ignore
-    const user = req.user;
+    const user = (req as any).user;
+    const userId = user.id;
 
     const getDocParams = {
       TableName: "Documents",
@@ -474,13 +471,37 @@ export const getPresignedUrl = async (
       return;
     }
 
-    if (document.uploadedBy !== user.id && user.role !== "admin") {
+    // MODIFIED ACCESS CONTROL: Allow more users to access presigned URLs
+    const isOwner = document.uploadedBy === userId;
+    const isAdmin = user.role === "admin";
+    const isSharedWith = (document.sharedWith || []).includes(userId);
+    const needsToSign = (document.signaturesRequired || []).includes(userId);
+    
+    // Check if document is in user's documents array
+    let isInUserDocuments = false;
+    const { Item: userItem } = await docClient.send(
+      new GetCommand({
+        TableName: "Users",
+        Key: { user_id: userId },
+      })
+    );
+
+    if (userItem && userItem.documents) {
+      isInUserDocuments = userItem.documents.some((doc: any) => 
+        typeof doc === 'string' 
+          ? doc === documentId 
+          : doc.documentId === documentId
+      );
+    }
+
+    if (!isOwner && !isAdmin && !isSharedWith && !needsToSign && !isInUserDocuments) {
+      console.log(`Access denied for user ${userId} to document ${documentId}`);
       res.status(403).json({ success: false, message: "Access denied" });
       return;
     }
 
     await logUserActivity({
-      userId: user.id,
+      userId: userId,
       action: "get_presigned_url",
       targetId: documentId,
     });
@@ -491,10 +512,11 @@ export const getPresignedUrl = async (
     const getObjectParams = {
       Bucket: process.env.AWS_BUCKET_NAME!,
       Key: key,
+      ResponseContentDisposition: 'inline',
     };
     const getCommand = new GetObjectCommand(getObjectParams);
     const presignedUrl = await getSignedUrl(s3Client, getCommand, {
-      expiresIn: 3600,
+      expiresIn: 3600, 
     });
 
     res.status(200).json({
@@ -509,7 +531,6 @@ export const getPresignedUrl = async (
     res.status(500).json({ success: false, message });
   }
 };
-
 export const getMyDocuments = async (req: Request, res: Response) => {
   // @ts-ignore
   const userId = req.user.id;
