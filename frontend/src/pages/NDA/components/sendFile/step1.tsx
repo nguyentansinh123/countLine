@@ -37,6 +37,32 @@ const Step1: React.FC<Step1Props> = ({
   const [messageContent, setMessageContent] = useState<string>('');
   const [teamMessageContent, setTeamMessageContent] = useState<string>('');
   const [selectedUserEmail, setSelectedUserEmail] = useState<string>('');
+  const [teams, setTeams] = useState<Team[]>([]); // or any[]
+
+  useEffect(() => {
+    const fetchTeams = async () => {
+      try {
+        const response = await axios.get(
+          'http://localhost:5001/api/team/getAllTeams',
+          {
+            withCredentials: true,
+          }
+        );
+
+        if (response.data.success) {
+          setTeams(response.data.data);
+        } else {
+          message.error('Failed to fetch teams');
+        }
+      } catch (err) {
+        console.error('Error fetching teams:', err);
+        message.error('Error loading teams');
+      }
+    };
+
+    fetchTeams();
+  }, []);
+  console.log(teams);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -50,8 +76,8 @@ const Step1: React.FC<Step1Props> = ({
         );
 
         if (response.data.success) {
-          console.log('Users loaded from API:', response.data.data);
           setUsers(response.data.data);
+          console.log('Users loaded from API:', response.data.data);
         } else {
           message.error('Failed to fetch users');
         }
@@ -147,6 +173,8 @@ const Step1: React.FC<Step1Props> = ({
     }
   };
 
+  console.log(file);
+
   const items = [
     {
       key: '1',
@@ -230,7 +258,7 @@ const Step1: React.FC<Step1Props> = ({
             <div style={{ display: 'flex', gap: 10, width: '100%' }}>
               <div style={{ width: 100 }}>File Name</div>
               <div style={{ width: '100%' }}>
-                <Input contentEditable={false} value={file?.title} />
+                <Input contentEditable={false} value={file?.filename} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, width: '100%' }}>
@@ -244,9 +272,9 @@ const Step1: React.FC<Step1Props> = ({
           <div>
             <h4>Team</h4>
             <Select style={{ width: 200 }} onChange={handleTeamChange}>
-              {teamsData.map((team) => (
+              {teams.map((team) => (
                 <Select.Option key={team.teamId.toString()} value={team.team}>
-                  {team.team}
+                  {team.teamName}
                 </Select.Option>
               ))}
             </Select>
