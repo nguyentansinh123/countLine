@@ -120,11 +120,94 @@ function SharedDocumentsPage() {
     }
   };
 
+  // Add this function to parse DynamoDB formatted revisions
+  const parseRevision = (revision: any) => {
+    if (revision.M) {
+      return {
+        revisionId: revision.M.revisionId?.S,
+        editedBy: revision.M.editedBy?.S,
+        fileUrl: revision.M.fileUrl?.S,
+        timestamp: revision.M.timestamp?.S,
+        status: revision.M.status?.S,
+        comments: revision.M.comments?.S ? JSON.parse(revision.M.comments.S) : [],
+        annotations: revision.M.annotations?.S ? JSON.parse(revision.M.annotations.S) : []
+      };
+    }
+    return revision;
+  };
+
+  // Add this function to get a signed URL for S3 links
+  const getSignedUrl = async (fileUrl: string): Promise<string | null> => {
+    try {
+      // If it's not an S3 URL, return it as is
+      if (!fileUrl.includes('amazonaws.com')) {
+        return fileUrl;
+      }
+      
+      // Extract the S3 key from the URL
+      const url = new URL(fileUrl);
+      const pathParts = url.pathname.split('/');
+      // Remove the leading slash and get the key
+      const key = pathParts.slice(1).join('/');
+      
+      // Call your backend to get a signed URL for this S3 key
+      const response = await axios.get(`http://localhost:5001/api/document/sign-s3-url?key=${encodeURIComponent(key)}`, {
+        withCredentials: true
+      });
+      
+      if (response.data.success) {
+        return response.data.presignedUrl;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting signed URL:', error);
+      return null;
+    }
+  };
+
   const handleViewDocument = async (document: any) => {
-    console.log('Opening document directly:', document);
+    console.log('Opening document:', document);
     setLoading(true);
     
     try {
+      // Check if document has revisions
+      if (document.revisions && document.revisions.length > 0) {
+        console.log('Document has revisions:', document.revisions);
+        
+        // Sort revisions by timestamp (newest first)
+        const sortedRevisions = [...document.revisions].sort((a, b) => {
+          const timeA = a.timestamp || (a.M?.timestamp?.S);
+          const timeB = b.timestamp || (b.M?.timestamp?.S);
+          return new Date(timeB).getTime() - new Date(timeA).getTime();
+        });
+        
+        // Get the latest revision
+        const latestRevision = sortedRevisions[0];
+        console.log('Latest revision:', latestRevision);
+        
+        // Parse the revision if it's in DynamoDB format
+        const parsedRevision = parseRevision(latestRevision);
+        console.log('Parsed revision:', parsedRevision);
+        
+        if (parsedRevision.fileUrl) {
+          // Use the revision's file URL
+          const revisionsPresignedUrl = await getSignedUrl(parsedRevision.fileUrl);
+          
+          if (revisionsPresignedUrl) {
+            window.open(revisionsPresignedUrl, '_blank');
+            message.success('Opening latest revision in new tab');
+          } else {
+            // If we can't get a signed URL for the revision, try to open directly
+            window.open(parsedRevision.fileUrl, '_blank');
+            message.info('Opening latest revision (link may expire soon)');
+          }
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // If no revisions or couldn't get revision URL, fall back to the original document
       const freshUrl = await refreshPresignedUrl(document.documentId);
       
       if (freshUrl) {
@@ -707,6 +790,75 @@ function SharedDocumentsPage() {
                 <Tag>No signatures required</Tag>
               )}
             </div>
+            
+            {/* Add this section after the Status section in your info modal */}
+            {selectedDocument.revisions && selectedDocument.revisions.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Revisions:</Text>
+                <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
+                  {selectedDocument.revisions.map((revision: any, index: number) => {
+                    const parsedRevision = parseRevision(revision);
+                    return (
+                      <div 
+                        key={parsedRevision.revisionId || index}
+                        style={{ 
+                          padding: '12px', 
+                          margin: '4px',
+                          borderRadius: '4px',
+                          backgroundColor: '#f9f9f9',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          borderBottom: index < selectedDocument.revisions.length - 1 ? '1px solid #f0f0f0' : 'none'
+                        }}
+                      >
+                        <div>
+                          <Text strong>Version {selectedDocument.revisions.length - index}</Text>
+                          <br />
+                          <Text type="secondary">
+                            {parsedRevision.timestamp ? 
+                              dayjs(parsedRevision.timestamp).format('MMM D, YYYY h:mm A') : 
+                              'Date unknown'}
+                          </Text>
+                          {parsedRevision.comments && parsedRevision.comments.length > 0 && (
+                            <div style={{ marginTop: '4px', fontSize: '12px' }}>
+                              <Text type="secondary">{parsedRevision.comments[0].text}</Text>
+                            </div>
+                          )}
+                        </div>
+                        <Button 
+                          size="small"
+                          onClick={async () => {
+                            setLoading(true);
+                            try {
+                              if (parsedRevision.fileUrl) {
+                                const signedUrl = await getSignedUrl(parsedRevision.fileUrl);
+                                if (signedUrl) {
+                                  window.open(signedUrl, '_blank');
+                                  message.success('Opening revision in new tab');
+                                } else {
+                                  window.open(parsedRevision.fileUrl, '_blank');
+                                  message.info('Opening revision (link may expire soon)');
+                                }
+                              } else {
+                                message.error('Revision URL not available');
+                              }
+                            } catch (error) {
+                              console.error('Error opening revision:', error);
+                              message.error('Could not open revision');
+                            } finally {
+                              setLoading(false);
+                            }
+                          }}
+                        >
+                          View
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             
             {(selectedDocument.signingStatus === 'pending' && 
              selectedDocument.signaturesRequired?.includes(selectedDocument.userId) && 

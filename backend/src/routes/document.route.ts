@@ -25,6 +25,7 @@ import {
   newSendFile,
   getFilesSharedWithUser,
   SendFileToTeam,
+  signS3Url,
 } from "../controller/document.controller";
 import { upload } from "../lib/multerconfig";
 import { userAuth } from "../middleware/userAuth";
@@ -74,6 +75,7 @@ router.post(
 );
 
 router.get("/shared-with-me", userAuth, getFilesSharedWithUser);
+router.get("/sign-s3-url", userAuth, signS3Url);
 // New Routeeeeeeeeeeeeeeeeeeee
 
 router.get("/document-with-revisions/:documentId", userAuth, getDocumentWithRevisions);

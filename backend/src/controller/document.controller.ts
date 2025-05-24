@@ -1884,7 +1884,7 @@ export const rejectRevision = async (req: Request, res: Response) => {
 
 export const newSendFile = async (req: Request, res: Response): Promise<void> => {
   const { documentId } = req.params;
-  const { recipients } = req.body; // array of userIds or teamIds
+  const { recipients } = req.body; 
   const admin = req.body.user;
 
   if (!recipients || !Array.isArray(recipients)) {
@@ -1893,7 +1893,6 @@ export const newSendFile = async (req: Request, res: Response): Promise<void> =>
   }
 
   try {
-    // Simulate DB logic (replace with real DB logic)
     for (const recipient of recipients) {
       await docClient.send(
         new PutCommand({
@@ -1977,7 +1976,7 @@ export const getFilesSharedWithUser = async (req: Request, res: Response) => {
 
           sharedDocuments.push({
             ...document,
-            documentId: document.documentId, // Explicitly include documentId
+            documentId: document.documentId, 
             presignedUrl,
             userId,
             sharedBy: sharedByName,
@@ -2035,7 +2034,7 @@ export const getFilesSharedWithUser = async (req: Request, res: Response) => {
 
           sharedDocuments.push({
             ...document,
-            documentId: document.documentId, // Explicitly include documentId
+            documentId: document.documentId,
             presignedUrl,
             userId,
             sharedBy: sharedByName,
@@ -2061,6 +2060,31 @@ export const getFilesSharedWithUser = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch shared files",
+    });
+  }
+};
+
+export const signS3Url = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { key } = req.query;
+    
+    if (!key || typeof key !== 'string') {
+      res.status(400).json({ success: false, message: "S3 key is required" });
+      return;
+    }
+    
+    const presignedUrl = await generatePresignedUrl(key);
+    
+    res.status(200).json({
+      success: true,
+      presignedUrl
+    });
+    
+  } catch (error) {
+    console.error("Error in signS3Url:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to generate signed URL" 
     });
   }
 };
