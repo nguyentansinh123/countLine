@@ -20,9 +20,9 @@ const DocumentBarChart: React.FC<DocumentBarChartProps> = ({ data }) => {
   if (!data) return null;
 
   const colorMap: Record<string, string> = {
-    'Legal': '#4c7aff',
-    'IP': '#ff7a4c',
-    'Executive': '#7aff4c',
+    Legal: '#4c7aff',
+    IP: '#ff7a4c',
+    Executive: '#7aff4c',
   };
 
   const defaultColor = '#4c4cc8';
@@ -30,9 +30,13 @@ const DocumentBarChart: React.FC<DocumentBarChartProps> = ({ data }) => {
   const chartData = Object.entries(data).map(([name, count]) => {
     let displayName = name;
     if (name.toLowerCase().includes('legal')) displayName = 'Legal';
-    if (name.toLowerCase().includes('i.p') || name.toLowerCase().includes('ip agreement')) displayName = 'IP';
+    if (
+      name.toLowerCase().includes('i.p') ||
+      name.toLowerCase().includes('ip agreement')
+    )
+      displayName = 'IP';
     if (name.toLowerCase().includes('executive')) displayName = 'Executive';
-    
+
     return {
       originalName: name,
       name: displayName,
@@ -52,7 +56,11 @@ const DocumentBarChart: React.FC<DocumentBarChartProps> = ({ data }) => {
           bottom: 5,
         }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#444" strokeOpacity={0.3} />
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="#444"
+          strokeOpacity={0.3}
+        />
         <XAxis
           dataKey="name"
           tick={{ fill: 'white' }}
@@ -69,24 +77,27 @@ const DocumentBarChart: React.FC<DocumentBarChartProps> = ({ data }) => {
         <Tooltip
           cursor={false}
           contentStyle={{
-            backgroundColor: 'rgba(30, 30, 60, 0.8)',
-            border: '1px solid #4c4cc8',
+            backgroundColor: 'rgba(5, 5, 40, 0.9)',
+            border: '1px solid rgba(100, 100, 255, 0.3)',
+            color: 'white', // This sets the default text color
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+            padding: '10px 12px',
+          }}
+          cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
+          formatter={(value) => [
+            <span style={{ color: 'white', fontWeight: 'normal' }}>
+              {value} documents
+            </span>,
+            '',
+          ]}
+          labelStyle={{
             color: 'white',
             borderRadius: '4px',
             backdropFilter: 'blur(6px)',
-            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5)'
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5)',
           }}
-          labelFormatter={(label, payload) => {
-            if (payload && payload[0]) {
-              return payload[0].payload.originalName;
-            }
-            return label;
-          }}
-          labelStyle={{ fontWeight: 'bold', color: 'white' }}
           itemStyle={{ color: 'white' }}
-          formatter={(value, name) => [value, name]}
-          wrapperStyle={{ outline: 'none' }}
-          isAnimationActive={false}
         />
         <Bar
           dataKey="count"

@@ -47,7 +47,6 @@ function statistics() {
       import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
     try {
-      console.log('trying');
       setLoading(true);
       setError('');
 
@@ -81,8 +80,6 @@ function statistics() {
       ) {
         throw new Error('Failed to fetch some statistics');
       }
-      console.log('team1', teamsRes.data);
-      console.log('team2', teamsRes.data.data);
       setTeams(teamsRes.data.data as TeamStats);
       setProjects(projectsRes.data.data as ProjectStats);
       setDashboardStats(dashboardRes.data.data as DashboardStats);
@@ -119,7 +116,6 @@ function statistics() {
         const admins = allUsers.filter((u) => u.role === 'admin');
 
         setSystemUsers(admins);
-        console.log(res.data);
       }
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -129,8 +125,6 @@ function statistics() {
   useEffect(() => {
     fetch();
   }, []);
-  console.log(teamsData, 'team');
-  console.log(documentsCount, 'docOC');
   return (
     <>
       <div

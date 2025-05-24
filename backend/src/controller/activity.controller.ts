@@ -64,7 +64,7 @@ export const getUserActivityById = async (req: Request, res: Response): Promise<
       new ScanCommand({
         TableName: "UserActivity",
         FilterExpression: "userId = :uid",
-        ExpressionAttributeValues: { ":uid": userId }
+        ExpressionAttributeValues: { ":uid": userId },
       })
     );
 
@@ -73,10 +73,31 @@ export const getUserActivityById = async (req: Request, res: Response): Promise<
   } catch (error) {
     console.error("Error fetching user activity by ID:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Failed to fetch activity",
-      error: errorMessage 
+      error: errorMessage,
+    });
+  }
+};
+
+export const getAllActivities = async (req: Request, res: Response) => {
+  try {
+    const command = new ScanCommand({
+      TableName: "UserActivity",
+    });
+
+    const data = await docClient.send(command);
+
+    res.status(200).json({
+      success: true,
+      data: data.Items || [],
+    });
+  } catch (error) {
+    console.error("Error fetching all activities:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch all user activities",
     });
   }
 };
