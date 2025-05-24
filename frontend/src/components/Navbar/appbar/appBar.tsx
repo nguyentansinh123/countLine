@@ -151,7 +151,6 @@ const AppBar = () => {
     setDropdownVisible(true);
     
     try {
-      // Search for users
       const userRes = await axios.get(`${API_URL}/api/users/search`, {
         params: { term: value },
         withCredentials: true,
@@ -165,7 +164,6 @@ const AppBar = () => {
         setSearchResults([]);
       }
 
-      // Search for documents - FIXED URL
       const docRes = await axios.get(`${API_URL}/api/document/search`, {
         params: { term: value },
         withCredentials: true,
@@ -192,19 +190,33 @@ const AppBar = () => {
     navigate(`/search/${user.name}`);
   };
 
-  // Add document click handler
-  const handleDocumentClick = (document: any) => {
-    setDropdownVisible(false);
-    navigate(`/document/${document.documentId || document.id}`);
+  const handleDocumentClick = async (document: any) => {
+    try {
+      setDropdownVisible(false);
+      const response = await axios.get(`${API_URL}/api/document/presigned-url/${document.documentId || document.id}`, {
+        withCredentials: true,
+      });
+      
+      console.log("Presigned URL response:", response.data);
+      
+      if (response.data && response.data.success && response.data.presignedUrl) {
+        window.open(response.data.presignedUrl, '_blank');
+      } else {
+        console.error("Failed to get presigned URL for document");
+        navigate(`/document/${document.documentId || document.id}`);
+      }
+    } catch (err) {
+      console.error("Error opening document:", err);
+      navigate(`/document/${document.documentId || document.id}`);
+    }
   };
 
-  // Replace your existing searchDropdown with this version
   const searchDropdown = (
     <div 
       style={{ 
         width: 300, 
         maxHeight: 400, 
-        overflow: 'hidden', /* Changed from 'auto' to 'hidden' */
+        overflow: 'hidden', 
         backgroundColor: '#fff', 
         borderRadius: '4px', 
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
@@ -448,7 +460,7 @@ const AppBar = () => {
               src={userData.profilePic || ''}
               onError={() => {
                 console.error("Failed to load profile picture from URL:", userData.profilePic);
-                return false; // This prevents the default fallback behavior
+                return false; 
               }}
             />
           )}
