@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Avatar, Popover, Badge, Menu, Dropdown, Space, Spin } from 'antd';
-import { BellOutlined, UserOutlined } from '@ant-design/icons';
+import { Input, Avatar, Popover, Badge, Menu, Dropdown, Space, Spin, List } from 'antd';
+import { BellOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Notification from '../notification/notification';
 import axios from 'axios';
@@ -17,6 +17,9 @@ const AppBar = () => {
   const [loading, setLoading] = useState(true);
  const [dropdownVisible, setDropdownVisible] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
 
   const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
@@ -32,7 +35,6 @@ const AppBar = () => {
         console.log("User data response:", response.data);
 
         if (response.data) {
-          // Using the same approach as your ProfilePage
           console.log("User object:", response.data);
           
           setUserData({
@@ -132,20 +134,116 @@ const AppBar = () => {
     navigate(`/search/${value}`)
   };
 
-  const searchMenu = (
-    <Menu>
-      {recentSearches.length > 0 ? (
-        recentSearches.map((item, idx) => (
-          <Menu.Item key={idx} onClick={() => handleSearch(item)}>
-            {item}
-          </Menu.Item>
-        ))
+  const handleSearchInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchValue(value);
+    
+    if (!value.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setSearchLoading(true);
+    setDropdownVisible(true);
+    
+    try {
+      const res = await axios.get(`${API_URL}/api/users/search`, {
+        params: { term: value },
+        withCredentials: true,
+      });
+      
+      if (res.data.success) {
+        setSearchResults(res.data.data);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (err) {
+      console.error('Error searching users:', err);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleUserClick = (user: any) => {
+    setDropdownVisible(false);
+    navigate(`/search/${user.name}`);
+  };
+
+  const searchDropdown = (
+    <div style={{ width: 300, maxHeight: 400, overflow: 'auto', backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+      {searchLoading ? (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          <Spin size="small" />
+        </div>
+      ) : searchValue && searchResults.length > 0 ? (
+        <List
+          itemLayout="horizontal"
+          dataSource={searchResults}
+          renderItem={(user) => (
+            <List.Item 
+              style={{ padding: '8px 12px', cursor: 'pointer' }}
+              onClick={() => handleUserClick(user)}
+            >
+              <List.Item.Meta
+                avatar={
+                  <Avatar 
+                    src={user.profilePicture} 
+                    icon={!user.profilePicture && <UserOutlined />}
+                  >
+                    {!user.profilePicture && user.name?.charAt(0)}
+                  </Avatar>
+                }
+                title={<span style={{ color: '#000' }}>{user.name}</span>}
+                description={<span style={{ color: '#666' }}>{user.email}</span>}
+              />
+            </List.Item>
+          )}
+        />
+      ) : searchValue ? (
+        <div style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
+          No users found
+        </div>
+      ) : recentSearches.length > 0 ? (
+        <Menu>
+          <Menu.Item disabled style={{ color: '#999' }}>Recent Searches</Menu.Item>
+          {recentSearches.map((item, idx) => (
+            <Menu.Item key={idx} onClick={() => handleSearch(item)}>
+              <SearchOutlined style={{ marginRight: 8 }} />
+              {item}
+            </Menu.Item>
+          ))}
+        </Menu>
       ) : (
-        <Menu.Item disabled>No recent searches</Menu.Item>
+        <div style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
+          No recent searches
+        </div>
       )}
-    </Menu>
+    </div>
   );
 
+  const handleLogout = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        setUserData({
+          profilePic: '',
+          userName: 'User'
+        });
+        navigate('/');
+      } else {
+        console.error('Logout failed:', data.message);
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   const userMenu = (
     <Menu>
@@ -160,28 +258,7 @@ const AppBar = () => {
       </Menu.Item>
       <Menu.Item
         key="logout"
-        onClick={async () => {
-          try {
-            const res = await fetch(`${API_URL}/api/auth/logout`, {
-              method: 'POST',
-              credentials: 'include',
-            });
-
-            const data = await res.json();
-
-            if (data.success) {
-              setUserData({
-                profilePic: '',
-                userName: 'User'
-              });
-              navigate('/');
-            } else {
-              console.error('Logout failed:', data.message);
-            }
-          } catch (err) {
-            console.error('Logout error:', err);
-          }
-        }}
+        onClick={handleLogout}
       >
         Logout
       </Menu.Item>
@@ -201,23 +278,22 @@ const AppBar = () => {
         padding: '10px',
       }}
     >
-     <Dropdown
-      overlay={searchMenu}
-      visible={dropdownVisible}
-      onVisibleChange={setDropdownVisible}
-      trigger={['click']}
-      
-    >
-      <Search
-        placeholder="Input search text"
-        style={{ width: 300 }}
-        onSearch={handleSearch}
-        onClick={() => {setDropdownVisible(true)
-
-        }}
-        className="appbar-search"
-      />
-    </Dropdown>
+      <Dropdown
+        overlay={searchDropdown}
+        visible={dropdownVisible}
+        onVisibleChange={setDropdownVisible}
+        trigger={['click']}
+      >
+        <Search
+          placeholder="Search users..."
+          style={{ width: 300 }}
+          value={searchValue}
+          onChange={handleSearchInputChange}
+          onSearch={handleSearch}
+          onClick={() => setDropdownVisible(true)}
+          className="appbar-search"
+        />
+      </Dropdown>
 
       <Popover
         content={

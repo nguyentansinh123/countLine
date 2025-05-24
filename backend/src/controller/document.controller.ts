@@ -2154,3 +2154,4 @@ export const updateDocumentStatus = async (req: Request, res: Response): Promise
     res.status(500).json({ success: false, message: "Failed to update document status" });
   }
 };
+
