@@ -8,6 +8,7 @@ interface GeneralLayoutProps {
   title: string;
   buttonLabel?: string;
   navigateLocation?: string;
+  noBorder?: boolean; 
 }
 
 function GeneralLayout(props: GeneralLayoutProps) {
@@ -48,7 +49,7 @@ function GeneralLayout(props: GeneralLayoutProps) {
           width: '98%',
           maxWidth: '98%',
           height: '80vh',
-          border: 'solid 1px',
+          border: props.noBorder ? 'none' : 'solid 1px',
           margin: '0 0 0 10px',
         }}
       >

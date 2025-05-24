@@ -36,9 +36,13 @@ function SideBar() {
         backgroundColor: '#151349',
         color: 'white',
         display: 'flex',
-        position: 'relative',
+        position: 'fixed', // Change from 'relative' to 'fixed'
+        top: 0, // Ensure it starts from the top
+        left: 0, // Ensure it's at the left edge
         flexDirection: 'column',
         padding: '0px 20px 0px 30px',
+        overflow: 'auto', // Allow scrolling within sidebar if content is too tall
+        zIndex: 100, // Ensure it appears above other content
       }}
     >
       {/* Sidebar Header */}

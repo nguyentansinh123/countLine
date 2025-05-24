@@ -331,6 +331,7 @@ const Overview: React.FC = () => {
       .replace(/^./, str => str.toUpperCase());
   };
   
+  // Generate additional statistics based on the selected tab
   const renderAdditionalStats = () => {
     switch (activeTab) {
       case "Documents":
@@ -742,7 +743,7 @@ const Overview: React.FC = () => {
   };
 
   return (
-    <GeneralLayout title="Statistics Dashboard">
+    <GeneralLayout title="Statistics Dashboard" noBorder={true}>
       <div style={{ marginBottom: "20px" }}>
         <Row gutter={16} align="middle">
           <Col>
