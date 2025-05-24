@@ -29,14 +29,14 @@ router.get("/me", requireAuth, getLoggedInUser);
 router.put("/update-profile", requireAuth, upload.single("profilePicture"), updateProfilePic);
 router.put("/update-name", requireAuth, updateUserName);
 router.get("/SingleUserDocument/:documentID", userAuth, getSingleUserDocument);
-router.get("/getUserByName", userAuth, getUserByName);
+router.post("/getUserByName", userAuth, getUserByName);
 router.get("/search", userAuth, searchUsersByName);
 router.post("/recent-searches", userAuth, addRecentSearch);
 router.get("/recent-searches", userAuth, getRecentSearches);
 
 
 // Admin-only routes
-router.get("/getAllUser", userAuth, authorizeRoles("admin"), getAllUser);
+router.get("/getAllUser", userAuth, getAllUser);
 router.get("/AllUserDocuments", userAuth, authorizeRoles("admin"), getAllUserDocuments);
 router.delete("/delete-user/:id", userAuth, authorizeRoles("admin"), deleteUser);
 router.put("/reassign-role", userAuth, authorizeRoles("admin"), reassignUserRole);

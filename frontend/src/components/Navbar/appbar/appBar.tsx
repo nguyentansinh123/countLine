@@ -412,7 +412,14 @@ const AppBar = () => {
 
   const handleUserClick = (user: any) => {
     setDropdownVisible(false);
-    navigate(`/profile/${user.user_id || user.id}`);
+    // pick a sensible search term (name or email)
+    const term = user.name || user.email || "";
+    if (term) {
+      navigate(`/search/${encodeURIComponent(term)}`);
+    } else {
+      // fallback
+      navigate(`/profile/${user.user_id || user.id}`);
+    }
   };
 
   const handleDocumentClick = (document: any) => {

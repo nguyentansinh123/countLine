@@ -143,6 +143,12 @@ const RecentActivity = () => {
                 'DD/MM/YYYY, HH:mm:ss'
               );
 
+              const actionText = item.action.replace(/_/g, ' ');
+              const description =
+                fileName !== 'N/A'
+                  ? `Action: ${actionText}, File: ${fileName}`
+                  : `Action: ${actionText}`;
+
               return (
                 <List.Item
                   style={{
@@ -153,7 +159,7 @@ const RecentActivity = () => {
                 >
                   <List.Item.Meta
                     title={<strong>{username}</strong>}
-                    description={`Action: ${item.action.replace(/_/g, ' ')}, File: ${fileName}`}
+                    description={description}
                   />
                   <div style={{ textAlign: 'right', fontWeight: 'bold' }}>
                     {timestamp}

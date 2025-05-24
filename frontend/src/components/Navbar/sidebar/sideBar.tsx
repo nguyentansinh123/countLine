@@ -1,33 +1,63 @@
 import { Divider, Menu } from 'antd';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ShareAltOutlined } from '@ant-design/icons'; 
 
 type MenuItem = {
   key: string;
   label: React.ReactNode;
-  icon?: React.ReactNode; 
+  icon?: React.ReactNode;
+  path: string; 
 };
 
 const mainItems: MenuItem[] = [
-  { key: '1', label: 'Home' },
-  { key: '2', label: 'Non Disclosure Agreement' },
-  { key: '3', label: 'Projects' },
-  { key: '4', label: 'Teams' },
-  { key: '5', label: 'Overview' },
-  { key: '6', label: 'Users' },
+  { key: '1', label: 'Home', path: '/home' },
+  { key: '2', label: 'Non Disclosure Agreement', path: '/non-disclosure-agreement' },
+  { key: '3', label: 'Projects', path: '/projects' },
+  { key: '4', label: 'Teams', path: '/teams' },
+  { key: '5', label: 'Overview', path: '/overview' },
+  { key: '6', label: 'Users', path: '/users' },
   {
     key: 'shared-documents',
-    label: <Link to="/shared-documents">Shared With Me</Link>,
+    label: 'Shared With Me',
     icon: <ShareAltOutlined />,
+    path: '/shared-documents'
   },
 ];
 
 const footerItems: MenuItem[] = [
-  { key: '7', label: 'Contact' },
-  { key: '8', label: 'About Us' },
+  { key: '7', label: 'Contact', path: '/contact' },
+  { key: '8', label: 'About Us', path: '/about-us' },
 ];
 
 function SideBar() {
+  // Get current location to highlight active menu item
+  const location = useLocation();
+  const currentPath = location.pathname;
+  
+  // Find the key of the current path
+  const findSelectedKey = () => {
+    // First check if we're on the home page or root
+    if (currentPath === '/' || currentPath === '/home') {
+      return ['1'];
+    }
+    
+    // Check main items
+    const mainMatch = mainItems.find(item => currentPath.startsWith(item.path));
+    if (mainMatch) {
+      return [mainMatch.key];
+    }
+    
+    // Check footer items
+    const footerMatch = footerItems.find(item => currentPath.startsWith(item.path));
+    if (footerMatch) {
+      return [footerMatch.key];
+    }
+    
+    return ['1']; // Default to home if no match
+  };
+
+  const selectedKeys = findSelectedKey();
+
   return (
     <div
       style={{
@@ -62,7 +92,7 @@ function SideBar() {
       <div style={{ flexGrow: 1 }}>
         <Menu
           theme="dark"
-          defaultSelectedKeys={['1']}
+          selectedKeys={selectedKeys}
           mode="vertical"
           style={{
             backgroundColor: 'transparent',
@@ -71,19 +101,9 @@ function SideBar() {
         >
           {mainItems.map((item) => (
             <Menu.Item key={item.key} icon={item.icon}>
-              {item.key !== 'shared-documents' ? (
-                <Link
-                  to={
-                    `/${String(item.label)
-                      .toLowerCase()
-                      .replace(/\s+/g, '-')}`
-                  }
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                item.label 
-              )}
+              <Link to={item.path}>
+                {typeof item.label === 'string' ? item.label : ''}
+              </Link>
             </Menu.Item>
           ))}
         </Menu>
@@ -91,6 +111,7 @@ function SideBar() {
 
       <Menu
         theme="dark"
+        selectedKeys={selectedKeys}
         mode="vertical"
         style={{
           backgroundColor: 'transparent',
@@ -99,7 +120,7 @@ function SideBar() {
       >
         {footerItems.map((item) => (
           <Menu.Item key={item.key}>
-            <Link to={item.key === '7' ? '/contact' : '/about-us'}>
+            <Link to={item.path}>
               {item.label}
             </Link>
           </Menu.Item>

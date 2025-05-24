@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Card, Input, Upload, message, Select } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import { Button, Card, Input, Upload, message, Select, Typography, Space, Divider, Switch, Row, Col } from 'antd';
+import { UploadOutlined, FileOutlined, TagsOutlined, UserOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import GeneralLayout from '../../../components/General_Layout/GeneralLayout';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 const fileTypes = [
   { label: 'NDA', value: 'NDA' },
@@ -63,7 +66,7 @@ const UploadDocument: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('filename', fileName);
-    formData.append('documentType', selectedTypes); // Assuming only one type can be selected
+    formData.append('documentType', selectedTypes);
     formData.append('requiresSignature', String(requiresSignature));
     if (requiresSignature) {
       formData.append('signaturesRequired', JSON.stringify(signaturesRequired));
@@ -77,7 +80,7 @@ const UploadDocument: React.FC = () => {
         {
           method: 'POST',
           body: formData,
-          credentials: 'include', // include cookies if using auth
+          credentials: 'include',
         }
       );
 
@@ -100,109 +103,199 @@ const UploadDocument: React.FC = () => {
   return (
     <GeneralLayout title="Upload Document">
       {contextHolder}
-      <div style={{ width: '10%' }}>File Name</div>
-      <div style={{ width: '100%' }}>
-        <Input
-          style={{ width: '50%', border: 'black solid 2px' }}
-          value={fileName}
-          onChange={(e) => setFileName(e.target.value)}
-          placeholder="Enter file name"
-        />
-      </div>
-      <div style={{ width: '10%' }}>File type</div>
-      <div style={{ width: '50%' }}>
-        <Select
-          value={selectedTypes}
-          onChange={setSelectedTypes}
-          placeholder="Select File Type"
-          style={{ width: '50%', border: 'black solid 2px' }}
-        >
-          {fileTypes.map((item) => (
-            <Select.Option key={item.value} value={item.value}>
-              {item.label}
-            </Select.Option>
-          ))}
-        </Select>
-      </div>
-      <div style={{ marginTop: 20 }}>
-        <div>Requires Signature?</div>
-        <Select
-          value={requiresSignature ? 'Yes' : 'No'}
-          onChange={(value) => setRequiresSignature(value === 'Yes')}
-          style={{ width: 120 }}
-        >
-          <Select.Option value="Yes">Yes</Select.Option>
-          <Select.Option value="No">No</Select.Option>
-        </Select>
-      </div>
-
-      {requiresSignature && (
-        <div style={{ marginTop: 20 }}>
-          <div>Select users to sign</div>
-          <Select
-            mode="multiple"
-            placeholder="Select User IDs"
-            style={{ width: '50%' }}
-            value={signaturesRequired}
-            onChange={setSignaturesRequired}
-          >
-            {loadingUsers ? (
-              <Select.Option disabled value="">
-                Loading...
-              </Select.Option>
-            ) : (
-              users.map((user) => (
-                <Select.Option key={user.user_id} value={user.user_id}>
-                  {user.name} ({user.email})
-                </Select.Option>
-              ))
-            )}
-          </Select>
-        </div>
-      )}
-
-      <div style={{ padding: 0, marginTop: 20 }}>
-        <Upload
-          beforeUpload={(file) => {
-            const allowedTypes = [
-              'application/pdf',
-              'application/msword',
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              'application/vnd.ms-excel',
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-              'application/vnd.ms-powerpoint',
-              'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-              'text/plain',
-            ];
-
-            if (!allowedTypes.includes(file.type)) {
-              messageApi.error('File type not supported');
-              return Upload.LIST_IGNORE;
-            }
-
-            setFile(file);
-            if (!fileName) {
-              setFileName(file.name.replace(/\.[^/.]+$/, ''));
-            }
-            return false;
-          }}
-          showUploadList={false}
-        >
-          <Button icon={<UploadOutlined />}>Select Document</Button>
-        </Upload>
-
-        {file && (
-          <div style={{ marginTop: '10px', fontWeight: 'bold' }}>
-            Selected File: {file.name}
+      <Card 
+        bordered={false} 
+        style={{ 
+          borderRadius: '12px', 
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          maxWidth: '800px',
+          margin: '0 auto'
+        }}
+      >
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <div>
+            <Title level={4}>
+              <FileOutlined /> Document Information
+            </Title>
+            <Divider style={{ margin: '12px 0' }} />
+            
+            <Row gutter={[16, 24]} align="middle">
+              <Col span={6}>
+                <Text strong>File Name:</Text>
+              </Col>
+              <Col span={18}>
+                <Input
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  placeholder="Enter file name"
+                  style={{ 
+                    borderRadius: '6px',
+                    width: '100%'
+                  }}
+                />
+              </Col>
+            </Row>
+            
+            <Row gutter={[16, 24]} align="middle" style={{ marginTop: '20px' }}>
+              <Col span={6}>
+                <Text strong>
+                  <TagsOutlined /> File Type:
+                </Text>
+              </Col>
+              <Col span={18}>
+                <Select
+                  value={selectedTypes}
+                  onChange={setSelectedTypes}
+                  placeholder="Select File Type"
+                  style={{ width: '100%', borderRadius: '6px' }}
+                >
+                  {fileTypes.map((item) => (
+                    <Option key={item.value} value={item.value}>
+                      {item.label}
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
+            </Row>
           </div>
-        )}
+          
+          <div>
+            <Title level={4}>
+              <UserOutlined /> Signature Requirements
+            </Title>
+            <Divider style={{ margin: '12px 0' }} />
+            
+            <Row gutter={[16, 24]} align="middle">
+              <Col span={6}>
+                <Text strong>Requires Signature:</Text>
+              </Col>
+              <Col span={18}>
+                <Switch
+                  checked={requiresSignature}
+                  onChange={(checked) => setRequiresSignature(checked)}
+                  checkedChildren="Yes"
+                  unCheckedChildren="No"
+                />
+              </Col>
+            </Row>
 
-        <div style={{ marginTop: 20 }}>
-          <Button type="primary" onClick={handleUpload}>
-            Upload
-          </Button>
-        </div>
-      </div>
+            {requiresSignature && (
+              <Row gutter={[16, 24]} align="middle" style={{ marginTop: '20px' }}>
+                <Col span={6}>
+                  <Text strong>Signatories:</Text>
+                </Col>
+                <Col span={18}>
+                  <Select
+                    mode="multiple"
+                    placeholder="Select users to sign this document"
+                    style={{ width: '100%' }}
+                    value={signaturesRequired}
+                    onChange={setSignaturesRequired}
+                    optionFilterProp="children"
+                    loading={loadingUsers}
+                  >
+                    {loadingUsers ? (
+                      <Option disabled value="">
+                        Loading...
+                      </Option>
+                    ) : (
+                      users.map((user) => (
+                        <Option key={user.user_id} value={user.user_id}>
+                          {user.name} ({user.email})
+                        </Option>
+                      ))
+                    )}
+                  </Select>
+                </Col>
+              </Row>
+            )}
+          </div>
+
+          <div>
+            <Title level={4}>
+              <UploadOutlined /> Upload File
+            </Title>
+            <Divider style={{ margin: '12px 0' }} />
+            
+            <Space direction="vertical" size="middle" align="center" style={{ width: '100%' }}>
+              <Upload
+                beforeUpload={(file) => {
+                  const allowedTypes = [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/vnd.ms-powerpoint',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'text/plain',
+                  ];
+
+                  if (!allowedTypes.includes(file.type)) {
+                    messageApi.error('File type not supported');
+                    return Upload.LIST_IGNORE;
+                  }
+
+                  setFile(file);
+                  if (!fileName) {
+                    setFileName(file.name.replace(/\.[^/.]+$/, ''));
+                  }
+                  return false;
+                }}
+                showUploadList={false}
+              >
+                <Button 
+                  icon={<UploadOutlined />}
+                  size="large"
+                  style={{ 
+                    borderRadius: '6px',
+                    height: '80px',
+                    width: '200px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    fontSize: '16px'
+                  }}
+                >
+                  <div style={{ marginTop: '8px' }}>Select Document</div>
+                </Button>
+              </Upload>
+
+              {file && (
+                <div style={{ 
+                  marginTop: '16px', 
+                  padding: '12px 16px',
+                  backgroundColor: '#f0f7ff', 
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <CheckCircleOutlined style={{ color: '#52c41a', marginRight: '8px' }} />
+                  <Text strong>Selected: {file.name}</Text>
+                </div>
+              )}
+            </Space>
+          </div>
+
+          <Divider style={{ margin: '24px 0' }} />
+          
+          <div style={{ textAlign: 'center' }}>
+            <Button 
+              type="primary" 
+              onClick={handleUpload}
+              size="large"
+              style={{ 
+                borderRadius: '6px',
+                minWidth: '150px',
+                height: '48px'
+              }}
+            >
+              Upload Document
+            </Button>
+          </div>
+        </Space>
+      </Card>
     </GeneralLayout>
   );
 };

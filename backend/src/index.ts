@@ -14,6 +14,7 @@ import { router as NotificationRoute } from "./routes/notification.route"; // Ad
 import http from "http";
 import { initSocket } from "./lib/socket";
 import { router as statisticsRouter } from "./routes/statistics.route";
+import { router as EmailRoute } from './routes/email.route';
 
 dotenv.config();
 
@@ -31,9 +32,9 @@ app.use("/api/team", TeamRoute);
 app.use("/api/project", ProjectRoute);
 app.use("/api/history", ActivityRoute);
 app.use("/api/statistics", statisticsRouter);
-app.use("/api/notification", NotificationRoute); // Register the notification route
+app.use("/api/notification", NotificationRoute); 
+app.use('/api/email', EmailRoute);
 
-// Fix the server startup to use the HTTP server instance, not the Express app
 const server = http.createServer(app);
 initSocket(server);
 

@@ -1,7 +1,7 @@
 // SendFile.tsx (Main component)
 import { Alert, Button, Card, message } from 'antd';
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import clientUserConst from '../../Users/const/clientUserConst';
 import executiveDocumentTemplates from '../const/executiveDocuments';
@@ -31,26 +31,40 @@ const SendFile: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [txtContent, setTxtContent] = useState<string | null>(null);
+  // Add state for shared document
+  const [isSharedDocument, setIsSharedDocument] = useState<boolean>(false);
+  // Add a new state for selectedUserId
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
 
   const { category, file_id } = useParams<{
     category: string;
     file_id: string;
   }>();
   const navigate = useNavigate();
+  const location = useLocation(); // Added to check URL parameters
   const [file, setFile] = useState<any>(null);
   const [signedUrl, setSignedUrl] = useState<string>('');
   const fileUrl = file?.presignedUrl || file?.fileUrl;
   const [inputBoxes, setInputBoxes] = useState<any[]>([]);
 
+  // Check if we're handling a shared document
+  useEffect(() => {
+    // Check if URL has shared=true parameter
+    const searchParams = new URLSearchParams(location.search);
+    setIsSharedDocument(searchParams.get('shared') === 'true');
+  }, [location]);
+
   useEffect(() => {
     const fetchDocument = async () => {
       try {
-        const res = await fetch(
-          `http://localhost:5001/api/document/document/${file_id}`,
-          {
-            credentials: 'include',
-          }
-        );
+        let endpoint = isSharedDocument 
+          ? `http://localhost:5001/api/document/shared-document/${file_id}`
+          : `http://localhost:5001/api/document/document/${file_id}`;
+          
+        const res = await fetch(endpoint, {
+          credentials: 'include',
+        });
+        
         const result = await res.json();
         if (res.ok && result.success) {
           setFile(result.data);
@@ -64,7 +78,7 @@ const SendFile: React.FC = () => {
     };
 
     fetchDocument();
-  }, [file_id]);
+  }, [file_id, isSharedDocument]);
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     try {
@@ -194,13 +208,20 @@ const SendFile: React.FC = () => {
     console.log(url);
     try {
       console.log(`Fetching PDF from URL: ${url}`);
+      
+      // Use the appropriate endpoint based on document type
+      const endpoint = isSharedDocument
+        ? `http://localhost:5001/api/document/shared-presigned-url/${file_id}`
+        : `http://localhost:5001/api/document/presigned-url/${file_id}`;
+      
       const response = await fetch(
-        `http://localhost:5001/api/document/presigned-url/${file_id}`,
+        endpoint,
         {
           method: 'GET',
           credentials: 'include',
         }
       );
+      
       console.log('Response status:', response.status);
       if (!response.ok) {
         console.error(
@@ -234,51 +255,96 @@ const SendFile: React.FC = () => {
       } else {
         setError('An unknown error occurred');
       }
-      console.log('Loading state set to false due to error'); // Added console.log
+      console.log('Loading state set to false due to error'); 
       setLoading(false);
     }
   };
-  // needs to be fixed after teams and users
-  //   const getUserEmail = (username: string) => {
-  //     const user = clientUserConst.find((u) => u.name === username);
-  //     if (user) {
-  //       setUserEmail(user.mail);
-  //     } else {
-  //       const teamMember = teamsData.find((team) =>
-  //         team.members.some((member) => member.name === username)
-  //       );
-  //       if (teamMember) {
-  //         const member = teamMember.members.find(
-  //           (member) => member.name === username
-  //         );
-  //         if (member && 'mail' in member) {
-  //           setUserEmail((member as { name: string; mail: string }).mail);
-  //         }
-  //       }
-  //     }
-  //   };
 
   const [messageApi, contextHolder] = message.useMessage();
 
+  // Add a function to fetch user ID by name
+  const fetchUserIdByName = async (name: string) => {
+    console.log('Fetching user ID for name:', name);
+    try {
+      const response = await fetch('http://localhost:5001/api/users/getUserByName', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ name })
+      });
+      
+      console.log('getUserByName response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user');
+      }
+      
+      const result = await response.json();
+      console.log('getUserByName result:', result);
+      
+      if (result.success && result.data && result.data.length > 0) {
+        const userId = result.data[0].user_id;
+        console.log('Found user ID:', userId, 'for name:', name);
+        return userId;
+      } else {
+        console.log('User not found in response data');
+        throw new Error('User not found');
+      }
+    } catch (error) {
+      console.error('Error fetching user ID:', error);
+      messageApi.error('Failed to find user ID');
+      return null;
+    }
+  };
+
   const handleNextStep = async () => {
     if (step === 1) {
+      console.log('handleNextStep - Step 1');
+      console.log('Current selectedUser:', selectedUser);
+      console.log('Current selectedUserId:', selectedUserId);
+      
       if (!selectedUser && !selectedTeam) {
         messageApi.info('Please select a user or a team.');
         return;
       }
-      if (selectedUser) {
-        // needs ti be fixed after teams and users
-        //getUserEmail(selectedUser);
+      
+      if (selectedUser && !selectedUserId) {
+        console.log('Fetching user ID for user:', selectedUser);
+        const userId = await fetchUserIdByName(selectedUser);
+        console.log('Fetched user ID result:', userId);
+        
+        if (!userId) {
+          messageApi.error('Could not find user ID for the selected user');
+          return;
+        }
+        
+        console.log('Setting selectedUserId to:', userId);
+        setSelectedUserId(userId);
+        console.log("Set user ID from name lookup:", userId);
       }
+      
       setStep(2);
     } else if (step === 2) {
+      console.log('handleNextStep - Step 2');
+      console.log('Using selectedUserId:', selectedUserId);
+      
       const editedPdfBlob = await generateEditedPdfBlob(signedUrl, []);
       const formData = new FormData();
       formData.append('file', editedPdfBlob);
+      
+      console.log("Selected user ID being sent:", selectedUserId);
+      
+      console.log("File ID:", file_id);
+      console.log("Is shared document:", isSharedDocument);
+      
+      const saveEndpoint = isSharedDocument
+        ? `http://localhost:5001/api/document/save-edit/${file_id}`
+        : `http://localhost:5001/api/document/save-edit/${file_id}`;
 
-      // 1. Save the edited PDF
       const res = await fetch(
-        `http://localhost:5001/api/document/save-edit/${file_id}`,
+        `${saveEndpoint}?userId=${selectedUserId}`,
         {
           method: 'POST',
           body: formData,
@@ -292,10 +358,16 @@ const SendFile: React.FC = () => {
         return;
       }
 
-      // 2. Then send file to user (if selected)
       if (selectedUser) {
+        const sendUserEndpoint = isSharedDocument
+          ? `http://localhost:5001/api/document/forwardSharedDocument/${selectedUserId}`
+          : `http://localhost:5001/api/document/sendFileToUser/${selectedUserId}`;
+          
+        console.log("Sending document to user with endpoint:", sendUserEndpoint);
+        console.log("Using user ID:", selectedUserId);
+        
         const userRes = await fetch(
-          `http://localhost:5001/api/document/sendFileToUser/${selectedUser}`,
+          sendUserEndpoint,
           {
             method: 'POST',
             headers: {
@@ -304,8 +376,8 @@ const SendFile: React.FC = () => {
             credentials: 'include',
             body: JSON.stringify({
               documentId: file_id,
-              requestSignature: true,
-              user_id: file?.uploadedBy,
+              requestSignature: true, 
+              user_id: selectedUserId, 
             }),
           }
         );
@@ -315,13 +387,16 @@ const SendFile: React.FC = () => {
           return;
         }
       }
-
-      // 3. Or send file to team (if selected)
+      
       else if (selectedTeam) {
         console.log(selectedTeam);
+        
+        const sendTeamEndpoint = isSharedDocument
+          ? `http://localhost:5001/api/document/forwardSharedDocumentToTeam/${selectedTeam.teamId}`
+          : `http://localhost:5001/api/document/sendFileToTeam/${selectedTeam.teamId}`;
 
         const teamRes = await fetch(
-          `http://localhost:5001/api/document/sendFileToTeam/${selectedTeam.teamId}`,
+          sendTeamEndpoint,
           {
             method: 'POST',
             headers: {
@@ -330,7 +405,7 @@ const SendFile: React.FC = () => {
             credentials: 'include',
             body: JSON.stringify({
               documentId: file_id,
-              requestSignature: true,
+              requestSignature: true, 
               user_id: file?.uploadedBy,
             }),
           }
@@ -342,16 +417,17 @@ const SendFile: React.FC = () => {
         }
       }
 
-      // 4. Proceed to Step 3
       setStep(3);
     } else if (step == 3) {
-      navigate('/non-disclosure-agreement');
+      const returnUrl = isSharedDocument ? '/shared-documents' : '/non-disclosure-agreement';
+      navigate(returnUrl);
     }
   };
 
   const handleBackStep = () => {
     if (step === 1) {
-      navigate('/non-disclosure-agreement');
+      const returnUrl = isSharedDocument ? '/shared-documents' : '/non-disclosure-agreement';
+      navigate(returnUrl);
     } else if (step === 2) {
       setStep(1);
     } else if (step === 3) {
@@ -362,24 +438,34 @@ const SendFile: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log('useEffect called with file:', file); // Added console.log
+    console.log('useEffect called with file:', file);
     if (file) {
       fetchPdfFileWrapper();
     }
   }, [file]);
 
+  useEffect(() => {
+    console.log('User selection changed to:', selectedUser);
+    console.log('Resetting selectedUserId from:', selectedUserId, 'to empty string');
+    setSelectedUserId('');
+  }, [selectedUser]);
+
   return (
     <>
       {contextHolder}
-      <h2 style={{ color: '#151349' }}>Send File</h2>
+      <h2 style={{ color: '#151349' }}>
+        {isSharedDocument ? 'Forward Shared Document' : 'Send File'}
+      </h2>
       <Card style={{ border: 'solid 1px #151349' }}>
         {step === 1 && (
           <Step1
             file={file}
-            category={category}
+            category={category || (isSharedDocument ? 'Shared Document' : undefined)}
             selectedUser={selectedUser}
             setSelectedUser={setSelectedUser}
-            teamsData={[]} // needs to be fixed after teams and users
+            selectedUserId={selectedUserId}
+            setSelectedUserId={setSelectedUserId}
+            teamsData={[]} 
             userEmail={userEmail}
             selectedTeam={selectedTeam}
             setSelectedTeam={setSelectedTeam}
@@ -404,7 +490,10 @@ const SendFile: React.FC = () => {
         {step === 3 && (
           <Step3
             recipient={selectedUser || selectedTeam?.teamName || ''}
-            onClose={() => navigate('/non-disclosure-agreement')}
+            onClose={() => {
+              const returnUrl = isSharedDocument ? '/shared-documents' : '/non-disclosure-agreement';
+              navigate(returnUrl);
+            }}
           ></Step3>
         )}
 
