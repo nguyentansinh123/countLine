@@ -15,8 +15,6 @@ import axios from 'axios';
 
 pdfjsLib.GlobalWorkerOptions.workerPort = new pdfjsWorker();
 
-
-
 const TempEditor: React.FC<{}> = () => {
   const [loading, setLoading] = useState(true);
   const [pdfPages, setPdfPages] = useState<any[]>([]);
@@ -29,45 +27,72 @@ const TempEditor: React.FC<{}> = () => {
   const navigate = useNavigate();
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
+  const extractKeyFromUrl = (url: string) => {
+    const u = new URL(url);
+    return decodeURIComponent(u.pathname.slice(1)); // remove leading slash
+  };
   useEffect(() => {
     console.log('TempEditor params:', { user_id, file_id });
-    
+
     if (!file_id) {
       message.error('No document ID provided');
       navigate('/shared-documents');
       return;
     }
-    
+
     const fetchDocument = async () => {
       try {
         setLoading(true);
-        
+
         const response = await axios.get(
           `http://localhost:5001/api/document/singleTask/${file_id}`,
           { withCredentials: true }
         );
-        
+
         console.log('Document data response:', response.data);
-        
+
         if (!response.data || !response.data.success) {
           throw new Error('Failed to fetch document data');
         }
-        
+
         const document = response.data.data;
         setDocumentData(document);
-        
-        const urlResponse = await axios.get(
-          `http://localhost:5001/api/document/presigned-url/${file_id}`,
-          { withCredentials: true }
-        );
-        
-        console.log('Presigned URL response:', urlResponse.data);
-        
-        if (!urlResponse.data || !urlResponse.data.success) {
-          throw new Error('Failed to get document URL');
+
+        // Choose latest revision if exists
+        if (document.revisions && document.revisions.length > 0) {
+          const sortedRevisions = [...document.revisions].sort(
+            (a, b) =>
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+
+          const latest = sortedRevisions[0];
+          const rawKey = extractKeyFromUrl(latest.fileUrl);
+
+          const presigned = await axios.get(
+            `http://localhost:5001/api/document/sign-s3-url?key=${encodeURIComponent(rawKey)}`,
+            { withCredentials: true }
+          );
+          setFileUrl(presigned.data.presignedUrl);
+          if (presigned.data?.presignedUrl) {
+            setFileUrl(presigned.data.presignedUrl);
+          } else {
+            message.warning(
+              'Could not get latest revision URL, falling back to original'
+            );
+            const fallbackUrl = await axios.get(
+              `http://localhost:5001/api/document/presigned-url/${file_id}`,
+              { withCredentials: true }
+            );
+            setFileUrl(fallbackUrl.data.presignedUrl);
+          }
+        } else {
+          // No revisions yet, get the original file
+          const urlResponse = await axios.get(
+            `http://localhost:5001/api/document/presigned-url/${file_id}`,
+            { withCredentials: true }
+          );
+          setFileUrl(urlResponse.data.presignedUrl);
         }
-        
-        setFileUrl(urlResponse.data.presignedUrl);
       } catch (error) {
         console.error('Error fetching document:', error);
         message.error('Failed to load document. Please try again later.');
@@ -75,27 +100,30 @@ const TempEditor: React.FC<{}> = () => {
         setLoading(false);
       }
     };
-    
+
     fetchDocument();
   }, [file_id, user_id, navigate]);
-  
+
   useEffect(() => {
     if (!fileUrl) return;
-    
+
     const fetchAndRenderPdf = async () => {
       setLoading(true);
       try {
         const fetchedFile = await fetch(fileUrl);
-        console.log("Fetched file response:", fetchedFile.status);
-        
+        console.log('Fetched file response:', fetchedFile.status);
+
         if (!fetchedFile.ok) {
-          throw new Error(`Failed to fetch PDF: ${fetchedFile.status} ${fetchedFile.statusText}`);
+          throw new Error(
+            `Failed to fetch PDF: ${fetchedFile.status} ${fetchedFile.statusText}`
+          );
         }
-        
+
         const arrayBuffer = await fetchedFile.arrayBuffer();
-        const loadedPdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const loadedPdf = await pdfjsLib.getDocument({ data: arrayBuffer })
+          .promise;
         const pages: any[] = [];
-        console.log("PDF loaded with", loadedPdf.numPages, "pages");
+        console.log('PDF loaded with', loadedPdf.numPages, 'pages');
 
         for (let pageNum = 1; pageNum <= loadedPdf.numPages; pageNum++) {
           console.log('Rendering page:', pageNum);
@@ -114,10 +142,10 @@ const TempEditor: React.FC<{}> = () => {
         }
 
         setPdfPages(pages);
-        console.log("PDF rendering complete");
+        console.log('PDF rendering complete');
       } catch (err) {
-        console.error("Error rendering PDF:", err);
-        message.error("Failed to render document");
+        console.error('Error rendering PDF:', err);
+        message.error('Failed to render document');
       } finally {
         setLoading(false);
       }
@@ -125,8 +153,10 @@ const TempEditor: React.FC<{}> = () => {
 
     fetchAndRenderPdf();
   }, [fileUrl]);
-  
-  const addInputBox = (type: 'text' | 'number' | 'date' | 'signature'|'selection') => {
+
+  const addInputBox = (
+    type: 'text' | 'number' | 'date' | 'signature' | 'selection'
+  ) => {
     const page = pdfPages.find((p) => p.pageNum === currentPage);
     if (!page) return;
 
@@ -136,25 +166,15 @@ const TempEditor: React.FC<{}> = () => {
       pageNum: currentPage,
       x: page.viewport.width / 2 - 50,
       y: page.viewport.height / 2 - 15,
-      width:
-        type === 'signature'
-          ? 200
-          : type === 'selection'
-            ? 150
-            : 100,
-      height:
-        type === 'signature'
-          ? 100
-          : type === 'selection'
-            ? 80
-            : 30,
+      width: type === 'signature' ? 200 : type === 'selection' ? 150 : 100,
+      height: type === 'signature' ? 100 : type === 'selection' ? 80 : 30,
       value: '',
       placeholder: type === 'date' ? 'MM/DD/YYYY' : '',
       fontSize: 14,
       fontFamily: 'Arial',
       color: '#000000',
       textAlign: 'left',
-      action: null
+      action: null,
     };
 
     setInputBoxes((prev) => [...prev, baseProps]);
@@ -172,125 +192,142 @@ const TempEditor: React.FC<{}> = () => {
     if (selectedBoxId === id) setSelectedBoxId(null);
   };
 
+  const handleSave = async () => {
+    try {
+      setLoading(true);
 
-const handleSave = async () => {
-  try {
-    setLoading(true);
-    
-    const fetchedFile = await fetch(fileUrl);
-    const arrayBuffer = await fetchedFile.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(arrayBuffer);
-    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const fetchedFile = await fetch(fileUrl);
+      const arrayBuffer = await fetchedFile.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    const scale = 1.5; 
+      const scale = 1.5;
 
-    // Process input boxes
-    for (const box of inputBoxes) {
-      try {
-        const page = pdfDoc.getPage(box.pageNum - 1);
-        const { width: pageWidth, height: pageHeight } = page.getSize();
+      // Process input boxes
+      for (const box of inputBoxes) {
+        try {
+          const page = pdfDoc.getPage(box.pageNum - 1);
+          const { width: pageWidth, height: pageHeight } = page.getSize();
 
-        const validX = Number.isFinite(box.x) ? box.x : 0;
-        const validY = Number.isFinite(box.y) ? box.y : 0;
-        const validWidth = Number.isFinite(box.width) ? box.width : (box.type === 'signature' ? 200 : 100);
-        const validHeight = Number.isFinite(box.height) ? box.height : (box.type === 'signature' ? 100 : 30);
+          const validX = Number.isFinite(box.x) ? box.x : 0;
+          const validY = Number.isFinite(box.y) ? box.y : 0;
+          const validWidth = Number.isFinite(box.width)
+            ? box.width
+            : box.type === 'signature'
+              ? 200
+              : 100;
+          const validHeight = Number.isFinite(box.height)
+            ? box.height
+            : box.type === 'signature'
+              ? 100
+              : 30;
 
-        const pdfX = validX / scale;
-        const pdfY = pageHeight - (validY + validHeight) / scale;
+          const pdfX = validX / scale;
+          const pdfY = pageHeight - (validY + validHeight) / scale;
 
-        if (box.type === 'signature' && box.value?.startsWith('data:image')) {
-          const base64Data = box.value.split(',')[1];
-          const byteString = atob(base64Data);
-          const byteArray = new Uint8Array(byteString.length);
-          
-          for (let i = 0; i < byteString.length; i++) {
-            byteArray[i] = byteString.charCodeAt(i);
+          if (box.type === 'signature' && box.value?.startsWith('data:image')) {
+            const base64Data = box.value.split(',')[1];
+            const byteString = atob(base64Data);
+            const byteArray = new Uint8Array(byteString.length);
+
+            for (let i = 0; i < byteString.length; i++) {
+              byteArray[i] = byteString.charCodeAt(i);
+            }
+
+            const image = box.value.startsWith('data:image/png')
+              ? await pdfDoc.embedPng(byteArray)
+              : await pdfDoc.embedJpg(byteArray);
+
+            const imgAspectRatio = image.width / image.height;
+            let drawWidth = validWidth / scale;
+            let drawHeight = drawWidth / imgAspectRatio;
+
+            if (drawHeight > validHeight / scale) {
+              drawHeight = validHeight / scale;
+              drawWidth = drawHeight * imgAspectRatio;
+            }
+
+            page.drawImage(image, {
+              x: pdfX,
+              y: pdfY,
+              width: drawWidth,
+              height: drawHeight,
+            });
+          } else if (box.value) {
+            page.drawText(box.value, {
+              x: pdfX,
+              y: pdfY + validHeight / scale - 2,
+              size: (box.fontSize || 12) / scale,
+            });
           }
-
-          const image = box.value.startsWith('data:image/png')
-            ? await pdfDoc.embedPng(byteArray)
-            : await pdfDoc.embedJpg(byteArray);
-
-          const imgAspectRatio = image.width / image.height;
-          let drawWidth = validWidth / scale;
-          let drawHeight = drawWidth / imgAspectRatio;
-
-          if (drawHeight > validHeight / scale) {
-            drawHeight = validHeight / scale;
-            drawWidth = drawHeight * imgAspectRatio;
-          }
-
-          page.drawImage(image, {
-            x: pdfX,
-            y: pdfY,
-            width: drawWidth,
-            height: drawHeight,
-          });
-        } else if (box.value) {
-          page.drawText(box.value, {
-            x: pdfX,
-            y: pdfY + (validHeight / scale) - 2, 
-            size: (box.fontSize || 12) / scale,
-
-          });
+        } catch (error) {
+          console.error(`Error processing box ${box.id}:`, error);
         }
-      } catch (error) {
-        console.error(`Error processing box ${box.id}:`, error);
       }
-    }
 
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    
-    const formData = new FormData();
-    formData.append('file', blob, 'signed-document.pdf');
-    
-    const annotations = inputBoxes.map(box => ({
-      type: box.type,
-      position: { x: box.x, y: box.y, page: box.pageNum },
-      value: box.type === 'signature' ? 'signature-added' : box.value
-    }));
-    
-    formData.append('annotations', JSON.stringify(annotations));
-    formData.append('comments', JSON.stringify([{
-      text: 'Document signed',
-      timestamp: new Date().toISOString()
-    }]));
-    
-    console.log('Saving document edit...');
-    
-    const saveResponse = await axios.post(
-      `http://localhost:5001/api/document/save-edit/${file_id}`,
-      formData,
-      {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        withCredentials: true
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+
+      const formData = new FormData();
+      formData.append('file', blob, 'signed-document.pdf');
+
+      const annotations = inputBoxes.map((box) => ({
+        type: box.type,
+        position: { x: box.x, y: box.y, page: box.pageNum },
+        value: box.type === 'signature' ? 'signature-added' : box.value,
+      }));
+
+      formData.append('annotations', JSON.stringify(annotations));
+      formData.append(
+        'comments',
+        JSON.stringify([
+          {
+            text: 'Document signed',
+            timestamp: new Date().toISOString(),
+          },
+        ])
+      );
+
+      console.log('Saving document edit...');
+
+      const saveResponse = await axios.post(
+        `http://localhost:5001/api/document/save-edit/${file_id}`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          withCredentials: true,
+        }
+      );
+
+      console.log('Save response:', saveResponse.data);
+
+      if (saveResponse.data.success) {
+        message.success('Document saved successfully!');
+
+        // Return to documents page
+        navigate('/shared-documents');
+      } else {
+        message.error('Failed to save document. Please try again.');
       }
-    );
-    
-    console.log('Save response:', saveResponse.data);
-    
-    if (saveResponse.data.success) {
-      message.success('Document saved successfully!');
-      
-      // Return to documents page
-      navigate('/shared-documents');
-    } else {
+    } catch (err) {
+      console.error('PDF save failed:', err);
       message.error('Failed to save document. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-  } catch (err) {
-    console.error("PDF save failed:", err);
-    message.error("Failed to save document. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   if (loading && !documentData) {
     return (
       <GeneralLayout title="Loading Document...">
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '80vh',
+          }}
+        >
           <div className="loading-indicator">Loading document...</div>
         </div>
       </GeneralLayout>
@@ -326,116 +363,136 @@ const handleSave = async () => {
 
         <div
           ref={canvasWrapperRef}
-          style={{ height: '70vh', overflowY: 'auto', position: 'relative', backgroundColor: 'grey' }}
+          style={{
+            height: '70vh',
+            overflowY: 'auto',
+            position: 'relative',
+            backgroundColor: 'grey',
+          }}
         >
           {pdfPages.map((page) => (
-  <div key={page.pageNum} style={{ marginBottom: 20, position: 'relative' }}>
-    <canvas ref={(el) => { if (el) el.replaceWith(page.canvas); }} />
-    {inputBoxes
-      .filter((box) => box.pageNum === page.pageNum)
-      .map((box) =>
-        box.type === 'signature' ? (
-          <SignatureBox
-          key={box.id}
-          id={box.id}
-          box={box}
-          canvasWrapperRef={canvasWrapperRef}
-          isActive={box.id === selectedBoxId}
-          onSave={(dataUrl: string) => {
-             setInputBoxes((prev) =>
-      prev.map((b) =>
-        b.id === box.id
-          ? { ...b, value: dataUrl } // Store in value instead of image
-          : b
-                )
-              );
-          }}
-          onDelete={() => deleteInputBox(box.id)}
-          onConfirm={(id, value) => {
-            setInputBoxes((prev) =>
-              prev.map((b) => (b.id === id ? { ...b, value } : b))
-            );
-          }}
-          onUpdatePosition={(id: string, x: number, y: number) => {
-            setInputBoxes((prev) =>
-              prev.map((b) => (b.id === id ? { ...b, x, y } : b))
-            );
-          }}
-          onUpdateSize={(id: string, width: number, height: number) => {
-            setInputBoxes((prev) =>
-              prev.map((b) => (b.id === id ? { ...b, width, height } : b))
-            );
-          }}
-          width={100}
-          height={box.height}
-        />
-        
-        
-        
-        ):  box.type === 'selection' ? (
-  <SelectText
-    key={box.id}
-    id={box.id}
-    x={box.x}
-    y={box.y}
-    width={box.width}
-    height={box.height}
-    canvasWrapperRef={canvasWrapperRef}
-   isActive={box.id === selectedBoxId}
-    action={box.action ?? null}
-    onConfirm={(id, action) =>
-      setInputBoxes(prev =>
-        prev.map(b => (b.id === id ? { ...b, action } : b))
-      )
-    }
-    onDelete={() => deleteInputBox(box.id)}
-    onUpdatePosition={(id, x, y) =>
-      setInputBoxes(prev =>
-        prev.map(b => (b.id === id ? { ...b, x, y } : b))
-      )
-    }
-    onUpdateSize={(id, width, height) =>
-      setInputBoxes(prev =>
-        prev.map(b => (b.id === id ? { ...b, width, height } : b))
-      )
-    }
-    onDoubleClick={setSelectedBoxId}
-  />
-        ) : (
-          <InputBox
-            key={box.id}
-            box={box}
-            canvasWrapperRef={canvasWrapperRef}
-            isActive={box.id === selectedBoxId}
-            onConfirm={(id, value) => {
-              setInputBoxes((prev) =>
-                prev.map((b) => (b.id === id ? { ...b, value } : b))
-              );
-            }}
-            onDelete={(id) => {
-              setInputBoxes((prev) => prev.filter((b) => b.id !== id));
-              if (selectedBoxId === id) setSelectedBoxId(null);
-            }}
-            onUpdatePosition={(id, x, y) =>
-              setInputBoxes((prev) =>
-                prev.map((b) => (b.id === id ? { ...b, x, y } : b))
-              )
-            }
-            onUpdateSize={(id, width, height) =>
-              setInputBoxes((prev) =>
-                prev.map((b) => (b.id === id ? { ...b, width, height } : b))
-              )
-            }
-            onDoubleClick={(id) => setSelectedBoxId(id)}
-          />
-        )
-      )}
-  </div>
-))}
-
+            <div
+              key={page.pageNum}
+              style={{ marginBottom: 20, position: 'relative' }}
+            >
+              <canvas
+                ref={(el) => {
+                  if (el) el.replaceWith(page.canvas);
+                }}
+              />
+              {inputBoxes
+                .filter((box) => box.pageNum === page.pageNum)
+                .map((box) =>
+                  box.type === 'signature' ? (
+                    <SignatureBox
+                      key={box.id}
+                      id={box.id}
+                      box={box}
+                      canvasWrapperRef={canvasWrapperRef}
+                      isActive={box.id === selectedBoxId}
+                      onSave={(dataUrl: string) => {
+                        setInputBoxes((prev) =>
+                          prev.map((b) =>
+                            b.id === box.id
+                              ? { ...b, value: dataUrl } // Store in value instead of image
+                              : b
+                          )
+                        );
+                      }}
+                      onDelete={() => deleteInputBox(box.id)}
+                      onConfirm={(id, value) => {
+                        setInputBoxes((prev) =>
+                          prev.map((b) => (b.id === id ? { ...b, value } : b))
+                        );
+                      }}
+                      onUpdatePosition={(id: string, x: number, y: number) => {
+                        setInputBoxes((prev) =>
+                          prev.map((b) => (b.id === id ? { ...b, x, y } : b))
+                        );
+                      }}
+                      onUpdateSize={(
+                        id: string,
+                        width: number,
+                        height: number
+                      ) => {
+                        setInputBoxes((prev) =>
+                          prev.map((b) =>
+                            b.id === id ? { ...b, width, height } : b
+                          )
+                        );
+                      }}
+                      width={100}
+                      height={box.height}
+                    />
+                  ) : box.type === 'selection' ? (
+                    <SelectText
+                      key={box.id}
+                      id={box.id}
+                      x={box.x}
+                      y={box.y}
+                      width={box.width}
+                      height={box.height}
+                      canvasWrapperRef={canvasWrapperRef}
+                      isActive={box.id === selectedBoxId}
+                      action={box.action ?? null}
+                      onConfirm={(id, action) =>
+                        setInputBoxes((prev) =>
+                          prev.map((b) => (b.id === id ? { ...b, action } : b))
+                        )
+                      }
+                      onDelete={() => deleteInputBox(box.id)}
+                      onUpdatePosition={(id, x, y) =>
+                        setInputBoxes((prev) =>
+                          prev.map((b) => (b.id === id ? { ...b, x, y } : b))
+                        )
+                      }
+                      onUpdateSize={(id, width, height) =>
+                        setInputBoxes((prev) =>
+                          prev.map((b) =>
+                            b.id === id ? { ...b, width, height } : b
+                          )
+                        )
+                      }
+                      onDoubleClick={setSelectedBoxId}
+                    />
+                  ) : (
+                    <InputBox
+                      key={box.id}
+                      box={box}
+                      canvasWrapperRef={canvasWrapperRef}
+                      isActive={box.id === selectedBoxId}
+                      onConfirm={(id, value) => {
+                        setInputBoxes((prev) =>
+                          prev.map((b) => (b.id === id ? { ...b, value } : b))
+                        );
+                      }}
+                      onDelete={(id) => {
+                        setInputBoxes((prev) =>
+                          prev.filter((b) => b.id !== id)
+                        );
+                        if (selectedBoxId === id) setSelectedBoxId(null);
+                      }}
+                      onUpdatePosition={(id, x, y) =>
+                        setInputBoxes((prev) =>
+                          prev.map((b) => (b.id === id ? { ...b, x, y } : b))
+                        )
+                      }
+                      onUpdateSize={(id, width, height) =>
+                        setInputBoxes((prev) =>
+                          prev.map((b) =>
+                            b.id === id ? { ...b, width, height } : b
+                          )
+                        )
+                      }
+                      onDoubleClick={(id) => setSelectedBoxId(id)}
+                    />
+                  )
+                )}
             </div>
-          </div>
-</GeneralLayout>
+          ))}
+        </div>
+      </div>
+    </GeneralLayout>
   );
 };
 
