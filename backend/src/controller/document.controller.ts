@@ -2155,3 +2155,50 @@ export const updateDocumentStatus = async (req: Request, res: Response): Promise
   }
 };
 
+export const searchDocuments = async (req: Request, res: Response): Promise<void> => {
+  const { term } = req.query;
+  const userId = (req as any).user?.id;
+
+  if (typeof term !== "string" || !term.trim()) {
+    res.status(400).json({
+      success: false,
+      message: "Valid search term is required",
+    });
+    return;
+  }
+
+  try {
+    const searchTerm = term.trim().toLowerCase();
+
+    const params = {
+      TableName: "Documents",
+      FilterExpression: "(uploadedBy = :userId OR contains(sharedWith, :userId)) AND isDeleted <> :deleted",
+      ExpressionAttributeValues: {
+        ":userId": userId,
+        ":deleted": true,
+      },
+    };
+
+    const result = await docClient.send(new ScanCommand(params));
+    
+    const filteredDocuments = (result.Items || [])
+      .filter(doc => 
+        doc.filename?.toLowerCase().includes(searchTerm) ||
+        doc.documentType?.toLowerCase().includes(searchTerm)
+      )
+      .slice(0, 10); 
+
+    res.status(200).json({
+      success: true,
+      count: filteredDocuments.length,
+      data: filteredDocuments,
+    });
+  } catch (error) {
+    console.error("Error searching documents:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to search documents",
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};

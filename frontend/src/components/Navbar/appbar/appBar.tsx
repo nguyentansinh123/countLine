@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Avatar, Popover, Badge, Menu, Dropdown, Space, Spin, List } from 'antd';
-import { BellOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons';
+import { Input, Avatar, Popover, Badge, Menu, Dropdown, Space, Spin, List, Tabs } from 'antd';
+import { BellOutlined, UserOutlined, SearchOutlined, FileOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Notification from '../notification/notification';
 import axios from 'axios';
+import Search from 'antd/es/input/Search';
 
+// Add TabPane
+const { TabPane } = Tabs;
 const AppBar = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -18,6 +21,7 @@ const AppBar = () => {
  const [dropdownVisible, setDropdownVisible] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [documentResults, setDocumentResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchValue, setSearchValue] = useState('');
 
@@ -97,8 +101,6 @@ const AppBar = () => {
     setNotificationCount(0);
   };
 
-  const { Search } = Input;
-
  
 
   useEffect(() => {
@@ -140,6 +142,8 @@ const AppBar = () => {
     
     if (!value.trim()) {
       setSearchResults([]);
+      setDocumentResults([]);
+      setDropdownVisible(false);
       return;
     }
     
@@ -147,19 +151,37 @@ const AppBar = () => {
     setDropdownVisible(true);
     
     try {
-      const res = await axios.get(`${API_URL}/api/users/search`, {
+      // Search for users
+      const userRes = await axios.get(`${API_URL}/api/users/search`, {
         params: { term: value },
         withCredentials: true,
       });
       
-      if (res.data.success) {
-        setSearchResults(res.data.data);
+      console.log("User search response:", userRes.data);
+      
+      if (userRes.data && userRes.data.success) {
+        setSearchResults(userRes.data.data || []);
       } else {
         setSearchResults([]);
       }
+
+      // Search for documents - FIXED URL
+      const docRes = await axios.get(`${API_URL}/api/document/search`, {
+        params: { term: value },
+        withCredentials: true,
+      });
+      
+      console.log("Document search response:", docRes.data);
+      
+      if (docRes.data && docRes.data.success) {
+        setDocumentResults(docRes.data.data || []);
+      } else {
+        setDocumentResults([]);
+      }
     } catch (err) {
-      console.error('Error searching users:', err);
+      console.error('Error searching:', err);
       setSearchResults([]);
+      setDocumentResults([]);
     } finally {
       setSearchLoading(false);
     }
@@ -170,50 +192,146 @@ const AppBar = () => {
     navigate(`/search/${user.name}`);
   };
 
+  // Add document click handler
+  const handleDocumentClick = (document: any) => {
+    setDropdownVisible(false);
+    navigate(`/document/${document.documentId || document.id}`);
+  };
+
+  // Replace your existing searchDropdown with this version
   const searchDropdown = (
-    <div style={{ width: 300, maxHeight: 400, overflow: 'auto', backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)' }}>
+    <div 
+      style={{ 
+        width: 300, 
+        maxHeight: 400, 
+        overflow: 'hidden', /* Changed from 'auto' to 'hidden' */
+        backgroundColor: '#fff', 
+        borderRadius: '4px', 
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+      }}
+    >
       {searchLoading ? (
         <div style={{ padding: '20px', textAlign: 'center' }}>
           <Spin size="small" />
         </div>
-      ) : searchValue && searchResults.length > 0 ? (
-        <List
-          itemLayout="horizontal"
-          dataSource={searchResults}
-          renderItem={(user) => (
-            <List.Item 
-              style={{ padding: '8px 12px', cursor: 'pointer' }}
-              onClick={() => handleUserClick(user)}
-            >
-              <List.Item.Meta
-                avatar={
-                  <Avatar 
-                    src={user.profilePicture} 
-                    icon={!user.profilePicture && <UserOutlined />}
-                  >
-                    {!user.profilePicture && user.name?.charAt(0)}
-                  </Avatar>
-                }
-                title={<span style={{ color: '#000' }}>{user.name}</span>}
-                description={<span style={{ color: '#666' }}>{user.email}</span>}
-              />
-            </List.Item>
-          )}
-        />
       ) : searchValue ? (
-        <div style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
-          No users found
-        </div>
+        <Tabs 
+          defaultActiveKey="users" 
+          style={{ padding: '0 8px' }}
+          className="search-tabs"
+        >
+          <TabPane tab={`Users (${searchResults.length})`} key="users">
+            <div style={{ maxHeight: 330, overflowY: 'auto', overflowX: 'hidden' }}>
+              {searchResults.length > 0 ? (
+                <List
+                  itemLayout="horizontal"
+                  dataSource={searchResults}
+                  renderItem={(user) => (
+                    <List.Item 
+                      style={{ padding: '8px 12px', cursor: 'pointer' }}
+                      onClick={() => handleUserClick(user)}
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          <Avatar 
+                            src={user.profilePicture} 
+                            icon={!user.profilePicture && <UserOutlined />}
+                          >
+                            {!user.profilePicture && user.name?.charAt(0)}
+                          </Avatar>
+                        }
+                        title={<span style={{ color: '#000' }}>{user.name}</span>}
+                        description={<span style={{ color: '#666' }}>{user.email}</span>}
+                      />
+                    </List.Item>
+                  )}
+                />
+              ) : (
+                <div style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
+                  No users found
+                </div>
+              )}
+            </div>
+          </TabPane>
+          <TabPane tab={`Documents (${documentResults.length})`} key="documents">
+            <div style={{ maxHeight: 330, overflowY: 'auto', overflowX: 'hidden' }}>
+              {documentResults.length > 0 ? (
+                <List
+                  itemLayout="horizontal"
+                  dataSource={documentResults}
+                  renderItem={(document) => (
+                    <List.Item 
+                      style={{ padding: '8px 12px', cursor: 'pointer' }}
+                      onClick={() => handleDocumentClick(document)}
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          <Avatar 
+                            icon={<FileOutlined />}
+                            style={{ 
+                              backgroundColor: document.documentType?.includes('PDF') ? '#ff4d4f' : 
+                                            document.documentType?.includes('Word') ? '#1890ff' : 
+                                            document.documentType?.includes('Excel') ? '#52c41a' : 
+                                            '#faad14' 
+                            }}
+                          />
+                        }
+                        title={
+                          <span style={{ 
+                            color: '#000',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '220px',
+                            display: 'block'
+                          }}>
+                            {document.filename || document.name || "Untitled"}
+                          </span>
+                        }
+                        description={
+                          <span style={{ 
+                            color: '#666',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '220px',
+                            display: 'block'
+                          }}>
+                            {document.documentType || "Document"}
+                          </span>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              ) : (
+                <div style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
+                  No documents found
+                </div>
+              )}
+            </div>
+          </TabPane>
+        </Tabs>
       ) : recentSearches.length > 0 ? (
-        <Menu>
-          <Menu.Item disabled style={{ color: '#999' }}>Recent Searches</Menu.Item>
-          {recentSearches.map((item, idx) => (
-            <Menu.Item key={idx} onClick={() => handleSearch(item)}>
-              <SearchOutlined style={{ marginRight: 8 }} />
-              {item}
-            </Menu.Item>
-          ))}
-        </Menu>
+        <div style={{ maxHeight: 330, overflowY: 'auto', overflowX: 'hidden' }}>
+          <Menu>
+            <Menu.Item disabled style={{ color: '#999' }}>Recent Searches</Menu.Item>
+            {recentSearches.map((item, idx) => (
+              <Menu.Item key={idx} onClick={() => handleSearch(item)}>
+                <SearchOutlined style={{ marginRight: 8 }} />
+                <span style={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '220px',
+                  display: 'block'
+                }}>
+                  {item}
+                </span>
+              </Menu.Item>
+            ))}
+          </Menu>
+        </div>
       ) : (
         <div style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
           No recent searches
@@ -285,7 +403,7 @@ const AppBar = () => {
         trigger={['click']}
       >
         <Search
-          placeholder="Search users..."
+          placeholder="Search users and documents..."
           style={{ width: 300 }}
           value={searchValue}
           onChange={handleSearchInputChange}

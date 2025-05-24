@@ -27,6 +27,7 @@ import {
   SendFileToTeam,
   signS3Url,
   updateDocumentStatus,
+  searchDocuments,
 } from "../controller/document.controller";
 import { upload } from "../lib/multerconfig";
 import { userAuth } from "../middleware/userAuth";
@@ -75,6 +76,8 @@ router.post(
   upload.single("signature"),
   signDocumentWithCanvas
 );
+
+router.get("/search", userAuth, searchDocuments);
 
 router.get("/shared-with-me", userAuth, getFilesSharedWithUser);
 router.get("/sign-s3-url", userAuth, signS3Url);
