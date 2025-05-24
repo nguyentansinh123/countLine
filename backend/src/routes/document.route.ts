@@ -78,7 +78,7 @@ router.post(
 
 router.get("/shared-with-me", userAuth, getFilesSharedWithUser);
 router.get("/sign-s3-url", userAuth, signS3Url);
-// New Routeeeeeeeeeeeeeeeeeeee
+// New Route
 
 router.get("/document-with-revisions/:documentId", userAuth, getDocumentWithRevisions);
 

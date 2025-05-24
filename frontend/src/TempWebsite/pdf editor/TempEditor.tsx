@@ -42,7 +42,6 @@ const TempEditor: React.FC<{}> = () => {
       try {
         setLoading(true);
         
-        // Fetch document data from API
         const response = await axios.get(
           `http://localhost:5001/api/document/singleTask/${file_id}`,
           { withCredentials: true }
@@ -57,7 +56,6 @@ const TempEditor: React.FC<{}> = () => {
         const document = response.data.data;
         setDocumentData(document);
         
-        // Get presigned URL for the document
         const urlResponse = await axios.get(
           `http://localhost:5001/api/document/presigned-url/${file_id}`,
           { withCredentials: true }
@@ -81,7 +79,6 @@ const TempEditor: React.FC<{}> = () => {
     fetchDocument();
   }, [file_id, user_id, navigate]);
   
-  // Render PDF when fileUrl changes
   useEffect(() => {
     if (!fileUrl) return;
     
@@ -180,33 +177,28 @@ const handleSave = async () => {
   try {
     setLoading(true);
     
-    // First, modify the PDF as you're already doing
     const fetchedFile = await fetch(fileUrl);
     const arrayBuffer = await fetchedFile.arrayBuffer();
     const pdfDoc = await PDFDocument.load(arrayBuffer);
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-    const scale = 1.5; // Should match your rendering scale
+    const scale = 1.5; 
 
     // Process input boxes
     for (const box of inputBoxes) {
       try {
-        const page = pdfDoc.getPage(box.pageNum - 1); // pdf-lib uses 0-based indexing
+        const page = pdfDoc.getPage(box.pageNum - 1);
         const { width: pageWidth, height: pageHeight } = page.getSize();
 
-        // Validate coordinates and dimensions
         const validX = Number.isFinite(box.x) ? box.x : 0;
         const validY = Number.isFinite(box.y) ? box.y : 0;
         const validWidth = Number.isFinite(box.width) ? box.width : (box.type === 'signature' ? 200 : 100);
         const validHeight = Number.isFinite(box.height) ? box.height : (box.type === 'signature' ? 100 : 30);
 
-        // Convert canvas coordinates to PDF coordinates
-        // pdf-lib has (0,0) at bottom-left, while canvas has it at top-left
         const pdfX = validX / scale;
         const pdfY = pageHeight - (validY + validHeight) / scale;
 
         if (box.type === 'signature' && box.value?.startsWith('data:image')) {
-          // Process signature image
           const base64Data = box.value.split(',')[1];
           const byteString = atob(base64Data);
           const byteArray = new Uint8Array(byteString.length);
@@ -215,17 +207,14 @@ const handleSave = async () => {
             byteArray[i] = byteString.charCodeAt(i);
           }
 
-          // Embed image (PNG or JPG)
           const image = box.value.startsWith('data:image/png')
             ? await pdfDoc.embedPng(byteArray)
             : await pdfDoc.embedJpg(byteArray);
 
-          // Calculate dimensions while maintaining aspect ratio
           const imgAspectRatio = image.width / image.height;
           let drawWidth = validWidth / scale;
           let drawHeight = drawWidth / imgAspectRatio;
 
-          // If the calculated height is too big for the box, scale down
           if (drawHeight > validHeight / scale) {
             drawHeight = validHeight / scale;
             drawWidth = drawHeight * imgAspectRatio;
@@ -238,10 +227,9 @@ const handleSave = async () => {
             height: drawHeight,
           });
         } else if (box.value) {
-          // Handle text fields
           page.drawText(box.value, {
             x: pdfX,
-            y: pdfY + (validHeight / scale) - 2, // Adjust text baseline
+            y: pdfY + (validHeight / scale) - 2, 
             size: (box.fontSize || 12) / scale,
 
           });
@@ -251,15 +239,12 @@ const handleSave = async () => {
       }
     }
 
-    // Save the PDF and upload to server
     const pdfBytes = await pdfDoc.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
     
-    // Create FormData for the API call
     const formData = new FormData();
     formData.append('file', blob, 'signed-document.pdf');
     
-    // Add metadata about the edit
     const annotations = inputBoxes.map(box => ({
       type: box.type,
       position: { x: box.x, y: box.y, page: box.pageNum },
@@ -274,7 +259,6 @@ const handleSave = async () => {
     
     console.log('Saving document edit...');
     
-    // Upload to server
     const saveResponse = await axios.post(
       `http://localhost:5001/api/document/save-edit/${file_id}`,
       formData,
@@ -287,14 +271,7 @@ const handleSave = async () => {
     console.log('Save response:', saveResponse.data);
     
     if (saveResponse.data.success) {
-      // Mark document as signed
-      await axios.post(
-        `http://localhost:5001/api/document/sign/${file_id}`,
-        {},
-        { withCredentials: true }
-      );
-      
-      message.success('Document signed and saved successfully!');
+      message.success('Document saved successfully!');
       
       // Return to documents page
       navigate('/shared-documents');

@@ -1089,7 +1089,7 @@ export const signDocument = async (req: Request, res: Response) => {
 
     const allSigned = document.signaturesRequired.every((id: any) => updatedSignedBy.includes(id));
 
-    const signingStatus = allSigned ? "completed" : "pending";
+    const signingStatus = "pending"; 
 
     await docClient.send(
       new UpdateCommand({
@@ -1122,11 +1122,12 @@ export const signDocument = async (req: Request, res: Response) => {
 
     getIO().to(document.uploadedBy).emit("notification", notification);
 
+    // Still notify about all signatures collected, but don't change status
     if (allSigned) {
       const completeNotification = await createNotification(
         document.uploadedBy,
-        "signing_complete",
-        `All required signatures have been collected for "${document.filename}"`,
+        "signatures_collected",  // Changed notification type
+        `All required signatures have been collected for "${document.filename}" but the document remains editable`,
         { documentId }
       );
 
@@ -1137,6 +1138,7 @@ export const signDocument = async (req: Request, res: Response) => {
       success: true,
       message: "Document signed successfully",
       signingComplete: allSigned,
+      signingStatus: "pending" // Always return pending status
     });
   } catch (error) {
     let message = "Unknown Error";

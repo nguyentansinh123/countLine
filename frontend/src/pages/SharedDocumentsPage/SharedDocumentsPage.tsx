@@ -331,27 +331,26 @@ function SharedDocumentsPage() {
       
       const response = await axios.post(
         `http://localhost:5001/api/document/update-status/${document.documentId}`,
-        { status: 'completed' },
+        {}, 
         { withCredentials: true }
       );
       
       if (response.data.success) {
         message.success('Document marked as completed');
         
-        // Update document in local state
         setDocuments(prev => prev.map(doc => 
           doc.documentId === document.documentId 
-            ? { ...doc, status: 'completed', signingStatus: 'completed' } 
+            ? { ...doc, isCompleted: true } 
             : doc
         ));
         
         fetchSharedDocuments();
       } else {
-        message.error('Failed to update document status');
+        message.error('Failed to mark document as completed');
       }
     } catch (error) {
-      console.error('Error updating document status:', error);
-      message.error('Error updating document status');
+      console.error('Error marking document as completed:', error);
+      message.error('Error marking document as completed');
     } finally {
       setLoading(false);
     }
@@ -487,7 +486,7 @@ function SharedDocumentsPage() {
           </Tooltip>
           
           {record.uploadedBy === currentUserId && 
-           record.signingStatus !== 'completed' && (
+           !record.isCompleted && (
             <Tooltip title="Mark as Completed">
               <Button 
                 shape="circle" 
