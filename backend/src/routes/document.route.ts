@@ -26,6 +26,7 @@ import {
   getFilesSharedWithUser,
   SendFileToTeam,
   signS3Url,
+  updateDocumentStatus,
 } from "../controller/document.controller";
 import { upload } from "../lib/multerconfig";
 import { userAuth } from "../middleware/userAuth";
@@ -41,6 +42,7 @@ router.get("/download/:documentId", userAuth, downloadFile);
 router.get("/presigned-url/:documentId", userAuth, getPresignedUrl);
 router.get("/my-documents", userAuth, getMyDocuments);
 router.get("/document/:id", userAuth, getDocumentById);
+router.post("/update-status/:documentId", userAuth, updateDocumentStatus);
 
 // SOFT DELETE already check condition in controller only admin or the one upload it can delete
 router.delete("/delete/:documentId", userAuth, deleteDocument);

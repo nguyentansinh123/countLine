@@ -2088,3 +2088,67 @@ export const signS3Url = async (req: Request, res: Response): Promise<void> => {
     });
   }
 };
+
+export const updateDocumentStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { documentId } = req.params;
+    const { status } = req.body;
+    // @ts-ignore
+    const userId = req.user.id;  
+
+    if (!status) {
+      res.status(400).json({ success: false, message: "Status is required" });
+      return;
+    }
+
+    const { Item: document } = await docClient.send(
+      new GetCommand({
+        TableName: "Documents",
+        Key: { documentId },
+      })
+    );
+
+    if (!document) {
+      res.status(404).json({ success: false, message: "Document not found" });
+      return;
+    }
+
+    if (document.uploadedBy !== userId) {
+      res.status(403).json({ 
+        success: false, 
+        message: "Only the document uploader can change the status" 
+      });
+      return;
+    }
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: "Documents",
+        Key: { documentId },
+        UpdateExpression: "SET signingStatus = :status, updatedAt = :updatedAt",
+        ExpressionAttributeValues: {
+          ":status": status,
+          ":updatedAt": new Date().toISOString()
+        },
+      })
+    );
+
+    await logUserActivity({
+      userId,
+      action: "update_document_status",
+      targetId: documentId,
+      details: { 
+        filename: document.filename,
+        newStatus: status 
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Document status updated to ${status}`
+    });
+  } catch (error) {
+    console.error("Error updating document status:", error);
+    res.status(500).json({ success: false, message: "Failed to update document status" });
+  }
+};

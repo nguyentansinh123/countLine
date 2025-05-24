@@ -32,7 +32,8 @@ import {
   LeftOutlined,
   RightOutlined,
   FileExclamationOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -61,10 +62,29 @@ function SharedDocumentsPage() {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [documentError, setDocumentError] = useState<boolean>(false);
   const [refreshingUrl, setRefreshingUrl] = useState<boolean>(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchSharedDocuments();
+  }, []);
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await axios.get('http://localhost:5001/api/auth/me', {
+          withCredentials: true
+        });
+        
+        if (response.data.success) {
+          setCurrentUserId(response.data.user.id);
+        }
+      } catch (error) {
+        console.error('Error fetching user info:', error);
+      }
+    };
+    
+    fetchCurrentUser();
   }, []);
 
   const fetchSharedDocuments = async () => {
@@ -120,7 +140,6 @@ function SharedDocumentsPage() {
     }
   };
 
-  // Add this function to parse DynamoDB formatted revisions
   const parseRevision = (revision: any) => {
     if (revision.M) {
       return {
@@ -136,21 +155,16 @@ function SharedDocumentsPage() {
     return revision;
   };
 
-  // Add this function to get a signed URL for S3 links
   const getSignedUrl = async (fileUrl: string): Promise<string | null> => {
     try {
-      // If it's not an S3 URL, return it as is
       if (!fileUrl.includes('amazonaws.com')) {
         return fileUrl;
       }
       
-      // Extract the S3 key from the URL
       const url = new URL(fileUrl);
       const pathParts = url.pathname.split('/');
-      // Remove the leading slash and get the key
       const key = pathParts.slice(1).join('/');
       
-      // Call your backend to get a signed URL for this S3 key
       const response = await axios.get(`http://localhost:5001/api/document/sign-s3-url?key=${encodeURIComponent(key)}`, {
         withCredentials: true
       });
@@ -171,34 +185,28 @@ function SharedDocumentsPage() {
     setLoading(true);
     
     try {
-      // Check if document has revisions
       if (document.revisions && document.revisions.length > 0) {
         console.log('Document has revisions:', document.revisions);
         
-        // Sort revisions by timestamp (newest first)
         const sortedRevisions = [...document.revisions].sort((a, b) => {
           const timeA = a.timestamp || (a.M?.timestamp?.S);
           const timeB = b.timestamp || (b.M?.timestamp?.S);
           return new Date(timeB).getTime() - new Date(timeA).getTime();
         });
         
-        // Get the latest revision
         const latestRevision = sortedRevisions[0];
         console.log('Latest revision:', latestRevision);
         
-        // Parse the revision if it's in DynamoDB format
         const parsedRevision = parseRevision(latestRevision);
         console.log('Parsed revision:', parsedRevision);
         
         if (parsedRevision.fileUrl) {
-          // Use the revision's file URL
           const revisionsPresignedUrl = await getSignedUrl(parsedRevision.fileUrl);
           
           if (revisionsPresignedUrl) {
             window.open(revisionsPresignedUrl, '_blank');
             message.success('Opening latest revision in new tab');
           } else {
-            // If we can't get a signed URL for the revision, try to open directly
             window.open(parsedRevision.fileUrl, '_blank');
             message.info('Opening latest revision (link may expire soon)');
           }
@@ -207,7 +215,6 @@ function SharedDocumentsPage() {
         }
       }
       
-      // If no revisions or couldn't get revision URL, fall back to the original document
       const freshUrl = await refreshPresignedUrl(document.documentId);
       
       if (freshUrl) {
@@ -313,6 +320,38 @@ function SharedDocumentsPage() {
     } catch (error) {
       console.error('Error downloading document:', error);
       message.error('Failed to download document');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkAsCompleted = async (document: any) => {
+    try {
+      setLoading(true);
+      
+      const response = await axios.post(
+        `http://localhost:5001/api/document/update-status/${document.documentId}`,
+        { status: 'completed' },
+        { withCredentials: true }
+      );
+      
+      if (response.data.success) {
+        message.success('Document marked as completed');
+        
+        // Update document in local state
+        setDocuments(prev => prev.map(doc => 
+          doc.documentId === document.documentId 
+            ? { ...doc, status: 'completed', signingStatus: 'completed' } 
+            : doc
+        ));
+        
+        fetchSharedDocuments();
+      } else {
+        message.error('Failed to update document status');
+      }
+    } catch (error) {
+      console.error('Error updating document status:', error);
+      message.error('Error updating document status');
     } finally {
       setLoading(false);
     }
@@ -446,6 +485,18 @@ function SharedDocumentsPage() {
               onClick={() => handleInfoClick(record)} 
             />
           </Tooltip>
+          
+          {record.uploadedBy === currentUserId && 
+           record.signingStatus !== 'completed' && (
+            <Tooltip title="Mark as Completed">
+              <Button 
+                shape="circle" 
+                icon={<CheckCircleOutlined />} 
+                onClick={() => handleMarkAsCompleted(record)}
+                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', color: 'white' }}
+              />
+            </Tooltip>
+          )}
           
           {record.signingStatus === 'pending' && 
            record.signaturesRequired?.includes(record.userId) && 
@@ -619,7 +670,6 @@ function SharedDocumentsPage() {
                       title="PDF Preview"
                     />
                     
-                    {/* Keep your existing controls */}
                     <div style={{ 
                       display: 'flex', 
                       justifyContent: 'center', 
@@ -751,17 +801,11 @@ function SharedDocumentsPage() {
               </div>
             </div>
             
-            <Divider />
+            <Divider style={{ margin: '16px 0' }} />
             
             <div style={{ marginBottom: '16px' }}>
-              <Text strong>Description:</Text>
-              <Paragraph>{selectedDocument.description || 'No description provided.'}</Paragraph>
-            </div>
-            
-            <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
-              <UserOutlined style={{ marginRight: '8px' }} />
-              <Text strong style={{ marginRight: '8px' }}>Shared by:</Text>
-              <Space>
+              <Text strong>Shared By:</Text>
+              <Space size={0}>
                 <Avatar 
                   src={selectedDocument.sharedByAvatar} 
                   icon={!selectedDocument.sharedByAvatar && <UserOutlined />} 
@@ -771,112 +815,35 @@ function SharedDocumentsPage() {
               </Space>
             </div>
             
-            <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center' }}>
-              <ClockCircleOutlined style={{ marginRight: '8px' }} />
-              <Text strong style={{ marginRight: '8px' }}>Shared:</Text>
-              <Text>{dayjs(selectedDocument.sharedAt).format('MMMM D, YYYY [at] h:mm A')}</Text>
+            <div style={{ marginBottom: '16px' }}>
+              <Text strong>Shared Date:</Text> {dayjs(selectedDocument.sharedAt).format('MMM D, YYYY h:mm A')}
             </div>
             
             <div style={{ marginBottom: '16px' }}>
-              <Text strong style={{ marginRight: '8px' }}>Status:</Text>
-              {selectedDocument.signingStatus === 'pending' && 
-               selectedDocument.signaturesRequired?.includes(selectedDocument.userId) ? (
-                <Tag color="orange">Your signature is required</Tag>
-              ) : selectedDocument.signingStatus === 'pending' ? (
-                <Tag color="blue">Waiting for signatures</Tag>
-              ) : selectedDocument.signingStatus === 'completed' ? (
-                <Tag color="green">All signatures completed</Tag>
-              ) : (
-                <Tag>No signatures required</Tag>
-              )}
+              <Text strong>Status:</Text> 
+              <Tag color={
+                selectedDocument.signingStatus === 'completed' ? 'green' : 
+                selectedDocument.signingStatus === 'pending' ? 'orange' : 'default'
+              }>
+                {selectedDocument.signingStatus === 'completed' ? 'Completed' : 'Pending'}
+              </Tag>
             </div>
             
-            {/* Add this section after the Status section in your info modal */}
-            {selectedDocument.revisions && selectedDocument.revisions.length > 0 && (
+            {selectedDocument.signingStatus === 'pending' && (
               <div style={{ marginBottom: '16px' }}>
-                <Text strong style={{ display: 'block', marginBottom: '8px' }}>Revisions:</Text>
-                <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
-                  {selectedDocument.revisions.map((revision: any, index: number) => {
-                    const parsedRevision = parseRevision(revision);
-                    return (
-                      <div 
-                        key={parsedRevision.revisionId || index}
-                        style={{ 
-                          padding: '12px', 
-                          margin: '4px',
-                          borderRadius: '4px',
-                          backgroundColor: '#f9f9f9',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          borderBottom: index < selectedDocument.revisions.length - 1 ? '1px solid #f0f0f0' : 'none'
-                        }}
-                      >
-                        <div>
-                          <Text strong>Version {selectedDocument.revisions.length - index}</Text>
-                          <br />
-                          <Text type="secondary">
-                            {parsedRevision.timestamp ? 
-                              dayjs(parsedRevision.timestamp).format('MMM D, YYYY h:mm A') : 
-                              'Date unknown'}
-                          </Text>
-                          {parsedRevision.comments && parsedRevision.comments.length > 0 && (
-                            <div style={{ marginTop: '4px', fontSize: '12px' }}>
-                              <Text type="secondary">{parsedRevision.comments[0].text}</Text>
-                            </div>
-                          )}
-                        </div>
-                        <Button 
-                          size="small"
-                          onClick={async () => {
-                            setLoading(true);
-                            try {
-                              if (parsedRevision.fileUrl) {
-                                const signedUrl = await getSignedUrl(parsedRevision.fileUrl);
-                                if (signedUrl) {
-                                  window.open(signedUrl, '_blank');
-                                  message.success('Opening revision in new tab');
-                                } else {
-                                  window.open(parsedRevision.fileUrl, '_blank');
-                                  message.info('Opening revision (link may expire soon)');
-                                }
-                              } else {
-                                message.error('Revision URL not available');
-                              }
-                            } catch (error) {
-                              console.error('Error opening revision:', error);
-                              message.error('Could not open revision');
-                            } finally {
-                              setLoading(false);
-                            }
-                          }}
-                        >
-                          View
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
+                <Text strong>Action Required:</Text> 
+                <Text type="danger">Please sign the document</Text>
               </div>
             )}
             
-            {(selectedDocument.signingStatus === 'pending' && 
-             selectedDocument.signaturesRequired?.includes(selectedDocument.userId) && 
-             !selectedDocument.signedBy?.includes(selectedDocument.userId)) && (
-              <div style={{ marginTop: '24px', textAlign: 'center' }}>
-                <Button 
-                  type="primary" 
-                  icon={<SignatureOutlined />} 
-                  onClick={() => {
-                    handleSignDocument(selectedDocument.documentId, selectedDocument.userId);
-                    setInfoModalVisible(false);
-                  }}
-                  size="large"
-                >
-                  Sign this document
-                </Button>
-              </div>
-            )}
+            <Button 
+              type="primary" 
+              icon={<DownloadOutlined />} 
+              onClick={() => handleDownloadDocument(selectedDocument.documentId, selectedDocument.filename)}
+              style={{ width: '100%' }}
+            >
+              Download Document
+            </Button>
           </div>
         )}
       </Modal>
