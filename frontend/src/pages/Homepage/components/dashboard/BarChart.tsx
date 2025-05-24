@@ -83,6 +83,8 @@ const DocumentBarChart: React.FC<DocumentBarChartProps> = ({ data }) => {
             return label;
           }}
           labelStyle={{ fontWeight: 'bold', color: 'white' }}
+          itemStyle={{ color: 'white' }}
+          formatter={(value, name) => [value, name]}
           wrapperStyle={{ outline: 'none' }}
           isAnimationActive={false}
         />
