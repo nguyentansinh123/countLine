@@ -34,6 +34,7 @@ router.get("/search", userAuth, searchUsersByName);
 router.post("/recent-searches", userAuth, addRecentSearch);
 router.get("/recent-searches", userAuth, getRecentSearches);
 
+
 // Admin-only routes
 router.get("/getAllUser", userAuth, authorizeRoles("admin"), getAllUser);
 router.get("/AllUserDocuments", userAuth, authorizeRoles("admin"), getAllUserDocuments);

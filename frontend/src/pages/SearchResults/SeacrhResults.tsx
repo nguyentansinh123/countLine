@@ -87,16 +87,31 @@ export const SearchResults: React.FC = () => {
     return <Tag color={color}>{role.toUpperCase()}</Tag>;
   };
 
-  const fetchUserDocuments = async (userId: string) => {
+  const handleUserClick = async (user: any) => {
+    setSelectedUser(user);
+    setModalVisible(true);
     setLoadingDocuments(true);
+    
     try {
-      const response = await axios.get(`${API_URL}/api/users/${userId}/documents`, {
+      const response = await axios.get(`${API_URL}/api/users/${user.user_id}/documents`, {
         withCredentials: true
       });
       
-      if (response.data.success) {
-        setUserDocuments(response.data.data || []);
+      console.log("User documents response:", response.data);
+      
+      if (response.data && response.data.success) {
+        const documents = response.data.data || [];
+        console.log(`Found ${documents.length} documents for user:`, user.name);
+        
+        const sortedDocuments = [...documents].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+        
+        setUserDocuments(sortedDocuments);
       } else {
+        console.warn("No documents found or invalid response format:", response.data);
         setUserDocuments([]);
       }
     } catch (error) {
@@ -105,12 +120,6 @@ export const SearchResults: React.FC = () => {
     } finally {
       setLoadingDocuments(false);
     }
-  };
-
-  const handleUserClick = (user: any) => {
-    setSelectedUser(user);
-    fetchUserDocuments(user.user_id);
-    setModalVisible(true);
   };
 
   const handleViewDocument = async (document: any) => {
@@ -240,7 +249,6 @@ export const SearchResults: React.FC = () => {
         </Space>
       </Card>
 
-      {/* User Profile Modal */}
       <Modal
         title={
           <Space align="center">
