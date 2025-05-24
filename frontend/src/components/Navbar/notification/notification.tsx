@@ -1,28 +1,32 @@
 import React, { useState } from 'react';
-import { List, Avatar, Typography, Button, Divider } from 'antd';
+import { List, Avatar, Typography, Button, Divider, Spin } from 'antd';
 import { BellOutlined, CheckOutlined } from '@ant-design/icons';
 
 const { Text, Title } = Typography;
 
 interface NotificationItem {
-  id: number;
+  id: number | string;
   message: string;
   time: string;
   isRead: boolean;
   avatar?: string;
+  type?: string;
+  data?: any;
 }
 
 interface NotificationProps {
   notifications: NotificationItem[];
   onMarkAllRead: () => void;
+  loading?: boolean;
 }
 
 const Notification: React.FC<NotificationProps> = ({ 
   notifications, 
-  onMarkAllRead 
+  onMarkAllRead,
+  loading = false
 }) => {
   const unreadCount = notifications.filter(n => !n.isRead).length;
-  const [hoveredItemId, setHoveredItemId] = useState<number | null>(null);
+  const [hoveredItemId, setHoveredItemId] = useState<number | string | null>(null);
 
   return (
     <div style={{ width: '320px', maxHeight: '450px' }}>
@@ -58,7 +62,11 @@ const Notification: React.FC<NotificationProps> = ({
         overflowY: 'auto',
         padding: '4px 0'
       }}>
-        {notifications.length > 0 ? (
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
+            <Spin size="default" />
+          </div>
+        ) : notifications.length > 0 ? (
           <List
             dataSource={notifications}
             renderItem={item => (

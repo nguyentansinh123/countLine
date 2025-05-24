@@ -1,21 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Input, Avatar, Popover, Badge, Menu, Dropdown, Space, Spin, List, Tabs } from 'antd';
+import { Input, Avatar, Popover, Badge, Menu, Dropdown, Space, Spin, List, Tabs, message } from 'antd';
 import { BellOutlined, UserOutlined, SearchOutlined, FileOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import Notification from '../notification/notification';
 import axios from 'axios';
 import Search from 'antd/es/input/Search';
+import io from 'socket.io-client'; // You'll need to install socket.io-client
 
 // Add TabPane
 const { TabPane } = Tabs;
 const AppBar = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(3);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   
   const [userData, setUserData] = useState({
     profilePic: '',
     userName: 'Loading...',
+    userId: '', 
   });
   const [loading, setLoading] = useState(true);
  const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -26,6 +30,38 @@ const AppBar = () => {
   const [searchValue, setSearchValue] = useState('');
 
   const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+
+  useEffect(() => {
+    if (!userData.userId) return;
+    
+    try {
+      const socket = io(API_URL);
+      
+      socket.on('connect', () => {
+        console.log('Socket connected');
+        socket.emit('join', userData.userId);
+      });
+      
+      socket.on('notification', (notification) => {
+        console.log('Received notification:', notification);
+        fetchNotifications(); 
+        message.info({
+          content: notification.message,
+          duration: 3,
+        });
+      });
+      
+      socket.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+      });
+      
+      return () => {
+        socket.disconnect();
+      };
+    } catch (error) {
+      console.error('Error setting up socket connection:', error);
+    }
+  }, [userData.userId, API_URL]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -43,25 +79,29 @@ const AppBar = () => {
           
           setUserData({
             profilePic: response.data.profilePicture || '',
-            userName: response.data.name || response.data.email || 'User'
+            userName: response.data.name || response.data.email || 'User',
+            userId: response.data.user_id || response.data.id || '',
           });
           
           console.log("Set user data to:", {
             profilePic: response.data.profilePicture || '',
-            userName: response.data.name || response.data.email || 'User'
+            userName: response.data.name || response.data.email || 'User',
+            userId: response.data.user_id || response.data.id || '',
           });
         } else {
           console.error('Failed to fetch user data');
           setUserData({
             profilePic: '',
-            userName: 'User'
+            userName: 'User',
+            userId: '',
           });
         }
       } catch (err) {
         console.error('Error fetching user data:', err);
         setUserData({
           profilePic: '',
-          userName: 'User'
+          userName: 'User',
+          userId: '',
         });
       } finally {
         setLoading(false);
@@ -71,8 +111,86 @@ const AppBar = () => {
     fetchUserData();
   }, [API_URL]);
 
+  const fetchNotifications = async () => {
+    if (!userData.userId) return;
+    
+    try {
+      setLoadingNotifications(true);
+      const response = await axios.get(`${API_URL}/api/notification`, {
+        withCredentials: true
+      });
+      
+      console.log('Notification response:', response.data);
+      
+      if (response.data && response.data.success) {
+        const notificationData = response.data.data || [];
+        
+        const formattedNotifications = notificationData.map((notif: any) => ({
+          id: notif.notificationId,
+          message: notif.message,
+          time: new Date(notif.createdAt).toLocaleString(),
+          isRead: notif.isRead,
+          avatar: '', 
+          type: notif.type,
+          data: notif.data
+        }));
+        
+        setNotifications(formattedNotifications);
+        
+        const unread = formattedNotifications.filter((n: any) => !n.isRead).length;
+        setNotificationCount(unread);
+      } else {
+        console.warn('Failed to fetch notifications or empty response');
+        setNotifications([]);
+        setNotificationCount(0);
+      }
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setNotifications([]);
+      setNotificationCount(0);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
 
-  const notifications = [
+  const handleMarkAllRead = async () => {
+    try {
+      const unreadNotifications = notifications.filter(n => !n.isRead);
+      
+      if (unreadNotifications.length === 0) return;
+      
+      await Promise.all(
+        unreadNotifications.map(notification => 
+          axios.patch(
+            `${API_URL}/api/notification/${notification.id}/read`, 
+            {},
+            { withCredentials: true }
+          )
+        )
+      );
+      
+      setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+      setNotificationCount(0);
+      
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (newOpen) {
+      fetchNotifications();
+    }
+  };
+
+  useEffect(() => {
+    if (userData.userId) {
+      fetchNotifications();
+    }
+  }, [userData.userId]);
+
+  const notificationsData = [
     {
       id: 1,
       message: 'New message from Sarah',
@@ -97,118 +215,58 @@ const AppBar = () => {
     },
   ];
 
-  const handleMarkAllRead = () => {
-    setNotificationCount(0);
-  };
+  const handleLogout = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
 
- 
+      const data = await res.json();
 
-  useEffect(() => {
-    const fetchRecentSearches = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/recent-searches`, {
-          withCredentials: true,
+      if (data.success) {
+        setUserData({
+          profilePic: '',
+          userName: 'User',
+          userId: ''  
         });
-
-        if (res.data?.data) {
-          const names = res.data.data.map((s: any) => s.name);
-          setRecentSearches(names);
-        }
-      } catch (err) {
-        console.error('Error fetching recent searches:', err);
-      }
-    };
-
-    fetchRecentSearches();
-  }, [API_URL]);
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-  };
-
-  const handleSearch = (value: string) => {
-    if (!value) return;
-    setRecentSearches((prev) => {
-      const updated = [value, ...prev.filter((v) => v !== value)];
-      return updated.slice(0, 5);
-    });
-    setDropdownVisible(false);
-    navigate(`/search/${value}`)
-  };
-
-  const handleSearchInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchValue(value);
-    
-    if (!value.trim()) {
-      setSearchResults([]);
-      setDocumentResults([]);
-      setDropdownVisible(false);
-      return;
-    }
-    
-    setSearchLoading(true);
-    setDropdownVisible(true);
-    
-    try {
-      const userRes = await axios.get(`${API_URL}/api/users/search`, {
-        params: { term: value },
-        withCredentials: true,
-      });
-      
-      console.log("User search response:", userRes.data);
-      
-      if (userRes.data && userRes.data.success) {
-        setSearchResults(userRes.data.data || []);
+        navigate('/');
       } else {
-        setSearchResults([]);
-      }
-
-      const docRes = await axios.get(`${API_URL}/api/document/search`, {
-        params: { term: value },
-        withCredentials: true,
-      });
-      
-      console.log("Document search response:", docRes.data);
-      
-      if (docRes.data && docRes.data.success) {
-        setDocumentResults(docRes.data.data || []);
-      } else {
-        setDocumentResults([]);
+        console.error('Logout failed:', data.message);
       }
     } catch (err) {
-      console.error('Error searching:', err);
-      setSearchResults([]);
-      setDocumentResults([]);
-    } finally {
-      setSearchLoading(false);
+      console.error('Logout error:', err);
     }
   };
 
-  const handleUserClick = (user: any) => {
-    setDropdownVisible(false);
-    navigate(`/search/${user.name}`);
+  const userMenu = (
+    <Menu>
+      <Menu.Item
+        key="profile"
+        onClick={() => {
+          console.log('Profile Clicked');
+          navigate('/profile');
+        }}
+      >
+        Profile
+      </Menu.Item>
+      <Menu.Item
+        key="logout"
+        onClick={handleLogout}
+      >
+        Logout
+      </Menu.Item>
+    </Menu>
+  );
+
+  const [openNotification, setOpenNotification] = useState(false);
+
+  const handleNotificationClick = () => {
+    setOpenNotification(!openNotification);
   };
 
-  const handleDocumentClick = async (document: any) => {
-    try {
-      setDropdownVisible(false);
-      const response = await axios.get(`${API_URL}/api/document/presigned-url/${document.documentId || document.id}`, {
-        withCredentials: true,
-      });
-      
-      console.log("Presigned URL response:", response.data);
-      
-      if (response.data && response.data.success && response.data.presignedUrl) {
-        window.open(response.data.presignedUrl, '_blank');
-      } else {
-        console.error("Failed to get presigned URL for document");
-        navigate(`/document/${document.documentId || document.id}`);
-      }
-    } catch (err) {
-      console.error("Error opening document:", err);
-      navigate(`/document/${document.documentId || document.id}`);
-    }
+  const handleNotificationClose = () => {
+    setOpenNotification(false);
   };
 
   const searchDropdown = (
@@ -352,48 +410,94 @@ const AppBar = () => {
     </div>
   );
 
-  const handleLogout = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
+  const handleUserClick = (user: any) => {
+    setDropdownVisible(false);
+    navigate(`/profile/${user.user_id || user.id}`);
+  };
+
+  const handleDocumentClick = (document: any) => {
+    setDropdownVisible(false);
+    
+    if (document.documentId) {
+      axios.get(`${API_URL}/api/document/presigned-url/${document.documentId}`, {
+        withCredentials: true,
+      })
+      .then(response => {
+        if (response.data && response.data.success && response.data.presignedUrl) {
+          window.open(response.data.presignedUrl, '_blank');
+        } else {
+          message.error('Failed to open document');
+        }
+      })
+      .catch(err => {
+        console.error('Error opening document:', err);
+        message.error('Failed to open document');
       });
-
-      const data = await res.json();
-
-      if (data.success) {
-        setUserData({
-          profilePic: '',
-          userName: 'User'
-        });
-        navigate('/');
-      } else {
-        console.error('Logout failed:', data.message);
-      }
-    } catch (err) {
-      console.error('Logout error:', err);
     }
   };
 
-  const userMenu = (
-    <Menu>
-      <Menu.Item
-        key="profile"
-        onClick={() => {
-          console.log('Profile Clicked');
-          navigate('/profile');
-        }}
-      >
-        Profile
-      </Menu.Item>
-      <Menu.Item
-        key="logout"
-        onClick={handleLogout}
-      >
-        Logout
-      </Menu.Item>
-    </Menu>
-  );
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchValue(value);
+    
+    if (value.trim().length >= 2) {
+      setSearchLoading(true);
+      
+      const searchTimer = setTimeout(() => {
+        Promise.all([
+          axios.get(`${API_URL}/api/users/search`, {
+            params: { term: value },
+            withCredentials: true,
+          }),
+          axios.get(`${API_URL}/api/document/search`, {
+            params: { term: value },
+            withCredentials: true,
+          })
+        ])
+        .then(([usersResponse, documentsResponse]) => {
+          if (usersResponse.data && usersResponse.data.success) {
+            setSearchResults(usersResponse.data.data || []);
+          }
+          
+          if (documentsResponse.data && documentsResponse.data.success) {
+            setDocumentResults(documentsResponse.data.data || []);
+          }
+        })
+        .catch(err => {
+          console.error('Search error:', err);
+          setSearchResults([]);
+          setDocumentResults([]);
+        })
+        .finally(() => {
+          setSearchLoading(false);
+        });
+      }, 300);
+      
+      return () => clearTimeout(searchTimer);
+    } else {
+      setSearchResults([]);
+      setDocumentResults([]);
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSearch = (value: string) => {
+    if (!value.trim()) return;
+    
+    setRecentSearches(prev => {
+      const updatedSearches = [value, ...prev.filter(item => item !== value)];
+      return updatedSearches.slice(0, 5); 
+    });
+    
+    axios.post(`${API_URL}/api/users/recent-searches`, { name: value }, {
+      withCredentials: true
+    }).catch(err => {
+      console.error('Error saving recent search:', err);
+    });
+    
+    setDropdownVisible(false);
+    navigate(`/search/${value}`);
+  };
 
   return (
     <div
@@ -430,6 +534,7 @@ const AppBar = () => {
           <Notification
             notifications={notifications}
             onMarkAllRead={handleMarkAllRead}
+            loading={loadingNotifications}
           />
         }
         trigger="click"

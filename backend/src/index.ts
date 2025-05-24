@@ -10,6 +10,7 @@ import { router as DocumentRoute } from "./routes/document.route";
 import { router as TeamRoute } from "./routes/team.route";
 import { router as ProjectRoute } from "./routes/project.route";
 import { router as ActivityRoute } from "./routes/actitvity.route";
+import { router as NotificationRoute } from "./routes/notification.route"; // Add this import
 import http from "http";
 import { initSocket } from "./lib/socket";
 import { router as statisticsRouter } from "./routes/statistics.route";
@@ -30,10 +31,12 @@ app.use("/api/team", TeamRoute);
 app.use("/api/project", ProjectRoute);
 app.use("/api/history", ActivityRoute);
 app.use("/api/statistics", statisticsRouter);
+app.use("/api/notification", NotificationRoute); // Register the notification route
 
+// Fix the server startup to use the HTTP server instance, not the Express app
 const server = http.createServer(app);
 initSocket(server);
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });

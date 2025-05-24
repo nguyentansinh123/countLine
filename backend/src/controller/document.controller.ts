@@ -531,8 +531,42 @@ export const downloadFile = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    res.setHeader("Content-Type", ContentType || "application/octet-stream");
+    // Determine the correct Content-Type based on file extension
+    let finalContentType = ContentType || "application/octet-stream";
+    const fileExtension = document.filename.split('.').pop()?.toLowerCase();
+    
+    // Map common extensions to MIME types
+    const mimeTypeMap: { [key: string]: string } = {
+      'pdf': 'application/pdf',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'txt': 'text/plain'
+    };
+
+    if (fileExtension && mimeTypeMap[fileExtension]) {
+      finalContentType = mimeTypeMap[fileExtension];
+    }
+
+    if (document.documentType?.includes('PDF')) {
+      finalContentType = 'application/pdf';
+    } else if (document.documentType?.includes('Word')) {
+      finalContentType = 'application/msword';
+    } else if (document.documentType?.includes('Excel')) {
+      finalContentType = 'application/vnd.ms-excel';
+    }
+
+    res.setHeader("Content-Type", finalContentType);
     res.setHeader("Content-Disposition", `inline; filename="${document.filename}"`);
+
+    console.log(`Serving file with Content-Type: ${finalContentType}`);
 
     if (typeof (Body as any).pipe === "function") {
       (Body as any).pipe(res);
