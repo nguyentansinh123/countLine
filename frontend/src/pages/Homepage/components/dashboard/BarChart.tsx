@@ -11,115 +11,89 @@ import {
   Cell,
 } from 'recharts';
 import { DocumentTypeCounts } from '../../../../types';
-import { Empty } from 'antd';
 
-interface DocumentChartProps {
+interface DocumentBarChartProps {
   data: DocumentTypeCounts | null;
 }
 
-const DocumentBarChart: React.FC<DocumentChartProps> = ({ data }) => {
-  const transformedData = data
-    ? [
-        { name: 'NDA', count: data.NDA || 0, color: '#4CAF50' },
-        { name: 'Legal', count: data['Legal Document'] || 0, color: '#F44336' },
-        { name: 'IP', count: data['I.P Agreement'] || 0, color: '#2196F3' },
-        { name: 'Executive', count: data['Executive Document'] || 0, color: '#FF9800' },
-      ]
-    : [];
+const DocumentBarChart: React.FC<DocumentBarChartProps> = ({ data }) => {
+  if (!data) return null;
 
-  const filteredData = transformedData.filter(item => item.count > 0);
-  
-  const hasData = filteredData.length > 0;
+  const colorMap: Record<string, string> = {
+    'Legal': '#4c7aff',
+    'IP': '#ff7a4c',
+    'Executive': '#7aff4c',
+  };
 
-  const displayData = filteredData;
+  const defaultColor = '#4c4cc8';
 
-  console.log("Original data from API:", data);
-  console.log("Filtered data for chart:", filteredData);
-
-  if (!hasData) {
-    return (
-      <div
-        style={{
-          height: 220,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: '8px',
-        }}
-      >
-        <Empty
-          description={
-            <span style={{ color: '#aaa' }}>No document data available</span>
-          }
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      </div>
-    );
-  }
+  const chartData = Object.entries(data).map(([name, count]) => {
+    let displayName = name;
+    if (name.toLowerCase().includes('legal')) displayName = 'Legal';
+    if (name.toLowerCase().includes('i.p') || name.toLowerCase().includes('ip agreement')) displayName = 'IP';
+    if (name.toLowerCase().includes('executive')) displayName = 'Executive';
+    
+    return {
+      originalName: name,
+      name: displayName,
+      count: count as number,
+      color: colorMap[displayName] || defaultColor,
+    };
+  });
 
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart
-        data={displayData}
+        data={chartData}
         margin={{
-          top: 20,
-          right: 30,
+          top: 5,
+          right: 20,
           left: 0,
           bottom: 5,
         }}
-        barGap={3}
-        barCategoryGap={20}
       >
-        <CartesianGrid
-          strokeDasharray="3 3"
-          stroke="#444"
-          vertical={false}
-          opacity={0.3}
-        />
+        <CartesianGrid strokeDasharray="3 3" stroke="#444" strokeOpacity={0.3} />
         <XAxis
           dataKey="name"
-          axisLine={{ stroke: '#666' }}
-          tick={{ fill: '#ccc', fontSize: 12 }}
+          tick={{ fill: 'white' }}
+          axisLine={{ stroke: 'white', strokeOpacity: 0.5 }}
+          height={50}
+          tickMargin={8}
+          interval={0}
+          textAnchor="middle"
         />
         <YAxis
-          axisLine={{ stroke: '#666' }}
-          tick={{ fill: '#ccc', fontSize: 12 }}
-          domain={[0, 'auto']}
+          tick={{ fill: 'white' }}
+          axisLine={{ stroke: 'white', strokeOpacity: 0.5 }}
         />
         <Tooltip
+          cursor={false}
           contentStyle={{
-            backgroundColor: 'rgba(5, 5, 40, 0.9)',
-            border: '1px solid rgba(100, 100, 255, 0.3)',
-            color: 'white', // This sets the default text color
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
-            padding: '10px 12px',
-          }}
-          cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
-          formatter={(value) => [
-            <span style={{ color: 'white', fontWeight: 'normal' }}>{value} documents</span>,
-            ''
-          ]}
-          labelStyle={{
+            backgroundColor: 'rgba(30, 30, 60, 0.8)',
+            border: '1px solid #4c4cc8',
             color: 'white',
-            fontWeight: 'bold',
-            fontSize: '15px',
-            borderBottom: '1px solid rgba(255,255,255,0.2)',
-            paddingBottom: '5px',
-            marginBottom: '5px',
+            borderRadius: '4px',
+            backdropFilter: 'blur(6px)',
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5)'
           }}
-          itemStyle={{ color: 'white' }} 
+          labelFormatter={(label, payload) => {
+            if (payload && payload[0]) {
+              return payload[0].payload.originalName;
+            }
+            return label;
+          }}
+          labelStyle={{ fontWeight: 'bold', color: 'white' }}
+          wrapperStyle={{ outline: 'none' }}
+          isAnimationActive={false}
         />
         <Bar
           dataKey="count"
-          name="" 
           radius={[4, 4, 0, 0]}
-          animationDuration={1500}
-          animationBegin={300}
-          minPointSize={3}
+          name="Document Count"
+          animationDuration={1200}
+          animationEasing="ease-in-out"
         >
-          {displayData.map((entry, index) => (
+          {chartData.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.color} />
           ))}
         </Bar>

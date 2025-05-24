@@ -36,16 +36,15 @@ function SideBar() {
         backgroundColor: '#151349',
         color: 'white',
         display: 'flex',
-        position: 'fixed', // Change from 'relative' to 'fixed'
-        top: 0, // Ensure it starts from the top
-        left: 0, // Ensure it's at the left edge
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
         flexDirection: 'column',
         padding: '0px 20px 0px 30px',
-        overflow: 'auto', // Allow scrolling within sidebar if content is too tall
-        zIndex: 100, // Ensure it appears above other content
+        overflow: 'auto', 
+        zIndex: 100, 
       }}
     >
-      {/* Sidebar Header */}
       <div
         style={{
           textAlign: 'end',
@@ -60,7 +59,6 @@ function SideBar() {
 
       <Divider style={{ backgroundColor: 'white' }} />
 
-      {/* Main Menu (Centered Items) */}
       <div style={{ flexGrow: 1 }}>
         <Menu
           theme="dark"
@@ -84,14 +82,13 @@ function SideBar() {
                   {item.label}
                 </Link>
               ) : (
-                item.label // Just render the label directly since it already contains a Link component
+                item.label 
               )}
             </Menu.Item>
           ))}
         </Menu>
       </div>
 
-      {/* Footer Menu (At the Bottom) */}
       <Menu
         theme="dark"
         mode="vertical"
