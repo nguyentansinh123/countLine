@@ -1,8 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Dropdown, Menu, MenuProps, message } from 'antd';
+import { Button, Dropdown, Menu, MenuProps, message, Typography, Alert } from 'antd';
 import { MoreOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import GeneralLayout from '../../components/General_Layout/GeneralLayout';
+
+const { Title } = Typography;
+
+// Add scrollbar CSS here
+const scrollBarStyles = `
+  /* Firefox */
+  .scroll-container {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
+  }
+  /* WebKit */
+  .scroll-container::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  .scroll-container::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 4px;
+    border: 2px solid #f1f1f1;
+  }
+  .scroll-container::-webkit-scrollbar-thumb:hover {
+    background-color: #555;
+  }
+`;
 
 const NDA: React.FC = () => {
   const navigate = useNavigate();
@@ -23,7 +51,6 @@ const NDA: React.FC = () => {
   >('NDA');
 
   const [messageApi, contextHolder] = message.useMessage();
-
   const [documents, setDocuments] = useState<File[]>([]);
 
   useEffect(() => {
@@ -47,7 +74,6 @@ const NDA: React.FC = () => {
         messageApi.error('Error fetching documents');
       }
     };
-    console.log()
     fetchDocuments();
   }, []);
 
@@ -66,9 +92,7 @@ const NDA: React.FC = () => {
     ),
   };
 
-  // Handle navigation to edit, send, or upload file
   const handleEdit = (fileId: string, category: string): void => {
-    console.log(`Navigating to view: /viewdocument/${category}/${fileId}`);
     const cleanCategory = category.replace(/\s+/g, '');
     navigate(`/editDocuments/${cleanCategory}/${fileId}`);
   };
@@ -79,17 +103,17 @@ const NDA: React.FC = () => {
 
   const handleSendFile = () => {
     if (selectedFile) {
-      const category = selectedFile.documentType.replace(/\s+/g, ''); // remove all spaces
+      const category = selectedFile.documentType.replace(/\s+/g, '');
       navigate(`/sendfile/${category}/${selectedFile.documentId}`);
     } else {
       messageApi.info('select a file to send');
     }
   };
 
-  function handleView(id: string, category: string): void {
-    const formattedCategory = category.replace(/\s+/g, ''); // remove all spaces
+  const handleView = (id: string, category: string): void => {
+    const formattedCategory = category.replace(/\s+/g, '');
     navigate(`/viewdocument/${formattedCategory}/${id}`);
-  }
+  };
 
   const handleDeleteFile = async (fileId: string) => {
     try {
@@ -101,138 +125,122 @@ const NDA: React.FC = () => {
         }
       );
       if (response.ok) {
-        setDocuments((prevDocs) =>
-          prevDocs.filter((doc) => doc.documentId !== fileId)
-        );
+        setDocuments((prev) => prev.filter((doc) => doc.documentId !== fileId));
         messageApi.success('Document deleted successfully');
-        console.log(`Document with ID ${fileId} deleted successfully.`);
       } else {
         messageApi.error('Failed to delete document. Ask admin for help');
-        console.error('Failed to delete document');
       }
     } catch (error) {
       console.error('Error deleting document:', error);
     }
   };
 
-  const menu = (file: File, category: string): MenuProps => {
-    return {
-      items: [
-        {
-          key: 'view',
-          label: 'View',
-          onClick: () => handleView(file.documentId, category),
-        },
-        {
-          key: 'edit',
-          label: 'Edit',
-          onClick: () => handleEdit(file.documentId, category),
-        },
-        {
-          key: 'delete',
-          label: 'Delete',
-          onClick: () => handleDeleteFile(file.documentId),
-        },
-      ],
-    };
-  };
+  const menu = (file: File, category: string): MenuProps => ({
+    items: [
+      { key: 'view', label: 'View', onClick: () => handleView(file.documentId, category) },
+      { key: 'edit', label: 'Edit', onClick: () => handleEdit(file.documentId, category) },
+      { key: 'delete', label: 'Delete', onClick: () => handleDeleteFile(file.documentId) },
+    ],
+  });
 
   const handleDocumentClick = (file: File) => {
-    // Select the document when clicked
     setSelectedFile(file);
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '20px',
-        }}
-      >
-        {contextHolder}
-        <h2 style={{ color: '00004C' }}>List of Documents:</h2>
-        <div>
-          <Button
-            type="primary"
-            style={{ marginRight: '10px' }}
-            onClick={handleUpload}
-          >
-            Upload File
-          </Button>
-          <Button type="primary" onClick={handleSendFile}>
-            Send File
-          </Button>
+    <>
+      {/* Inject scrollbar styles */}
+      <style>{scrollBarStyles}</style>
+      {contextHolder}
+      <div style={{ padding: '20px' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '20px',
+          }}
+        >
+          <Title level={2} style={{ color: '#00004C' }}>
+            List of Documents:
+          </Title>
+          <div>
+            <Button type="primary" style={{ marginRight: '10px' }} onClick={handleUpload}>
+              Upload File
+            </Button>
+            <Button type="primary" onClick={handleSendFile}>
+              Send File
+            </Button>
+          </div>
+        </div>
+
+        {/* Document Boxes */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: '20px',
+            marginTop: '20px',
+          }}
+        >
+          {Object.entries(documentCategories).map(([category, files]) => (
+            <div key={category}>
+              <h3>{category}</h3>
+              <div
+                className="scroll-container"
+                style={{
+                  border: '2px solid #151349',
+                  borderRadius: '10px',
+                  padding: '10px',
+                  height: '200px',
+                  overflowY: 'auto',
+                  backgroundColor: 'white',
+                }}
+              >
+                {files.length === 0 ? (
+                  <Alert message="No documents" type="info" showIcon />
+                ) : (
+                  files.map((file) => (
+                    <div
+                      key={file.documentId}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px',
+                        borderBottom: '1px solid #ddd',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        backgroundColor:
+                          selectedFile?.documentId === file.documentId ? '#ddd' : 'white',
+                      }}
+                      onClick={() => handleDocumentClick(file)}
+                    >
+                      {file.filename}
+                      <Dropdown
+                        menu={menu(file, category)}
+                        trigger={['click']}
+                        onOpenChange={(visible) => {
+                          if (!visible) return;
+                          document.addEventListener(
+                            'click',
+                            (e) => e.stopPropagation(),
+                            { once: true }
+                          );
+                        }}
+                      >
+                        <MoreOutlined style={{ fontSize: '20px', cursor: 'pointer' }} />
+                      </Dropdown>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Document Boxes */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '20px',
-          marginTop: '20px',
-        }}
-      >
-        {Object.entries(documentCategories).map(([category, files]) => (
-          <div key={category}>
-            <h3>{category}</h3>
-            <div
-              style={{
-                border: '2px solid #151349',
-                borderRadius: '10px',
-                padding: '10px',
-                height: '200px',
-                overflowY: 'auto',
-                backgroundColor: 'white',
-              }}
-            >
-              {files.map((file: File) => (
-                <div
-                  key={file.documentId}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '10px',
-                    borderBottom: '1px solid #ddd',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    backgroundColor:
-                      selectedFile?.documentId === file.documentId
-                        ? '#ddd'
-                        : 'white',
-                  }}
-                  onClick={() => handleDocumentClick(file)} // Select document on click
-                >
-                  {file.filename}
-                  <Dropdown
-                    menu={menu(file, category)}
-                    trigger={['click']}
-                    onOpenChange={(visible) => {
-                      if (!visible) return;
-                      document.addEventListener(
-                        'click',
-                        (e) => e.stopPropagation(),
-                        { once: true }
-                      );
-                    }} // Prevent click event from propagating to document selection
-                  >
-                    <MoreOutlined
-                      style={{ fontSize: '20px', cursor: 'pointer' }}
-                    />
-                  </Dropdown>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    </>
   );
 };
 

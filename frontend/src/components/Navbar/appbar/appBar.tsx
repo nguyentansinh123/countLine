@@ -412,7 +412,6 @@ const AppBar = () => {
 
   const handleUserClick = (user: any) => {
     setDropdownVisible(false);
-    // pick a sensible search term (name or email)
     const term = user.name || user.email || "";
     if (term) {
       navigate(`/search/${encodeURIComponent(term)}`);

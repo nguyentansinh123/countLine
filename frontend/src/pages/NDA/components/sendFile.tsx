@@ -330,7 +330,7 @@ const SendFile: React.FC = () => {
       console.log('handleNextStep - Step 2');
       console.log('Using selectedUserId:', selectedUserId);
       
-      const editedPdfBlob = await generateEditedPdfBlob(signedUrl, []);
+      const editedPdfBlob = await generateEditedPdfBlob(signedUrl, inputBoxes);
       const formData = new FormData();
       formData.append('file', editedPdfBlob);
       
