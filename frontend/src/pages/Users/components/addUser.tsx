@@ -1,88 +1,103 @@
-import { Button, Card, Input, Select, Tabs, TabsProps } from 'antd';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Card, Tabs, message, type TabsProps } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import systemUsersConst from '../const/systemUserConst';
-import clientUserConst from '../const/clientUserConst';
 import UserForm from './contents/UserForm';
 
+const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+
+// Use this interface definition instead of the previous one
+interface Privilege {
+  value: string;  // instead of id
+  label: string;  // instead of name
+  // any other properties required by UserForm's Privilege type
+}
+
 function AddUser() {
-  const privilegesData = [
-    { value: 'Admin', label: 'Admin' },
-    { value: 'Users', label: 'Users' },
-    { value: 'NDAs', label: 'NDAs' },
-    { value: 'Projects', label: 'Projects' },
-    { value: 'Teams', label: 'Teams' },
-  ];
-
   const navigate = useNavigate();
-  let currentPage = '';
-
-  const onChange = (key: string) => {
-    if (key === '1') {
-      currentPage = 'Client User';
-    } else if (key === '2') {
-      currentPage = 'System User';
-    }
-  };
-
   const [Name, setName] = useState('');
   const [mail, setMail] = useState('');
   const [type, setType] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-
-  // Update privileges to be an array of strings
   const [privileges, setPrivileges] = useState<string[]>([]);
+  
+  // Then update your state initialization:
+  const [privilegesData] = useState<Privilege[]>([
+    { value: 'view', label: 'View' },
+    { value: 'edit', label: 'Edit' },
+    { value: 'delete', label: 'Delete' },
+    { value: 'admin', label: 'Admin' }
+  ]);
 
-  const handleClientAddUser = () => {
-    if (!Name || !mail || !type) {
-      alert('Please fill in all fields');
-      return;
-    }
-    const newUserId = (
-      parseInt(clientUserConst[systemUsersConst.length - 1].userId) + 1
-    ).toString();
-    const newUser = {
-      mail: mail,
-      userId: newUserId,
-      name: Name,
-      type: type,
-      category: 'Client',
-      date: date,
-      documents: [],
-    };
-    clientUserConst.push(newUser);
-    console.log('New Client User:', newUser);
-    navigate('/users');
+  const onChange = () => {
+    setName('');
+    setMail('');
+    setType('');
+    setPrivileges([]);
   };
 
-  const handleSystemAddUser = () => {
-    if (!Name || !mail || !type || privileges.length === 0) {
-      alert('Please fill in all fields');
+  const handleClientAddUser = async () => {
+    if (!Name || !mail || !type) {
+      message.error('Please fill in all fields');
       return;
     }
-    const newUserId = (
-      parseInt(systemUsersConst[systemUsersConst.length - 1].userId) + 1
-    ).toString();
-    const newUser = {
-      mail: mail,
-      userId: newUserId,
-      name: Name,
-      type: type,
-      category: 'System',
-      date: date,
-      privileges: privileges.map((privilege) => ({ name: privilege })),
-    };
-    systemUsersConst.push(newUser);
+    try {
+      const res = await fetch(`${API_URL}/api/auth/admin/create-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: Name,
+          email: mail,
+          role: 'client',
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        message.error(result.message || 'Failed to create client user');
+        return;
+      }
+      message.success('Client user created successfully');
+      navigate('/users');
+    } catch (err) {
+      console.error(err);
+      message.error('Error creating client user');
+    }
+  };
 
-    console.log('New System User:', newUser);
-    navigate('/users');
+  const handleSystemAddUser = async () => {
+    if (!Name || !mail || !type || privileges.length === 0) {
+      message.error('Please fill in all fields');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/auth/admin/create-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: Name,
+          email: mail,
+          role: 'system',
+          privileges,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        message.error(result.message || 'Failed to create system user');
+        return;
+      }
+      message.success('System user created successfully');
+      navigate('/users');
+    } catch (err) {
+      console.error(err);
+      message.error('Error creating system user');
+    }
   };
 
   const items: TabsProps['items'] = [
     {
       key: '1',
       label: 'Client User',
-      children: (
+      children:
         <UserForm
           name={Name}
           mail={mail}
@@ -94,13 +109,12 @@ function AddUser() {
           onTypeChange={(value) => setType(value)}
           onSave={handleClientAddUser}
           onCancel={() => navigate('/users')}
-        />
-      ),
+        />,
     },
     {
       key: '2',
       label: 'System User',
-      children: (
+      children:
         <UserForm
           name={Name}
           mail={mail}
@@ -112,11 +126,10 @@ function AddUser() {
           onNameChange={(value) => setName(value)}
           onMailChange={(value) => setMail(value)}
           onTypeChange={(value) => setType(value)}
-          onPrivilegesChange={(value) => setPrivileges(value)} // Pass the updated privileges array
+          onPrivilegesChange={(value) => setPrivileges(value)}
           onSave={handleSystemAddUser}
           onCancel={() => navigate('/users')}
-        />
-      ),
+        />,
     },
   ];
 
