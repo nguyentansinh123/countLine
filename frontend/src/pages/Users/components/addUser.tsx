@@ -5,11 +5,11 @@ import UserForm from './contents/UserForm';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
-// Use this interface definition instead of the previous one
+
 interface Privilege {
-  value: string;  // instead of id
-  label: string;  // instead of name
-  // any other properties required by UserForm's Privilege type
+  value: string;  
+  label: string;  
+
 }
 
 function AddUser() {
@@ -19,7 +19,7 @@ function AddUser() {
   const [type, setType] = useState('');
   const [privileges, setPrivileges] = useState<string[]>([]);
   
-  // Then update your state initialization:
+ 
   const [privilegesData] = useState<Privilege[]>([
     { value: 'view', label: 'View' },
     { value: 'edit', label: 'Edit' },

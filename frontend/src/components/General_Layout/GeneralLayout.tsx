@@ -2,6 +2,7 @@ import { PlusOutlined } from '@ant-design/icons'
 import { Button, Card } from 'antd'
 import React, { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import LegalChatbot from '../LegalChatbot/LegalChatbot';
 
 interface GeneralLayoutProps {
   children: ReactNode;
@@ -21,7 +22,7 @@ function GeneralLayout(props: GeneralLayoutProps) {
   };
 
   return (
-    <>
+    <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', margin: 1 }}>
         <h1 style={{ color: '#00004C', margin: '0px 40px 10px 10px' }}>
           {props.title}
@@ -55,7 +56,8 @@ function GeneralLayout(props: GeneralLayoutProps) {
       >
         <div>{props.children}</div>
       </Card>
-    </>
+      <LegalChatbot />
+    </div>
   );
 }
 
