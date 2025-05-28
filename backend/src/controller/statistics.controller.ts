@@ -230,7 +230,6 @@ export const getDocumentInsights = async (req: Request, res: Response) => {
       }
     });
     
-    // If we don't have real size data, generate realistic sizes
     if (!hasSizeData) {
       // Generate random sizes between 100KB and 5MB for each document
       documents.forEach(() => {

@@ -2,10 +2,49 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GeneralLayout from '../../components/General_Layout/GeneralLayout';
 import ListComponents from '../../components/listComponents/listComponents';
-import { Button, Dropdown, MenuProps, message, Modal, Select, Spin } from 'antd';
+import { 
+  Button, 
+  Dropdown, 
+  MenuProps, 
+  message, 
+  Modal, 
+  Select, 
+  Spin,
+  Card,
+  Table,
+  Tag,
+  Space,
+  Typography,
+  Row,
+  Col,
+  Divider,
+  Avatar,
+  Menu,
+  Tooltip
+} from 'antd';
+import { 
+  ProjectOutlined, 
+  TeamOutlined, 
+  CalendarOutlined, 
+  CheckCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  UserAddOutlined,
+  ExclamationCircleOutlined,
+  ReloadOutlined,
+  ClockCircleOutlined,
+  PauseCircleOutlined,
+  StopOutlined,
+  MoreOutlined,
+  FileOutlined,
+  FolderOutlined,
+  SettingOutlined
+} from '@ant-design/icons';
 import axios from 'axios';
 
 const { Option } = Select;
+const { Title, Text } = Typography;
+const { confirm } = Modal;
 
 interface Project {
   projectId: string | { S: string } | any; 
@@ -339,7 +378,8 @@ function Projects() {
       items: [
         {
           key: 'edit',
-          label: 'Edit',
+          label: 'Edit Project',
+          icon: <EditOutlined />,
           onClick: () => {
             console.log("Complete item object:", item);
             console.log("Project ID type:", typeof item.projectId);
@@ -385,6 +425,7 @@ function Projects() {
         {
           key: 'assignTeam',
           label: 'Assign Team',
+          icon: <UserAddOutlined />,
           onClick: () => {
             console.log("Assign team to project:", item);
             let id;
@@ -401,7 +442,9 @@ function Projects() {
         },
         {
           key: 'delete',
-          label: 'Delete',
+          label: 'Delete Project',
+          icon: <DeleteOutlined style={{ color: '#ff4d4f' }} />,
+          danger: true,
           onClick: () => {
             let id;
             if (typeof item.projectId === 'object' && item.projectId !== null && 'S' in item.projectId) {
@@ -412,95 +455,577 @@ function Projects() {
               console.log("Using regular ID:", id);
             }
 
-            if (confirm(`Are you sure you want to delete this project? This action cannot be undone.`)) {
-              console.log("User confirmed deletion, calling handleDelete with ID:", id);
-              handleDelete(id);
-            } else {
-              console.log("User cancelled deletion");
-            }
+            showDeleteConfirm(id, item.project);
           },
         },
       ],
     };
   };
 
+  const showDeleteConfirm = (id: string, projectName: string) => {
+    confirm({
+      title: 'Delete Project',
+      icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
+      content: (
+        <div>
+          <p>Are you sure you want to delete <strong>{projectName}</strong>?</p>
+          <p style={{ color: '#ff4d4f' }}>This action cannot be undone.</p>
+        </div>
+      ),
+      okText: 'Delete',
+      okType: 'danger',
+      okButtonProps: { icon: <DeleteOutlined /> },
+      cancelText: 'Cancel',
+      onOk() {
+        console.log("User confirmed deletion, calling handleDelete with ID:", id);
+        handleDelete(id);
+      },
+    });
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch(status.toLowerCase()) {
+      case 'active':
+      case 'ongoing':
+        return <CheckCircleOutlined style={{ color: '#ffffff' }} />;
+      case 'completed':
+        return <FileOutlined style={{ color: '#ffffff' }} />;
+      case 'on hold':
+        return <PauseCircleOutlined style={{ color: '#ffffff' }} />;
+      case 'cancelled':
+        return <StopOutlined style={{ color: '#ffffff' }} />;
+      case 'planning':
+        return <ClockCircleOutlined style={{ color: '#ffffff' }} />;
+      default:
+        return <FolderOutlined style={{ color: '#ffffff' }} />;
+    }
+  };
+
+  // Get status-specific background color for avatars
+  const getStatusColor = (status: string) => {
+    switch(status.toLowerCase()) {
+      case 'active':
+      case 'ongoing':
+        return '#52c41a'; // Green
+      case 'completed':
+        return '#1890ff'; // Blue
+      case 'on hold':
+        return '#faad14'; // Orange/Yellow
+      case 'cancelled':
+        return '#ff4d4f'; // Red
+      case 'planning':
+        return '#722ed1'; // Purple
+      default:
+        return '#8c8c8c'; // Gray
+    }
+  };
+
+  const getStatusTag = (status: string) => {
+    let color = '';
+    let icon = null;
+    
+    switch(status.toLowerCase()) {
+      case 'active':
+      case 'ongoing':
+        color = 'green';
+        icon = <CheckCircleOutlined />;
+        break;
+      case 'completed':
+        color = 'blue';
+        icon = <FileOutlined />;
+        break;
+      case 'on hold':
+        color = 'orange';
+        icon = <PauseCircleOutlined />;
+        break;
+      case 'cancelled':
+        color = 'red';
+        icon = <StopOutlined />;
+        break;
+      case 'planning':
+        color = 'purple';
+        icon = <ClockCircleOutlined />;
+        break;
+      default:
+        color = 'default';
+        icon = <FolderOutlined />;
+    }
+    
+    return (
+      <Tag color={color} icon={icon}>
+        {status}
+      </Tag>
+    );
+  };
+
+  const transformProjectsForDisplay = () => {
+    return projects.map(project => ({
+      ...project,
+      projectDisplay: (
+        <Space>
+          <Avatar 
+            style={{ backgroundColor: getStatusColor(project.status) }}
+            icon={getStatusIcon(project.status)}
+          />
+          <Text strong>{project.project}</Text>
+        </Space>
+      ),
+      teamDisplay: (
+        <Space>
+          <TeamOutlined style={{ color: '#1890ff' }} />
+          <Text>{project.team}</Text>
+        </Space>
+      ),
+      dateDisplay: (
+        <Space>
+          <CalendarOutlined style={{ color: '#52c41a' }} />
+          <Text>{project.date}</Text>
+        </Space>
+      ),
+      statusDisplay: getStatusTag(project.status)
+    }));
+  };
+  
+  // Simple function to generate a color based on string
+  const colorFromString = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2'];
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  };
+
   const renderContent = () => {
     if (loading) {
       return (
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <Spin size="large" />
-          <p>Loading projects...</p>
-        </div>
+        <Card className="loading-card">
+          <div style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '60px 20px',
+          }}>
+            <Spin size="large" />
+            <Text style={{ marginTop: '20px', fontSize: '16px' }}>Loading projects...</Text>
+          </div>
+        </Card>
       );
     }
 
     if (error) {
       return (
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          <p style={{ color: 'red' }}>{error}</p>
-          <button 
-            onClick={fetchProjects}
-            style={{ padding: '5px 10px', marginTop: '10px' }}
-          >
-            Try Again
-          </button>
-        </div>
+        <Card className="error-card" style={{ borderLeft: '5px solid #ff4d4f' }}>
+          <div style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            padding: '30px 20px',
+          }}>
+            <ExclamationCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f', marginBottom: '16px' }} />
+            <Title level={4} style={{ color: '#ff4d4f', marginBottom: '16px' }}>Error Loading Projects</Title>
+            <Text style={{ marginBottom: '24px' }}>{error}</Text>
+            <Button 
+              type="primary" 
+              icon={<ReloadOutlined />}
+              onClick={fetchProjects}
+              size="large"
+            >
+              Try Again
+            </Button>
+          </div>
+        </Card>
       );
     }
 
+    if (projects.length === 0) {
+      return (
+        <Card>
+          <div style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            padding: '40px 20px',
+            background: '#f8f8f8',
+            borderRadius: '8px',
+          }}>
+            <ProjectOutlined style={{ fontSize: '64px', color: '#d9d9d9', marginBottom: '16px' }} />
+            <Title level={3} style={{ marginBottom: '16px' }}>No Projects Found</Title>
+            <Text style={{ marginBottom: '24px', color: '#8c8c8c' }}>
+              Get started by creating your first project
+            </Text>
+            <Button 
+              type="primary" 
+              size="large"
+              icon={<ProjectOutlined />}
+              onClick={() => navigate('/addprojects')}
+            >
+              Create New Project
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+
+    const transformedProjects = transformProjectsForDisplay();
+
     return (
-      <ListComponents 
-        column={['Project', 'Team', 'Date', 'Status']} 
-        data={projects} 
-        menu={menuItems}
-      />
+      <Card 
+        className="projects-card"
+        bordered={false}
+        style={{
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          borderRadius: '8px',
+        }}
+      >
+        <Table
+          dataSource={transformedProjects}
+          rowKey={(record) => {
+            if (typeof record.projectId === 'object' && record.projectId?.S) {
+              return record.projectId.S;
+            }
+            return String(record.projectId);
+          }}
+          pagination={{ pageSize: 10 }}
+          columns={[
+            {
+              title: (
+                <Space>
+                  <ProjectOutlined />
+                  <Text strong>Project</Text>
+                </Space>
+              ),
+              dataIndex: 'projectDisplay',
+              key: 'project',
+              render: (_, record) => record.projectDisplay,
+            },
+            {
+              title: (
+                <Space>
+                  <TeamOutlined />
+                  <Text strong>Team</Text>
+                </Space>
+              ),
+              dataIndex: 'teamDisplay',
+              key: 'team',
+              render: (_, record) => record.teamDisplay,
+            },
+            {
+              title: (
+                <Space>
+                  <CalendarOutlined />
+                  <Text strong>Date</Text>
+                </Space>
+              ),
+              dataIndex: 'dateDisplay',
+              key: 'date',
+              render: (_, record) => record.dateDisplay,
+            },
+            {
+              title: <Text strong>Status</Text>,
+              dataIndex: 'statusDisplay',
+              key: 'status',
+              render: (_, record) => record.statusDisplay,
+            },
+            {
+              title: <Text strong>Actions</Text>,
+              key: 'action',
+              width: 80,
+              render: (_, record) => {
+                // Get ID for actions
+                let id;
+                if (typeof record.projectId === 'object' && record.projectId?.S) {
+                  id = record.projectId.S;
+                } else {
+                  id = String(record.projectId);
+                }
+
+                const items = [
+                  {
+                    key: 'edit',
+                    icon: <EditOutlined />,
+                    label: 'Edit Project',
+                    onClick: () => navigate(`/editproject/${id}`)
+                  },
+                  {
+                    key: 'assign',
+                    icon: <UserAddOutlined />,
+                    label: 'Assign Team',
+                    onClick: () => {
+                      setSelectedProject(id);
+                      fetchTeams();
+                      setTeamModalVisible(true);
+                    }
+                  },
+                  {
+                    type: 'divider' as const,
+                  },
+                  {
+                    key: 'delete',
+                    icon: <DeleteOutlined />,
+                    label: 'Delete Project',
+                    danger: true,
+                    onClick: () => showDeleteConfirm(id, record.project)
+                  },
+                ];
+
+                return (
+                  <Dropdown 
+                    menu={{ items }} 
+                    trigger={['click']}
+                    placement="bottomRight"
+                  >
+                    <Button 
+                      type="text" 
+                      icon={<SettingOutlined style={{ fontSize: '18px' }} />} 
+                      className="action-button"
+                      style={{
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.3s'
+                      }}
+                    />
+                  </Dropdown>
+                );
+              },
+            },
+          ]}
+        />
+      </Card>
     );
   };
 
   const teamAssignmentModal = (
     <Modal
-      title="Assign Team to Project"
+      title={
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '10px',
+          borderBottom: '1px solid #f0f0f0',
+          paddingBottom: '10px',
+        }}>
+          <UserAddOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
+          <Title level={4} style={{ margin: 0 }}>Assign Team to Project</Title>
+        </div>
+      }
       open={teamModalVisible}
       onCancel={() => {
         setTeamModalVisible(false);
         setSelectedTeam(null);
       }}
       onOk={assignTeamToProject}
-      okText="Assign"
+      okText="Assign Team"
+      okButtonProps={{ 
+        icon: <CheckCircleOutlined />,
+        style: { backgroundColor: '#52c41a', borderColor: '#52c41a' }
+      }}
+      cancelButtonProps={{ icon: <DeleteOutlined /> }}
       confirmLoading={isAssigningTeam}
+      width={500}
+      centered
+      bodyStyle={{ padding: '24px' }}
     >
+      <div style={{ 
+        backgroundColor: '#f9f9f9', 
+        padding: '16px', 
+        borderRadius: '8px',
+        marginBottom: '20px'
+      }}>
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text strong>Selected Project:</Text>
+          {selectedProject && (
+            <Text>{projects.find(p => {
+              const pId = typeof p.projectId === 'object' && p.projectId?.S ? 
+                        p.projectId.S : String(p.projectId);
+              return pId === selectedProject;
+            })?.project || 'Loading...'}</Text>
+          )}
+        </Space>
+      </div>
+
+      <Divider />
+
       <div style={{ marginBottom: '20px' }}>
-        <p>Select a team to assign to this project:</p>
-        <Select
-          style={{ width: '100%' }}
-          placeholder="Select a team"
-          loading={teamLoading}
-          onChange={(value) => setSelectedTeam(value)}
-          value={selectedTeam}
-        >
-          {teams.map(team => (
-            <Option key={team.teamId} value={team.teamId}>{team.teamName}</Option>
-          ))}
-        </Select>
+        <Text strong style={{ display: 'block', marginBottom: '8px' }}>
+          Select a team to assign:
+        </Text>
+        {teamLoading ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <Spin />
+            <div style={{ marginTop: '10px' }}>Loading teams...</div>
+          </div>
+        ) : teams.length === 0 ? (
+          <div style={{ 
+            padding: '20px', 
+            textAlign: 'center',
+            border: '1px dashed #d9d9d9',
+            borderRadius: '8px',
+            backgroundColor: '#fafafa'
+          }}>
+            <TeamOutlined style={{ fontSize: '24px', color: '#d9d9d9' }} />
+            <div style={{ marginTop: '10px', color: '#8c8c8c' }}>No teams available</div>
+            <Button 
+              type="link" 
+              onClick={() => navigate('/addteam')}
+              style={{ marginTop: '10px' }}
+            >
+              Create a team first
+            </Button>
+          </div>
+        ) : (
+          <Select
+            style={{ width: '100%' }}
+            placeholder="Select a team"
+            onChange={(value) => setSelectedTeam(value)}
+            value={selectedTeam}
+            size="large"
+            showSearch
+            optionFilterProp="children"
+            bordered
+            dropdownStyle={{ maxHeight: '400px' }}
+          >
+            {teams.map(team => (
+              <Option key={team.teamId} value={team.teamId}>
+                <Space>
+                  <Avatar 
+                    size="small" 
+                    icon={<TeamOutlined />} 
+                    style={{ backgroundColor: colorFromString(team.teamName) }}
+                  />
+                  {team.teamName}
+                </Space>
+              </Option>
+            ))}
+          </Select>
+        )}
       </div>
     </Modal>
   );
 
   return (
     <React.Fragment>
-      <ErrorBoundary fallback={<div>Something went wrong. Please refresh the page.</div>}>
+      <ErrorBoundary fallback={
+        <Card style={{ margin: '40px auto', maxWidth: '600px', textAlign: 'center' }}>
+          <ExclamationCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f', marginBottom: '16px' }} />
+          <Title level={3}>Oops! Something went wrong</Title>
+          <Text style={{ display: 'block', marginBottom: '24px' }}>
+            We encountered an error while loading the projects page.
+          </Text>
+          <Button 
+            type="primary" 
+            icon={<ReloadOutlined />}
+            onClick={() => window.location.reload()}
+            size="large"
+          >
+            Refresh Page
+          </Button>
+        </Card>
+      }>
         <GeneralLayout 
-          title="Projects" 
-          buttonLabel="Add Projects" 
+          title={
+            <Space size="middle">
+              <span>Project Management</span>
+            </Space>
+          }
+          buttonLabel="Add New Project" 
           navigateLocation="/addprojects"
         >
-          {renderContent()}
-          {teamAssignmentModal}
+          <div style={{ padding: '0 0 24px' }}>
+            <Row gutter={[0, 24]}>
+              <Col span={24}>
+                <Card 
+                  className="stats-card"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+                    color: 'white',
+                    borderRadius: '8px',
+                    marginBottom: '24px'
+                  }}
+                >
+                  <Row gutter={16}>
+                    <Col span={8}>
+                      <Card 
+                        bordered={false} 
+                        style={{ 
+                          background: 'rgba(255, 255, 255, 0.2)',
+                          borderRadius: '4px',
+                          color: 'white'
+                        }}
+                      >
+                        <Statistic 
+                          title={<Text style={{ color: 'white' }}>Total Projects</Text>}
+                          value={projects.length}
+                          prefix={<ProjectOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col span={8}>
+                      <Card 
+                        bordered={false} 
+                        style={{ 
+                          background: 'rgba(255, 255, 255, 0.2)',
+                          borderRadius: '4px',
+                          color: 'white'
+                        }}
+                      >
+                        <Statistic 
+                          title={<Text style={{ color: 'white' }}>Active Projects</Text>}
+                          value={projects.filter(p => 
+                            p.status.toLowerCase() === 'active' || 
+                            p.status.toLowerCase() === 'ongoing'
+                          ).length}
+                          prefix={<CheckCircleOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                    <Col span={8}>
+                      <Card 
+                        bordered={false} 
+                        style={{ 
+                          background: 'rgba(255, 255, 255, 0.2)',
+                          borderRadius: '4px',
+                          color: 'white'
+                        }}
+                      >
+                        <Statistic 
+                          title={<Text style={{ color: 'white' }}>Teams Assigned</Text>}
+                          value={projects.filter(p => p.team !== 'No team assigned').length}
+                          prefix={<TeamOutlined />}
+                        />
+                      </Card>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+              <Col span={24}>
+                {renderContent()}
+              </Col>
+            </Row>
+            {teamAssignmentModal}
+          </div>
         </GeneralLayout>
       </ErrorBoundary>
     </React.Fragment>
   );
 }
+
+// Add Statistic component since it's used above
+const Statistic = ({ title, value, prefix }: { title: React.ReactNode, value: number, prefix: React.ReactNode }) => {
+  return (
+    <div>
+      <div style={{ marginBottom: '8px' }}>{title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {prefix}
+        <span style={{ fontSize: '24px', fontWeight: 'bold' }}>{value}</span>
+      </div>
+    </div>
+  );
+};
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback: React.ReactNode }, 
