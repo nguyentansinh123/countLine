@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import GeneralLayout from '../../components/General_Layout/GeneralLayout';
 import ListComponents from '../../components/listComponents/listComponents';
-import { 
-  Button, 
-  Dropdown, 
-  MenuProps, 
-  message, 
-  Modal, 
-  Select, 
+import {
+  Button,
+  Dropdown,
+  MenuProps,
+  message,
+  Modal,
+  Select,
   Spin,
   Card,
   Table,
@@ -20,12 +20,12 @@ import {
   Divider,
   Avatar,
   Menu,
-  Tooltip
+  Tooltip,
 } from 'antd';
-import { 
-  ProjectOutlined, 
-  TeamOutlined, 
-  CalendarOutlined, 
+import {
+  ProjectOutlined,
+  TeamOutlined,
+  CalendarOutlined,
   CheckCircleOutlined,
   DeleteOutlined,
   EditOutlined,
@@ -38,16 +38,17 @@ import {
   MoreOutlined,
   FileOutlined,
   FolderOutlined,
-  SettingOutlined
+  SettingOutlined,
 } from '@ant-design/icons';
 import axios from 'axios';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
 const { confirm } = Modal;
+import './projects.css';
 
 interface Project {
-  projectId: string | { S: string } | any; 
+  projectId: string | { S: string } | any;
   project: string;
   team: string;
   date: string;
@@ -76,7 +77,7 @@ function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [selectedProject, setSelectedProject] = useState<string | null>(null);
@@ -84,14 +85,18 @@ function Projects() {
   const [teamModalVisible, setTeamModalVisible] = useState<boolean>(false);
   const [teamLoading, setTeamLoading] = useState<boolean>(false);
 
+  const [showModal, setShowModal] = useState(false);
+  const [deleteProjectId, setDeleteProjectId] = useState<string>('');
+  const [deleteProjectName, setDeleteProjectName] = useState<string>('');
+
   const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
   useEffect(() => {
     try {
       fetchProjects();
     } catch (err) {
-      console.error("Error in fetchProjects useEffect:", err);
-      setError("An unexpected error occurred");
+      console.error('Error in fetchProjects useEffect:', err);
+      setError('An unexpected error occurred');
       setLoading(false);
     }
   }, []);
@@ -100,69 +105,86 @@ function Projects() {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await axios.get<ProjectsApiResponse>(`${API_URL}/api/project/GetallProject`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        withCredentials: true,
-        params: { _t: new Date().getTime() }
-      });
+      const response = await axios.get<ProjectsApiResponse>(
+        `${API_URL}/api/project/GetallProject`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          withCredentials: true,
+          params: { _t: new Date().getTime() },
+        }
+      );
 
       if (response.data.success) {
-        console.log("Projects data received:", response.data);
-        
-        const formattedProjects = response.data.data.map(project => {
+        console.log('Projects data received:', response.data);
+
+        const formattedProjects = response.data.data.map((project) => {
           let teamNames = 'No team assigned';
-          
+
           const projectTeams = project.teams as any;
-          if (projectTeams && 'L' in projectTeams && Array.isArray(projectTeams.L)) {
+          if (
+            projectTeams &&
+            'L' in projectTeams &&
+            Array.isArray(projectTeams.L)
+          ) {
             const teamIds = projectTeams.L.map((team: any) => {
               if (team && 'S' in team) {
                 return team.S;
               }
               return '';
-            }).filter((id:any) => id !== '');
-            
+            }).filter((id: any) => id !== '');
+
             if (teamIds.length > 0) {
               fetchTeamNames(teamIds)
-                .then(names => {
+                .then((names) => {
                   if (names.length > 0) {
-                    setProjects(prev => prev.map(p => {
-                      // Type assertions here as well
-                      const pId = typeof p.projectId === 'object' && p.projectId ? 
-                                (p.projectId as any).S || String(p.projectId) : 
-                                String(p.projectId);
-                      const projectIdStr = typeof project.projectId === 'object' && project.projectId ? 
-                                          (project.projectId as any).S || String(project.projectId) : 
-                                          String(project.projectId);
-                      
-                      if (pId === projectIdStr) {
-                        return { ...p, team: names.join(', ') };
-                      }
-                      return p;
-                    }));
+                    setProjects((prev) =>
+                      prev.map((p) => {
+                        const pId =
+                          typeof p.projectId === 'object' && p.projectId
+                            ? (p.projectId as any).S || String(p.projectId)
+                            : String(p.projectId);
+                        const projectIdStr =
+                          typeof project.projectId === 'object' &&
+                          project.projectId
+                            ? (project.projectId as any).S ||
+                              String(project.projectId)
+                            : String(project.projectId);
+
+                        if (pId === projectIdStr) {
+                          return { ...p, team: names.join(', ') };
+                        }
+                        return p;
+                      })
+                    );
                   }
                 })
-                .catch(err => console.error("Error fetching team names:", err));
-              
+                .catch((err) =>
+                  console.error('Error fetching team names:', err)
+                );
+
               teamNames = teamIds.join(', ');
             }
           }
-          
-          const projectName = (project.projectName as any)?.S || project.projectName;
-          const projectStart = (project.projectStart as any)?.S || project.projectStart;
-          const projectStatus = (project.status as any)?.S || project.status || 'N/A';
-          
+
+          const projectName =
+            (project.projectName as any)?.S || project.projectName;
+          const projectStart =
+            (project.projectStart as any)?.S || project.projectStart;
+          const projectStatus =
+            (project.status as any)?.S || project.status || 'N/A';
+
           return {
             projectId: project.projectId,
             project: projectName,
             team: teamNames,
             date: projectStart,
-            status: projectStatus
+            status: projectStatus,
           };
         });
-        
-        console.log("Formatted projects:", formattedProjects);
+
+        console.log('Formatted projects:', formattedProjects);
         setProjects(formattedProjects);
       } else {
         message.error('Failed to fetch projects');
@@ -181,31 +203,33 @@ function Projects() {
     try {
       const token = localStorage.getItem('token');
       const results: string[] = [];
-      
-      await Promise.all(teamIds.map(async (teamId) => {
-        try {
-          const response = await axios.get(`${API_URL}/api/team/${teamId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-            withCredentials: true
-          });
-          
-          if (response.data.success && response.data.data) {
-            const teamData = response.data.data as any;
-            const teamName = teamData.teamName?.S || teamData.teamName;
-            if (teamName) {
-              results.push(teamName);
+
+      await Promise.all(
+        teamIds.map(async (teamId) => {
+          try {
+            const response = await axios.get(`${API_URL}/api/team/${teamId}`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              withCredentials: true,
+            });
+
+            if (response.data.success && response.data.data) {
+              const teamData = response.data.data as any;
+              const teamName = teamData.teamName?.S || teamData.teamName;
+              if (teamName) {
+                results.push(teamName);
+              }
             }
+          } catch (err) {
+            console.error(`Error fetching team with ID ${teamId}:`, err);
           }
-        } catch (err) {
-          console.error(`Error fetching team with ID ${teamId}:`, err);
-        }
-      }));
-      
+        })
+      );
+
       return results;
     } catch (err) {
-      console.error("Error in fetchTeamNames:", err);
+      console.error('Error in fetchTeamNames:', err);
       return [];
     }
   };
@@ -218,15 +242,17 @@ function Projects() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        withCredentials: true
+        withCredentials: true,
       });
 
       if (response.data.success) {
-        console.log("Teams data received:", response.data);
-        setTeams(response.data.data.map((team: any) => ({
-          teamId: team.teamId,
-          teamName: team.teamName
-        })));
+        console.log('Teams data received:', response.data);
+        setTeams(
+          response.data.data.map((team: any) => ({
+            teamId: team.teamId,
+            teamName: team.teamName,
+          }))
+        );
       } else {
         message.error('Failed to fetch teams');
       }
@@ -247,52 +273,59 @@ function Projects() {
     try {
       setIsAssigningTeam(true);
       const token = localStorage.getItem('token');
-      
-      const response = await axios.post(`${API_URL}/api/project/addTeamToProject`, 
+
+      const response = await axios.post(
+        `${API_URL}/api/project/addTeamToProject`,
         {
           projectId: selectedProject,
-          teamId: selectedTeam
-        }, 
+          teamId: selectedTeam,
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          withCredentials: true
+          withCredentials: true,
         }
       );
 
       if (response.data.success) {
         message.success('Team assigned to project successfully');
-        
-        // Get the name of the assigned team
-        const assignedTeamName = teams.find(team => team.teamId === selectedTeam)?.teamName;
-        
-        setProjects(prevProjects => prevProjects.map(project => {
-          const projectIdStr = typeof project.projectId === 'object' && project.projectId?.S ? 
-                               project.projectId.S : String(project.projectId);
-          
-          if (projectIdStr === selectedProject && assignedTeamName) {
-            return {
-              ...project,
-              team: project.team === 'No team assigned' ? 
-                    assignedTeamName : 
-                    `${project.team}, ${assignedTeamName}`
-            };
-          }
-          return project;
-        }));
-        
+
+        const assignedTeamName = teams.find(
+          (team) => team.teamId === selectedTeam
+        )?.teamName;
+
+        setProjects((prevProjects) =>
+          prevProjects.map((project) => {
+            const projectIdStr =
+              typeof project.projectId === 'object' && project.projectId?.S
+                ? project.projectId.S
+                : String(project.projectId);
+
+            if (projectIdStr === selectedProject && assignedTeamName) {
+              return {
+                ...project,
+                team:
+                  project.team === 'No team assigned'
+                    ? assignedTeamName
+                    : `${project.team}, ${assignedTeamName}`,
+              };
+            }
+            return project;
+          })
+        );
+
         setTeamModalVisible(false);
         setSelectedTeam(null);
-        
+
         setTimeout(fetchProjects, 1000);
       } else {
         message.error(response.data.message || 'Failed to assign team');
       }
     } catch (err: any) {
       console.error('Error assigning team:', err);
-      
+
       if (err.response) {
         if (err.response.status === 409) {
           message.warning('This team is already assigned to the project');
@@ -307,69 +340,103 @@ function Projects() {
     }
   };
 
-  const handleDelete = async (projectId: string) => {
-    console.log("*** handleDelete function called with ID:", projectId);
+  const handleDelete = async (projectId: string): Promise<void> => {
+    console.log('*** handleDelete function called with ID:', projectId);
 
     try {
-      console.log("Attempting to delete project with ID:", projectId);
-      
-      console.log(`Sending delete request to: ${API_URL}/api/project/${projectId}`);
-      
+      console.log('Attempting to delete project with ID:', projectId);
+
+      const token = localStorage.getItem('token');
+      console.log(
+        `Sending delete request to: ${API_URL}/api/project/${projectId}`
+      );
+
       const loadingMessage = message.loading('Deleting project...', 0);
-      
-      const response = await axios.delete(`${API_URL}/api/project/${projectId}`, {
-        withCredentials: true 
-      });
+
+      const response = await axios.delete(
+        `${API_URL}/api/project/${projectId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          withCredentials: true,
+        }
+      );
 
       loadingMessage();
-      
-      console.log("Delete response:", response.data);
+
+      console.log('Delete response:', response.data);
 
       if (response.data.success) {
         message.success('Project deleted successfully');
-        
-        setProjects(prevProjects => {
-          const filtered = prevProjects.filter(project => {
-            if (typeof project.projectId === 'object' && project.projectId !== null) {
+
+        setProjects((prevProjects) => {
+          const filtered = prevProjects.filter((project) => {
+            if (
+              typeof project.projectId === 'object' &&
+              project.projectId !== null
+            ) {
               if ('S' in project.projectId) {
-                console.log("Comparing DynamoDB ID", project.projectId.S, "with", projectId);
+                console.log(
+                  'Comparing DynamoDB ID',
+                  project.projectId.S,
+                  'with',
+                  projectId
+                );
                 return project.projectId.S !== projectId;
               }
             }
-            console.log("Comparing regular ID", String(project.projectId), "with", projectId);
+            console.log(
+              'Comparing regular ID',
+              String(project.projectId),
+              'with',
+              projectId
+            );
             return String(project.projectId) !== projectId;
           });
-          
-          console.log(`Filtered from ${prevProjects.length} to ${filtered.length} projects`);
+
+          console.log(
+            `Filtered from ${prevProjects.length} to ${filtered.length} projects`
+          );
           return filtered;
         });
-        
+
         setTimeout(() => {
-          console.log("Refreshing project list after deletion");
+          console.log('Refreshing project list after deletion');
           fetchProjects();
         }, 1000);
       } else {
         message.error(response.data.message || 'Failed to delete project');
+        throw new Error(response.data.message || 'Failed to delete project');
       }
     } catch (err: any) {
       console.error('Error deleting project:', err);
-      
+
       if (err.response) {
-        console.error("Server responded with:", err.response.status, err.response.data);
-        if (err.response.status === 403) {
+        console.error(
+          'Server responded with:',
+          err.response.status,
+          err.response.data
+        );
+        if (err.response.status === 401) {
+          message.error('Authentication failed. Please login again.');
+        } else if (err.response.status === 403) {
           message.error("You don't have permission to delete this project");
         } else if (err.response.status === 404) {
-          message.error("Project not found");
+          message.error('Project not found');
           fetchProjects();
         } else {
-          message.error(err.response.data?.message || 'Failed to delete project');
+          message.error(
+            err.response.data?.message || 'Failed to delete project'
+          );
         }
       } else if (err.request) {
-        console.error("No response received from server");
+        console.error('No response received from server');
         message.error('Server did not respond. Check your network connection.');
       } else {
         message.error('An unexpected error occurred');
       }
+      throw err;
     }
   };
 
@@ -381,44 +448,47 @@ function Projects() {
           label: 'Edit Project',
           icon: <EditOutlined />,
           onClick: () => {
-            console.log("Complete item object:", item);
-            console.log("Project ID type:", typeof item.projectId);
-            console.log("Project ID value:", item.projectId);
-            
+            console.log('Complete item object:', item);
+            console.log('Project ID type:', typeof item.projectId);
+            console.log('Project ID value:', item.projectId);
+
             let id;
-            
+
             if (item.projectId === null || item.projectId === undefined) {
-              console.error("Project ID is null or undefined");
-              message.error("Cannot edit project: Invalid project ID");
+              console.error('Project ID is null or undefined');
+              message.error('Cannot edit project: Invalid project ID');
               return;
             }
             if (typeof item.projectId === 'object') {
               const projectIdObj = item.projectId as { S?: string };
-              
+
               if (projectIdObj.S) {
                 id = projectIdObj.S;
-                console.log("Extracted ID from DynamoDB format:", id);
+                console.log('Extracted ID from DynamoDB format:', id);
               } else {
                 try {
                   id = JSON.stringify(item.projectId);
-                  console.log("Stringified object ID:", id);
+                  console.log('Stringified object ID:', id);
                 } catch (e) {
-                  console.error("Failed to stringify project ID:", e);
-                  id = "invalid-id";
+                  console.error('Failed to stringify project ID:', e);
+                  id = 'invalid-id';
                 }
               }
             } else {
               id = String(item.projectId);
-              console.log("Simple string/number ID:", id);
+              console.log('Simple string/number ID:', id);
             }
-            
-            if (id === "[object Object]") {
-              console.error("Failed to extract proper ID from:", item.projectId);
-              message.error("Cannot edit project: Invalid project ID format");
+
+            if (id === '[object Object]') {
+              console.error(
+                'Failed to extract proper ID from:',
+                item.projectId
+              );
+              message.error('Cannot edit project: Invalid project ID format');
               return;
             }
-            
-            console.log("Final ID for navigation:", id);
+
+            console.log('Final ID for navigation:', id);
             navigate(`/editproject/${id}`);
           },
         },
@@ -427,14 +497,18 @@ function Projects() {
           label: 'Assign Team',
           icon: <UserAddOutlined />,
           onClick: () => {
-            console.log("Assign team to project:", item);
+            console.log('Assign team to project:', item);
             let id;
-            if (typeof item.projectId === 'object' && item.projectId !== null && 'S' in item.projectId) {
+            if (
+              typeof item.projectId === 'object' &&
+              item.projectId !== null &&
+              'S' in item.projectId
+            ) {
               id = item.projectId.S;
             } else {
               id = String(item.projectId);
             }
-            
+
             setSelectedProject(id);
             fetchTeams();
             setTeamModalVisible(true);
@@ -447,12 +521,16 @@ function Projects() {
           danger: true,
           onClick: () => {
             let id;
-            if (typeof item.projectId === 'object' && item.projectId !== null && 'S' in item.projectId) {
+            if (
+              typeof item.projectId === 'object' &&
+              item.projectId !== null &&
+              'S' in item.projectId
+            ) {
               id = item.projectId.S;
-              console.log("Using DynamoDB ID:", id);
+              console.log('Using DynamoDB ID:', id);
             } else {
               id = String(item.projectId);
-              console.log("Using regular ID:", id);
+              console.log('Using regular ID:', id);
             }
 
             showDeleteConfirm(id, item.project);
@@ -463,28 +541,61 @@ function Projects() {
   };
 
   const showDeleteConfirm = (id: string, projectName: string) => {
-    confirm({
-      title: 'Delete Project',
-      icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
-      content: (
-        <div>
-          <p>Are you sure you want to delete <strong>{projectName}</strong>?</p>
-          <p style={{ color: '#ff4d4f' }}>This action cannot be undone.</p>
+    console.log('showDeleteConfirm called with:', { id, projectName });
+    setDeleteProjectId(id);
+    setDeleteProjectName(projectName);
+    setShowModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await handleDelete(deleteProjectId);
+      setShowModal(false);
+      setDeleteProjectId('');
+      setDeleteProjectName('');
+    } catch (error) {}
+  };
+
+  const handleCancelDelete = () => {
+    setShowModal(false);
+    setDeleteProjectId('');
+    setDeleteProjectName('');
+  };
+
+  const DeleteConfirmationModal = () => {
+    if (!showModal) return null;
+
+    return (
+      <div className="modal-overlay">
+        <div className="modal-content">
+          <div className="modal-header">
+            <div className="modal-icon">⚠️</div>
+            <h3>Delete Project</h3>
+          </div>
+
+          <div className="modal-body">
+            <p>
+              Are you sure you want to delete{' '}
+              <strong>{deleteProjectName}</strong>?
+            </p>
+            <p className="warning-text">This action cannot be undone.</p>
+          </div>
+
+          <div className="modal-footer">
+            <button className="btn btn-cancel" onClick={handleCancelDelete}>
+              Cancel
+            </button>
+            <button className="btn btn-delete" onClick={handleConfirmDelete}>
+              🗑️ Delete
+            </button>
+          </div>
         </div>
-      ),
-      okText: 'Delete',
-      okType: 'danger',
-      okButtonProps: { icon: <DeleteOutlined /> },
-      cancelText: 'Cancel',
-      onOk() {
-        console.log("User confirmed deletion, calling handleDelete with ID:", id);
-        handleDelete(id);
-      },
-    });
+      </div>
+    );
   };
 
   const getStatusIcon = (status: string) => {
-    switch(status.toLowerCase()) {
+    switch (status.toLowerCase()) {
       case 'active':
       case 'ongoing':
         return <CheckCircleOutlined style={{ color: '#ffffff' }} />;
@@ -501,9 +612,8 @@ function Projects() {
     }
   };
 
-  // Get status-specific background color for avatars
   const getStatusColor = (status: string) => {
-    switch(status.toLowerCase()) {
+    switch (status.toLowerCase()) {
       case 'active':
       case 'ongoing':
         return '#52c41a'; // Green
@@ -523,8 +633,8 @@ function Projects() {
   const getStatusTag = (status: string) => {
     let color = '';
     let icon = null;
-    
-    switch(status.toLowerCase()) {
+
+    switch (status.toLowerCase()) {
       case 'active':
       case 'ongoing':
         color = 'green';
@@ -550,7 +660,7 @@ function Projects() {
         color = 'default';
         icon = <FolderOutlined />;
     }
-    
+
     return (
       <Tag color={color} icon={icon}>
         {status}
@@ -559,11 +669,11 @@ function Projects() {
   };
 
   const transformProjectsForDisplay = () => {
-    return projects.map(project => ({
+    return projects.map((project) => ({
       ...project,
       projectDisplay: (
         <Space>
-          <Avatar 
+          <Avatar
             style={{ backgroundColor: getStatusColor(project.status) }}
             icon={getStatusIcon(project.status)}
           />
@@ -582,17 +692,23 @@ function Projects() {
           <Text>{project.date}</Text>
         </Space>
       ),
-      statusDisplay: getStatusTag(project.status)
+      statusDisplay: getStatusTag(project.status),
     }));
   };
-  
-  // Simple function to generate a color based on string
+
   const colorFromString = (str: string) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const colors = ['#1890ff', '#52c41a', '#faad14', '#f5222d', '#722ed1', '#13c2c2'];
+    const colors = [
+      '#1890ff',
+      '#52c41a',
+      '#faad14',
+      '#f5222d',
+      '#722ed1',
+      '#13c2c2',
+    ];
     const index = Math.abs(hash) % colors.length;
     return colors[index];
   };
@@ -601,15 +717,19 @@ function Projects() {
     if (loading) {
       return (
         <Card className="loading-card">
-          <div style={{ 
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '60px 20px',
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '60px 20px',
+            }}
+          >
             <Spin size="large" />
-            <Text style={{ marginTop: '20px', fontSize: '16px' }}>Loading projects...</Text>
+            <Text style={{ marginTop: '20px', fontSize: '16px' }}>
+              Loading projects...
+            </Text>
           </div>
         </Card>
       );
@@ -617,18 +737,31 @@ function Projects() {
 
     if (error) {
       return (
-        <Card className="error-card" style={{ borderLeft: '5px solid #ff4d4f' }}>
-          <div style={{ 
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '30px 20px',
-          }}>
-            <ExclamationCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f', marginBottom: '16px' }} />
-            <Title level={4} style={{ color: '#ff4d4f', marginBottom: '16px' }}>Error Loading Projects</Title>
+        <Card
+          className="error-card"
+          style={{ borderLeft: '5px solid #ff4d4f' }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              padding: '30px 20px',
+            }}
+          >
+            <ExclamationCircleOutlined
+              style={{
+                fontSize: '48px',
+                color: '#ff4d4f',
+                marginBottom: '16px',
+              }}
+            />
+            <Title level={4} style={{ color: '#ff4d4f', marginBottom: '16px' }}>
+              Error Loading Projects
+            </Title>
             <Text style={{ marginBottom: '24px' }}>{error}</Text>
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               icon={<ReloadOutlined />}
               onClick={fetchProjects}
               size="large"
@@ -643,21 +776,31 @@ function Projects() {
     if (projects.length === 0) {
       return (
         <Card>
-          <div style={{ 
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '40px 20px',
-            background: '#f8f8f8',
-            borderRadius: '8px',
-          }}>
-            <ProjectOutlined style={{ fontSize: '64px', color: '#d9d9d9', marginBottom: '16px' }} />
-            <Title level={3} style={{ marginBottom: '16px' }}>No Projects Found</Title>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              padding: '40px 20px',
+              background: '#f8f8f8',
+              borderRadius: '8px',
+            }}
+          >
+            <ProjectOutlined
+              style={{
+                fontSize: '64px',
+                color: '#d9d9d9',
+                marginBottom: '16px',
+              }}
+            />
+            <Title level={3} style={{ marginBottom: '16px' }}>
+              No Projects Found
+            </Title>
             <Text style={{ marginBottom: '24px', color: '#8c8c8c' }}>
               Get started by creating your first project
             </Text>
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               size="large"
               icon={<ProjectOutlined />}
               onClick={() => navigate('/addprojects')}
@@ -672,7 +815,7 @@ function Projects() {
     const transformedProjects = transformProjectsForDisplay();
 
     return (
-      <Card 
+      <Card
         className="projects-card"
         bordered={false}
         style={{
@@ -734,9 +877,11 @@ function Projects() {
               key: 'action',
               width: 80,
               render: (_, record) => {
-                // Get ID for actions
                 let id;
-                if (typeof record.projectId === 'object' && record.projectId?.S) {
+                if (
+                  typeof record.projectId === 'object' &&
+                  record.projectId?.S
+                ) {
                   id = record.projectId.S;
                 } else {
                   id = String(record.projectId);
@@ -747,7 +892,7 @@ function Projects() {
                     key: 'edit',
                     icon: <EditOutlined />,
                     label: 'Edit Project',
-                    onClick: () => navigate(`/editproject/${id}`)
+                    onClick: () => navigate(`/editproject/${id}`),
                   },
                   {
                     key: 'assign',
@@ -757,7 +902,7 @@ function Projects() {
                       setSelectedProject(id);
                       fetchTeams();
                       setTeamModalVisible(true);
-                    }
+                    },
                   },
                   {
                     type: 'divider' as const,
@@ -767,26 +912,44 @@ function Projects() {
                     icon: <DeleteOutlined />,
                     label: 'Delete Project',
                     danger: true,
-                    onClick: () => showDeleteConfirm(id, record.project)
+                    onClick: () => {
+                      const originalProject = projects.find((p) => {
+                        const pId =
+                          typeof p.projectId === 'object' && p.projectId?.S
+                            ? p.projectId.S
+                            : String(p.projectId);
+                        return pId === id;
+                      });
+
+                      const projectName =
+                        originalProject?.project || 'Unknown Project';
+                      console.log(
+                        'Delete clicked for project:',
+                        projectName,
+                        'with ID:',
+                        id
+                      );
+                      showDeleteConfirm(id, projectName);
+                    },
                   },
                 ];
 
                 return (
-                  <Dropdown 
-                    menu={{ items }} 
+                  <Dropdown
+                    menu={{ items }}
                     trigger={['click']}
                     placement="bottomRight"
                   >
-                    <Button 
-                      type="text" 
-                      icon={<SettingOutlined style={{ fontSize: '18px' }} />} 
+                    <Button
+                      type="text"
+                      icon={<SettingOutlined style={{ fontSize: '18px' }} />}
                       className="action-button"
                       style={{
                         borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        transition: 'all 0.3s'
+                        transition: 'all 0.3s',
                       }}
                     />
                   </Dropdown>
@@ -802,15 +965,19 @@ function Projects() {
   const teamAssignmentModal = (
     <Modal
       title={
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '10px',
-          borderBottom: '1px solid #f0f0f0',
-          paddingBottom: '10px',
-        }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            borderBottom: '1px solid #f0f0f0',
+            paddingBottom: '10px',
+          }}
+        >
           <UserAddOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-          <Title level={4} style={{ margin: 0 }}>Assign Team to Project</Title>
+          <Title level={4} style={{ margin: 0 }}>
+            Assign Team to Project
+          </Title>
         </div>
       }
       open={teamModalVisible}
@@ -820,9 +987,9 @@ function Projects() {
       }}
       onOk={assignTeamToProject}
       okText="Assign Team"
-      okButtonProps={{ 
+      okButtonProps={{
         icon: <CheckCircleOutlined />,
-        style: { backgroundColor: '#52c41a', borderColor: '#52c41a' }
+        style: { backgroundColor: '#52c41a', borderColor: '#52c41a' },
       }}
       cancelButtonProps={{ icon: <DeleteOutlined /> }}
       confirmLoading={isAssigningTeam}
@@ -830,20 +997,26 @@ function Projects() {
       centered
       bodyStyle={{ padding: '24px' }}
     >
-      <div style={{ 
-        backgroundColor: '#f9f9f9', 
-        padding: '16px', 
-        borderRadius: '8px',
-        marginBottom: '20px'
-      }}>
+      <div
+        style={{
+          backgroundColor: '#f9f9f9',
+          padding: '16px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+        }}
+      >
         <Space direction="vertical" style={{ width: '100%' }}>
           <Text strong>Selected Project:</Text>
           {selectedProject && (
-            <Text>{projects.find(p => {
-              const pId = typeof p.projectId === 'object' && p.projectId?.S ? 
-                        p.projectId.S : String(p.projectId);
-              return pId === selectedProject;
-            })?.project || 'Loading...'}</Text>
+            <Text>
+              {projects.find((p) => {
+                const pId =
+                  typeof p.projectId === 'object' && p.projectId?.S
+                    ? p.projectId.S
+                    : String(p.projectId);
+                return pId === selectedProject;
+              })?.project || 'Loading...'}
+            </Text>
           )}
         </Space>
       </div>
@@ -860,17 +1033,21 @@ function Projects() {
             <div style={{ marginTop: '10px' }}>Loading teams...</div>
           </div>
         ) : teams.length === 0 ? (
-          <div style={{ 
-            padding: '20px', 
-            textAlign: 'center',
-            border: '1px dashed #d9d9d9',
-            borderRadius: '8px',
-            backgroundColor: '#fafafa'
-          }}>
+          <div
+            style={{
+              padding: '20px',
+              textAlign: 'center',
+              border: '1px dashed #d9d9d9',
+              borderRadius: '8px',
+              backgroundColor: '#fafafa',
+            }}
+          >
             <TeamOutlined style={{ fontSize: '24px', color: '#d9d9d9' }} />
-            <div style={{ marginTop: '10px', color: '#8c8c8c' }}>No teams available</div>
-            <Button 
-              type="link" 
+            <div style={{ marginTop: '10px', color: '#8c8c8c' }}>
+              No teams available
+            </div>
+            <Button
+              type="link"
               onClick={() => navigate('/addteam')}
               style={{ marginTop: '10px' }}
             >
@@ -889,12 +1066,12 @@ function Projects() {
             bordered
             dropdownStyle={{ maxHeight: '400px' }}
           >
-            {teams.map(team => (
+            {teams.map((team) => (
               <Option key={team.teamId} value={team.teamId}>
                 <Space>
-                  <Avatar 
-                    size="small" 
-                    icon={<TeamOutlined />} 
+                  <Avatar
+                    size="small"
+                    icon={<TeamOutlined />}
                     style={{ backgroundColor: colorFromString(team.teamName) }}
                   />
                   {team.teamName}
@@ -909,92 +1086,122 @@ function Projects() {
 
   return (
     <React.Fragment>
-      <ErrorBoundary fallback={
-        <Card style={{ margin: '40px auto', maxWidth: '600px', textAlign: 'center' }}>
-          <ExclamationCircleOutlined style={{ fontSize: '48px', color: '#ff4d4f', marginBottom: '16px' }} />
-          <Title level={3}>Oops! Something went wrong</Title>
-          <Text style={{ display: 'block', marginBottom: '24px' }}>
-            We encountered an error while loading the projects page.
-          </Text>
-          <Button 
-            type="primary" 
-            icon={<ReloadOutlined />}
-            onClick={() => window.location.reload()}
-            size="large"
+      <ErrorBoundary
+        fallback={
+          <Card
+            style={{
+              margin: '40px auto',
+              maxWidth: '600px',
+              textAlign: 'center',
+            }}
           >
-            Refresh Page
-          </Button>
-        </Card>
-      }>
-        <GeneralLayout 
-          title={
-            <Space size="middle">
-              <span>Project Management</span>
-            </Space>
-          }
-          buttonLabel="Add New Project" 
+            <ExclamationCircleOutlined
+              style={{
+                fontSize: '48px',
+                color: '#ff4d4f',
+                marginBottom: '16px',
+              }}
+            />
+            <Title level={3}>Oops! Something went wrong</Title>
+            <Text style={{ display: 'block', marginBottom: '24px' }}>
+              We encountered an error while loading the projects page.
+            </Text>
+            <Button
+              type="primary"
+              icon={<ReloadOutlined />}
+              onClick={() => window.location.reload()}
+              size="large"
+            >
+              Refresh Page
+            </Button>
+          </Card>
+        }
+      >
+        <GeneralLayout
+          title={'Project Management'}
+          buttonLabel="Add New Project"
           navigateLocation="/addprojects"
         >
           <div style={{ padding: '0 0 24px' }}>
             <Row gutter={[0, 24]}>
               <Col span={24}>
-                <Card 
+                <Card
                   className="stats-card"
-                  style={{ 
-                    background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
                     color: 'white',
                     borderRadius: '8px',
-                    marginBottom: '24px'
+                    marginBottom: '24px',
                   }}
                 >
                   <Row gutter={16}>
                     <Col span={8}>
-                      <Card 
-                        bordered={false} 
-                        style={{ 
+                      <Card
+                        bordered={false}
+                        style={{
                           background: 'rgba(255, 255, 255, 0.2)',
                           borderRadius: '4px',
-                          color: 'white'
+                          color: 'white',
                         }}
                       >
-                        <Statistic 
-                          title={<Text style={{ color: 'white' }}>Total Projects</Text>}
+                        <Statistic
+                          title={
+                            <Text style={{ color: 'white' }}>
+                              Total Projects
+                            </Text>
+                          }
                           value={projects.length}
                           prefix={<ProjectOutlined />}
                         />
                       </Card>
                     </Col>
                     <Col span={8}>
-                      <Card 
-                        bordered={false} 
-                        style={{ 
+                      <Card
+                        bordered={false}
+                        style={{
                           background: 'rgba(255, 255, 255, 0.2)',
                           borderRadius: '4px',
-                          color: 'white'
+                          color: 'white',
                         }}
                       >
-                        <Statistic 
-                          title={<Text style={{ color: 'white' }}>Active Projects</Text>}
-                          value={projects.filter(p => 
-                            p.status.toLowerCase() === 'active' || 
-                            p.status.toLowerCase() === 'ongoing'
-                          ).length}
+                        <Statistic
+                          title={
+                            <Text style={{ color: 'white' }}>
+                              Active Projects
+                            </Text>
+                          }
+                          value={
+                            projects.filter(
+                              (p) =>
+                                p.status.toLowerCase() === 'active' ||
+                                p.status.toLowerCase() === 'ongoing'
+                            ).length
+                          }
                           prefix={<CheckCircleOutlined />}
                         />
                       </Card>
                     </Col>
                     <Col span={8}>
-                      <Card 
-                        bordered={false} 
-                        style={{ 
+                      <Card
+                        bordered={false}
+                        style={{
                           background: 'rgba(255, 255, 255, 0.2)',
                           borderRadius: '4px',
-                          color: 'white'
+                          color: 'white',
                         }}
                       >
-                        <Statistic 
-                          title={<Text style={{ color: 'white' }}>Teams Assigned</Text>}
-                          value={projects.filter(p => p.team !== 'No team assigned').length}
+                        <Statistic
+                          title={
+                            <Text style={{ color: 'white' }}>
+                              Teams Assigned
+                            </Text>
+                          }
+                          value={
+                            projects.filter(
+                              (p) => p.team !== 'No team assigned'
+                            ).length
+                          }
                           prefix={<TeamOutlined />}
                         />
                       </Card>
@@ -1002,20 +1209,26 @@ function Projects() {
                   </Row>
                 </Card>
               </Col>
-              <Col span={24}>
-                {renderContent()}
-              </Col>
+              <Col span={24}>{renderContent()}</Col>
             </Row>
             {teamAssignmentModal}
           </div>
         </GeneralLayout>
       </ErrorBoundary>
+      <DeleteConfirmationModal />
     </React.Fragment>
   );
 }
 
-// Add Statistic component since it's used above
-const Statistic = ({ title, value, prefix }: { title: React.ReactNode, value: number, prefix: React.ReactNode }) => {
+const Statistic = ({
+  title,
+  value,
+  prefix,
+}: {
+  title: React.ReactNode;
+  value: number;
+  prefix: React.ReactNode;
+}) => {
   return (
     <div>
       <div style={{ marginBottom: '8px' }}>{title}</div>
@@ -1028,7 +1241,7 @@ const Statistic = ({ title, value, prefix }: { title: React.ReactNode, value: nu
 };
 
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode; fallback: React.ReactNode }, 
+  { children: React.ReactNode; fallback: React.ReactNode },
   { hasError: boolean }
 > {
   constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
@@ -1041,7 +1254,7 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: any, errorInfo: any) {
-    console.error("Error caught by boundary:", error, errorInfo);
+    console.error('Error caught by boundary:', error, errorInfo);
   }
 
   render() {

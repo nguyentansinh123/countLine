@@ -14,15 +14,16 @@ import useFormItemStatus from 'antd/es/form/hooks/useFormItemStatus';
 import Item from 'antd/es/list/Item';
 
 interface CollapsableComponentProps {
-  column: string[]; // Column headers
-  data: Array<Record<string, any>>; // Data to display
-  menu: (item: any) => MenuProps; // Dropdown menu generator
+  column: string[]; 
+  data: Array<Record<string, any>>; 
+  menu: (item: any) => MenuProps; 
   onDocumentRemoved?: (userId: string, documentId: string) => void;
   height?: string;
+  loading?: boolean;
 }
 
 function CollapsableComponent(props: CollapsableComponentProps) {
-  const { column, data, menu, height } = props; // Destructuring the props here
+  const { column, data, menu, height } = props; 
   console.log(data);
   const [users, setUsers] = useState<any[]>([]);
 
@@ -75,20 +76,19 @@ function CollapsableComponent(props: CollapsableComponentProps) {
         });
   };
 
-  // Create the collapseItems array based on the data
   const collapseItems = data.map((item, index) => ({
-    key: item.teamId || item.user_id || index, // Ensure unique key
+    key: item.teamId || item.user_id || index, 
     label: (
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '2fr 1fr 1fr 1.5fr 50px', // Added a fixed width for the button column
+          gridTemplateColumns: '2fr 1fr 1fr 1.5fr 50px', 
           alignItems: 'center',
         }}
       >
         {props.column.map((col, idx) => {
           const keys = columnKeyMap[col] || [col];
-          const resolvedKey = keys.find((key) => item[key] !== undefined); // pick first valid key
+          const resolvedKey = keys.find((key) => item[key] !== undefined); 
 
           const value = resolvedKey ? item[resolvedKey] : undefined;
           console.log('Resolved key:', resolvedKey, 'Value:', value);
@@ -102,7 +102,6 @@ function CollapsableComponent(props: CollapsableComponentProps) {
             </span>
           );
         })}
-        {/* Dropdown menu button */}
         <Dropdown menu={menu(item)} placement="bottomRight">
           <Button style={{ color: '#156CC9', border: 'solid 1px #156CC9' }}>
             ...
@@ -112,7 +111,6 @@ function CollapsableComponent(props: CollapsableComponentProps) {
     ),
     children: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* Check if it's a team or user and render relevant information */}
         {item.members ? (
           <>
             <div>
@@ -151,13 +149,11 @@ function CollapsableComponent(props: CollapsableComponentProps) {
           <></>
         )}
 
-        {/* Check if there are documents and render them */}
-        {item.documents ? (
+        {item.documents && item.documents.length > 0 ? (
           <List>
-            {console.log(item)}
             {item.documents.map((document: any, index: number) => (
               <List.Item
-                key={index}
+                key={document.documentId || index}
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -165,8 +161,13 @@ function CollapsableComponent(props: CollapsableComponentProps) {
                   width: '100%',
                 }}
               >
-                <span>{document.fileName}</span>
-                <span>{document.documentType}</span>
+                <span>
+                  {document.filename ||
+                    document.fileName ||
+                    document.name ||
+                    'Unnamed Document'}
+                </span>
+                <span>{document.documentType || 'General'}</span>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <Button
                     type="primary"
@@ -230,7 +231,7 @@ function CollapsableComponent(props: CollapsableComponentProps) {
             ))}
           </List>
         ) : (
-          <></>
+          <div>No documents found for this user</div>
         )}
       </div>
     ),
@@ -238,12 +239,11 @@ function CollapsableComponent(props: CollapsableComponentProps) {
 
   return (
     <div style={{ width: '100%', paddingBottom: 8 }}>
-      {/* Table Header */}
       {contextHolder}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '40px 2fr 1fr 1fr 1.5fr 50px', // Same fixed width for the button column
+          gridTemplateColumns: '40px 2fr 1fr 1fr 1.5fr 50px', 
           fontWeight: 'bold',
           borderBottom: '1px solid #ccc',
           paddingBottom: 8,
@@ -255,17 +255,26 @@ function CollapsableComponent(props: CollapsableComponentProps) {
         ))}
       </div>
 
-      {/* Collapsible List */}
-      <Collapse
-        bordered={false}
-        style={{ overflowY: 'auto', height: height || '70vh' }}
-      >
-        {collapseItems.map((item) => (
-          <Collapse.Panel key={item.key} header={item.label}>
-            {item.children}
-          </Collapse.Panel>
-        ))}
-      </Collapse>
+      {props.loading ? (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          Loading users and documents...
+        </div>
+      ) : data.length === 0 ? (
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          No data available
+        </div>
+      ) : (
+        <Collapse
+          bordered={false}
+          style={{ overflowY: 'auto', height: height || '70vh' }}
+        >
+          {collapseItems.map((item) => (
+            <Collapse.Panel key={item.key} header={item.label}>
+              {item.children}
+            </Collapse.Panel>
+          ))}
+        </Collapse>
+      )}
       {/* can be additionally be done */}
       {/* <Modal
         open={!!previewUrl}

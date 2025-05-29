@@ -9,7 +9,7 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  setUser: (user: User | null) => void; // ✅ accept null
+  setUser: (user: User | null) => void;
   logout: () => void;
 }
 
