@@ -39,6 +39,9 @@ import ViewHistory from './pages/Users/components/ViewHistory';
 import { SearchResults } from './pages/SearchResults/SeacrhResults';
 import SharedDocumentsPage from './pages/SharedDocumentsPage/SharedDocumentsPage';
 import LegalChatbot from './components/LegalChatbot/LegalChatbot';
+import ChatList from './pages/Chat/ChatList';
+import ChatPage from './pages/Chat/ChatPage';
+import CallPage from './pages/Call/CallPage';
 
 function App() {
   return (
@@ -240,6 +243,31 @@ function App() {
               element={
                 <ProtectedRoute>
                   <SharedDocumentsPage />
+                </ProtectedRoute>
+              }
+            />
+            {/* Add chat routes */}
+            <Route
+              path="/chat"
+              element={
+                <ProtectedRoute>
+                  <ChatList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/chat/:id"
+              element={
+                <ProtectedRoute>
+                  <ChatPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/call/:id"
+              element={
+                <ProtectedRoute>
+                  <CallPage />
                 </ProtectedRoute>
               }
             />

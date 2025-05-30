@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 import { transporter } from "../lib/nodemailer";
 import { log } from "console";
 import { logUserActivity } from "./activity.controller";
+import { upsertStreamUser, generateStreamToken } from "../lib/stream";
 dotenv.config();
 
 const Register = async (req: Request, res: Response) => {
@@ -54,6 +55,19 @@ const Register = async (req: Request, res: Response) => {
       region: process.env.AWS_REGION,
     });
     const data = await docClient.send(new PutCommand(insertParams));
+    const idx = Math.floor(Math.random() * 100) + 1;
+    const randomAvatar = `https://avatar.iran.liara.run/public/${idx}.png`;
+
+    try {
+      await upsertStreamUser({
+        id: validatedUser.user_id,
+        name: validatedUser.name,
+        image: randomAvatar,
+      });
+      console.log(`Stream user created for ${validatedUser.name}`);
+    } catch (streamError) {
+      console.error("Error creating Stream user:", streamError);
+    }
 
     if (!process.env.JWT_SECRET) {
       throw new Error("JWT_SECRET is not defined in environment variables");
@@ -79,6 +93,8 @@ const Register = async (req: Request, res: Response) => {
 
     await transporter.sendMail(mailOptions);
 
+    const streamToken = generateStreamToken(validatedUser.user_id);
+
     res.status(200).json({
       success: true,
       message: "User registered successfully",
@@ -86,6 +102,7 @@ const Register = async (req: Request, res: Response) => {
         user_id: validatedUser.user_id,
         name: validatedUser.name,
         email: validatedUser.email,
+        streamToken: streamToken, 
       },
     });
   } catch (error) {

@@ -15,6 +15,7 @@ import http from "http";
 import { initSocket } from "./lib/socket";
 import { router as statisticsRouter } from "./routes/statistics.route";
 import { router as EmailRoute } from './routes/email.route';
+import { router as ChatRoute } from './routes/chat.route';
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use("/api/history", ActivityRoute);
 app.use("/api/statistics", statisticsRouter);
 app.use("/api/notification", NotificationRoute); 
 app.use('/api/email', EmailRoute);
+app.use('/api/chat', ChatRoute);
 
 const server = http.createServer(app);
 initSocket(server);

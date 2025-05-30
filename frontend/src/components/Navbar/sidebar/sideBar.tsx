@@ -16,6 +16,7 @@ const mainItems: MenuItem[] = [
   { key: '4', label: 'Teams', path: '/teams' },
   { key: '5', label: 'Overview', path: '/overview' },
   { key: '6', label: 'Users', path: '/users' },
+  { key: '7', label: 'Chat', path: '/chat' },
   {
     key: 'shared-documents',
     label: 'Shared With Me',
@@ -25,8 +26,8 @@ const mainItems: MenuItem[] = [
 ];
 
 const footerItems: MenuItem[] = [
-  { key: '7', label: 'Contact', path: '/contact' },
-  { key: '8', label: 'About Us', path: '/about-us' },
+  { key: '8', label: 'Contact', path: '/contact' },
+  { key: '9', label: 'About Us', path: '/about-us' },
 ];
 
 function SideBar() {

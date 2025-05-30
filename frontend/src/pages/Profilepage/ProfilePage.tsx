@@ -25,9 +25,12 @@ import {
   UserOutlined, 
   CheckCircleOutlined,
   CloseCircleOutlined,
-  SendOutlined
+  SendOutlined,
+  SettingOutlined,
+  SecurityScanOutlined
 } from '@ant-design/icons';
 import defaultProfile from '../../assets/simple-user-default-icon-free-png (1).png';
+import './ProfilePage.css'; // Make sure to create this CSS file
 
 const { Title, Text } = Typography;
 const { TabPane } = Tabs;
@@ -332,164 +335,168 @@ function ProfilePage() {
   );
 
   return (
-    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-      <Card
-        bordered
-        style={{
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-          borderRadius: '12px'
-        }}
-      >
-        <Tabs 
-          activeKey={activeTab} 
-          onChange={setActiveTab}
-          tabBarExtraContent={
-            activeTab === '1' ? (
-              <Space>
-                {editMode ? (
-                  <Button 
-                    type="primary" 
-                    icon={<SaveOutlined />} 
-                    onClick={handleSave}
-                    loading={saving}
-                  >
-                    Save Changes
-                  </Button>
-                ) : (
-                  <Button 
-                    type="primary" 
-                    icon={<EditOutlined />} 
-                    onClick={() => setEditMode(true)}
-                  >
-                    Edit Profile
-                  </Button>
-                )}
-              </Space>
-            ) : null
-          }
-        >
-          <TabPane 
-            tab={
-              <span>
-                <UserOutlined />
-                Profile
-              </span>
-            } 
-            key="1"
+    <div className="profile-page-container">
+      {loading ? (
+        <div className="loading-container">
+          <Card loading style={{ width: 700 }} />
+        </div>
+      ) : !user ? (
+        <div className="user-not-found">
+          <Title level={4}>User not found.</Title>
+          <Text type="secondary">Please log in to view your profile.</Text>
+        </div>
+      ) : (
+        <div className="profile-content">
+          <Card
+            bordered={false}
+            className="profile-card"
           >
-            <Row gutter={[24, 24]} align="middle">
-              <Col xs={24} md={10} style={{ textAlign: 'center' }}>
-                <div style={{ marginBottom: '20px' }}>
-                  <Avatar 
-                    src={profilePic || defaultProfile} 
-                    alt="Profile" 
-                    size={150}
-                    style={{ border: '2px solid #f0f0f0' }}
-                  />
+            <div className="profile-header">
+              <div className="profile-tabs">
+                <div className={`tab ${activeTab === '1' ? 'active' : ''}`} onClick={() => setActiveTab('1')}>
+                  Profile
+                </div>
+                {!isVerified && (
+                  <div className={`tab ${activeTab === '2' ? 'active' : ''}`} onClick={() => setActiveTab('2')}>
+                    Verify Account
+                  </div>
+                )}
+              </div>
+              
+              {activeTab === '1' && (
+                <div className="edit-buttons">
+                  {editMode ? (
+                    <Button 
+                      type="primary" 
+                      icon={<SaveOutlined />} 
+                      onClick={handleSave}
+                      loading={saving}
+                      className="save-button"
+                    >
+                      Save Changes
+                    </Button>
+                  ) : (
+                    <Button 
+                      type="primary" 
+                      icon={<EditOutlined />} 
+                      onClick={() => setEditMode(true)}
+                      className="edit-button"
+                    >
+                      Edit Profile
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {activeTab === '1' ? (
+              <div className="profile-details">
+                <div className="profile-left">
+                  <div className="avatar-container">
+                    <Avatar 
+                      src={profilePic || defaultProfile} 
+                      alt={name}
+                      size={120}
+                      className="user-avatar"
+                    />
+                    <div className="avatar-upload">
+                      <Upload
+                        accept="image/*"
+                        beforeUpload={(file) => {
+                          handleProfilePicChange({ file: { originFileObj: file } });
+                          return false;
+                        }}
+                        showUploadList={false}
+                      >
+                        <div className="change-photo-btn">
+                          <UploadOutlined /> Change
+                        </div>
+                      </Upload>
+                    </div>
+                  </div>
+                  
+                  <div className="user-meta">
+                    <div className="user-role">
+                      <div className="meta-label">Role</div>
+                      <Tag color={getRoleColor(role)} className="role-tag">
+                        {role ? role.charAt(0).toUpperCase() + role.slice(1) : 'User'}
+                      </Tag>
+                    </div>
+                    
+                    <div className="verification-status">
+                      <div className="meta-label">Status</div>
+                      {isVerified ? (
+                        <Tag color="success" icon={<CheckCircleOutlined />} className="status-tag verified">
+                          Verified
+                        </Tag>
+                      ) : (
+                        <Tag 
+                          color="warning" 
+                          icon={<CloseCircleOutlined />} 
+                          onClick={() => setActiveTab('2')}
+                          className="status-tag not-verified"
+                        >
+                          Not Verified
+                        </Tag>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
-                <Upload
-                  accept="image/*"
-                  beforeUpload={(file) => {
-                    handleProfilePicChange({ file: { originFileObj: file } });
-                    return false;  // Prevent automatic upload
-                  }}
-                  showUploadList={false}
-                >
-                  <Button icon={<UploadOutlined />} type="primary" ghost>
-                    Change Profile Picture
-                  </Button>
-                </Upload>
-                <div style={{ marginTop: '8px' }}>
-                  <Text type="secondary">Max 5MB</Text>
+                <div className="profile-right">
+                  <Form 
+                    form={form}
+                    layout="vertical"
+                    className="profile-form"
+                    initialValues={{ name, email }}
+                  >
+                    <Form.Item label="Full Name" name="name">
+                      {editMode ? (
+                        <Input 
+                          value={name} 
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Full Name"
+                          className="profile-input"
+                        />
+                      ) : (
+                        <div className="field-value">{name}</div>
+                      )}
+                    </Form.Item>
+                    
+                    <Form.Item label="Email" name="email">
+                      {editMode ? (
+                        <Input
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="Email"
+                          className="profile-input"
+                        />
+                      ) : (
+                        <div className="field-value">{email}</div>
+                      )}
+                    </Form.Item>
+                    
+                    <Divider />
+                    
+                    <div className="account-meta">
+                      <div className="meta-item">
+                        <div className="meta-label">Account created</div>
+                        <div className="meta-value">{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</div>
+                      </div>
+                      <div className="meta-item">
+                        <div className="meta-label">Last login</div>
+                        <div className="meta-value">{user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'N/A'}</div>
+                      </div>
+                    </div>
+                  </Form>
                 </div>
-
-                <div style={{ marginTop: '20px' }}>
-                  <div style={{ marginBottom: '10px' }}>
-                    <Text strong style={{ marginRight: '10px' }}>Role:</Text>
-                    <Tag color={getRoleColor(role)} style={{ fontSize: '14px', padding: '4px 8px' }}>
-                      {role ? role.charAt(0).toUpperCase() + role.slice(1) : 'User'}
-                    </Tag>
-                  </div>
-                  
-                  <div>
-                    <Text strong style={{ marginRight: '10px' }}>Status:</Text>
-                    {isVerified ? (
-                      <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontSize: '14px', padding: '4px 8px' }}>
-                        Verified
-                      </Tag>
-                    ) : (
-                      <Tag 
-                        color="warning" 
-                        icon={<CloseCircleOutlined />} 
-                        style={{ fontSize: '14px', padding: '4px 8px', cursor: 'pointer' }}
-                        onClick={() => setActiveTab('2')}
-                      >
-                        Not Verified
-                      </Tag>
-                    )}
-                  </div>
-                </div>
-              </Col>
-              
-              <Col xs={24} md={14}>
-                <Form 
-                  form={form}
-                  layout="vertical"
-                  initialValues={{
-                    name,
-                    email
-                  }}
-                >
-                  <Form.Item label="Full Name" name="name">
-                    {editMode ? (
-                      <Input 
-                        value={name} 
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Full Name"
-                      />
-                    ) : (
-                      <div className="ant-form-text" style={{ fontSize: '16px' }}>{name}</div>
-                    )}
-                  </Form.Item>
-                  
-                  <Form.Item label="Email" name="email">
-                    {editMode ? (
-                      <Input
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Email"
-                      />
-                    ) : (
-                      <div className="ant-form-text" style={{ fontSize: '16px' }}>{email}</div>
-                    )}
-                  </Form.Item>
-                  
-                  <Divider />
-                  
-                  <div style={{ fontSize: '14px', color: '#888888' }}>
-                    <p>Account created: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}</p>
-                    <p>Last login: {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'N/A'}</p>
-                  </div>
-                </Form>
-              </Col>
-            </Row>
-          </TabPane>
-          
-          {!isVerified && (
-            <TabPane 
-              tab={
-                <span>
-                  <CheckCircleOutlined />
-                  Verify Account
-                </span>
-              } 
-              key="2"
-            >
-              <div style={{ maxWidth: '500px', margin: '0 auto', padding: '20px' }}>
-                <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              </div>
+            ) : (
+              <div className="verification-container">
+                <div className="verification-header">
+                  <SecurityScanOutlined className="verify-icon" />
                   <Title level={4}>Verify Your Account</Title>
-                  <Text type="secondary">
+                  <Text type="secondary" className="verify-desc">
                     Verify your account to access all features. We'll send a verification code to your email.
                   </Text>
                 </div>
@@ -499,6 +506,7 @@ function ProfilePage() {
                     form={verifyForm}
                     layout="vertical"
                     onFinish={verifyAccount}
+                    className="verify-form"
                   >
                     <Form.Item 
                       name="otp" 
@@ -509,7 +517,7 @@ function ProfilePage() {
                       ]}
                     >
                       <Input
-                        style={{ width: '100%' }} 
+                        className="otp-input" 
                         placeholder="Enter 6-digit code"
                         maxLength={6}
                       />
@@ -520,13 +528,13 @@ function ProfilePage() {
                         type="primary" 
                         htmlType="submit" 
                         loading={verifyLoading}
-                        block
+                        className="verify-button"
                       >
                         Verify Account
                       </Button>
                     </Form.Item>
                     
-                    <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                    <div className="resend-link">
                       <Button 
                         type="link" 
                         onClick={sendVerificationOTP}
@@ -537,25 +545,24 @@ function ProfilePage() {
                     </div>
                   </Form>
                 ) : (
-                  <div style={{ textAlign: 'center' }}>
+                  <div className="send-otp-container">
                     <p>Click the button below to receive a verification code on your email</p>
                     <Button 
                       type="primary" 
                       icon={<SendOutlined />}
                       loading={sendingOtp}
                       onClick={sendVerificationOTP}
-                      size="large"
-                      style={{ marginTop: '20px' }}
+                      className="send-otp-button"
                     >
                       Send Verification Code
                     </Button>
                   </div>
                 )}
               </div>
-            </TabPane>
-          )}
-        </Tabs>
-      </Card>
+            )}
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
