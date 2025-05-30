@@ -23,7 +23,7 @@ const PdfEditor: React.FC<{
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
 
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
-
+const scale = 1.5; 
   useEffect(() => {
     const fetchAndRenderPdf = async () => {
       setLoading(true);
@@ -36,7 +36,7 @@ const PdfEditor: React.FC<{
 
         for (let pageNum = 1; pageNum <= loadedPdf.numPages; pageNum++) {
           const page = await loadedPdf.getPage(pageNum);
-          const viewport = page.getViewport({ scale: 1.5 });
+          const viewport = page.getViewport({ scale });
 
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
@@ -125,9 +125,9 @@ const PdfEditor: React.FC<{
       const fetchedFile = await fetch(fileUrl);
       const arrayBuffer = await fetchedFile.arrayBuffer();
       const pdfDoc = await PDFDocument.load(arrayBuffer);
-      const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      
 
-      const scale = 1.5; // Should match your rendering scale
+     
 
       for (const box of inputBoxes) {
         try {
@@ -189,7 +189,7 @@ const PdfEditor: React.FC<{
             // Handle text fields
             page.drawText(box.value, {
               x: pdfX,
-              y: pdfY + validHeight / scale - 2, // Adjust text baseline
+              y: pdfY , // Adjust text baseline
               size: (box.fontSize || 12) / scale,
             });
           }

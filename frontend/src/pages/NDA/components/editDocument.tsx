@@ -3,14 +3,6 @@ import { Input, Select, Button, Alert, Layout, message } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?worker';
-import {
-  EditOutlined,
-  FileTextOutlined,
-  SignatureOutlined,
-  CalendarOutlined,
-  NumberOutlined,
-} from '@ant-design/icons';
-import PdfEditor from '../../../components/Editor/PdfEditor';
 import GeneralLayout from '../../../components/General_Layout/GeneralLayout';
 import PdfViewer from '../../../components/Editor/PdfViewer';
 

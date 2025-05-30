@@ -3,9 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import dayjs from 'dayjs';
+type Activity = {
+  targetId: string | null;
+  action: string;
+  activityId: string;
+  details: Record<string, any>;
+  userId: string;
+  timestamp: string; // or Date, if you convert it
+};
 
 const RecentActivity = () => {
-  const [activities, setActivities] = useState([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+
   const [user, setUser] = useState<any>(null);
   const [userMap, setUserMap] = useState<Record<string, string>>({});
   const navigate = useNavigate();

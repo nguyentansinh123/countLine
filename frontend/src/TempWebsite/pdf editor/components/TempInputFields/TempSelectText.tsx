@@ -87,7 +87,6 @@ const SelectText: React.FC<SelectTextProps> = ({
           border: `2px ${isActive ? 'dashed' : 'solid'} #333`,
           boxSizing: 'border-box',
           cursor: 'move',
-          transition: 'all 0.1s ease',
           zIndex: isActive ? 100 : 10,
           ...(isActive && { boxShadow: '0 0 0 2px #1890ff' }),
         }}

@@ -6,6 +6,14 @@ import dayjs from 'dayjs';
 import { HistoryOutlined } from '@ant-design/icons'; // Import the history icon
 
 const { Text, Title } = Typography;
+type Activity = {
+  targetId: string | null;
+  action: string;
+  activityId: string;
+  details: Record<string, any>;
+  userId: string;
+  timestamp: string; // or Date, if you convert it
+};
 
 const styles = {
   tabsContainer: {
@@ -97,7 +105,7 @@ const scrollbarStyles = `
 `;
 
 function Activities() {
-  const [activities, setActivities] = useState([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [userMap, setUserMap] = useState<Record<string, string>>({});
   const [currentUser, setCurrentUser] = useState<any>(null);
 
@@ -208,6 +216,7 @@ function Activities() {
       ),
     },
   ];
+console.log("atciav",activities[0]);
 
   return (
     <GeneralLayout title="All Activities" buttonLabel="" navigateLocation="" noBorder={true}>

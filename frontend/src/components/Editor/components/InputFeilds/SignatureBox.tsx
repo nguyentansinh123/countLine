@@ -41,42 +41,41 @@ const SignatureBox: React.FC<SignatureBoxProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const moveableRef = useRef<Moveable>(null);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+useEffect(() => {
+  const canvas = canvasRef.current;
+  if (!canvas) return;
 
-    // If the signature is finalized, do nothing — avoid clearing/redrawing
-    if (isFinalized) return;
+  // If the signature is finalized, do nothing — avoid clearing/redrawing
+  if (isFinalized) return;
 
-    const setupCanvas = () => {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+  const setupCanvas = () => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-      // Handle high DPI displays
-      const scale = window.devicePixelRatio || 1.5;
-      canvas.width = box.width * scale;
-      canvas.height = box.height * scale;
-      canvas.style.width = `${box.width}px`;
-      canvas.style.height = `${box.height}px`;
+    // Handle high DPI displays
+    const scale = window.devicePixelRatio || 1.5;
+    canvas.width = box.width * scale;
+    canvas.height = box.height * scale;
+    canvas.style.width = `${box.width}px`;
+    canvas.style.height = `${box.height}px`;
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
-      ctx.scale(scale, scale);
-      ctx.lineWidth = 1;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = '#000000';
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
+    ctx.scale(scale, scale);
+    ctx.lineWidth = 1;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000000';
 
-      // Re-draw the signature after resize if it exists
-      if (signatureData && mode === 'draw') {
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, box.width, box.height);
-        };
-        img.src = signatureData;
-      }
-    };
+    if (signatureData && mode === 'draw') {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, box.width, box.height);
+      };
+      img.src = signatureData;
+    }
+  };
 
-    setupCanvas();
-  }, [box.width, box.height, mode, signatureData, isFinalized]);
+  setupCanvas();
+}, [box.width, box.height, mode, signatureData, isFinalized]);
 
   // Drawing functions
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
@@ -99,8 +98,7 @@ const SignatureBox: React.FC<SignatureBoxProps> = ({
   };
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing || !canvasRef.current || isFinalized || mode !== 'draw')
-      return;
+    if (!isDrawing || !canvasRef.current || isFinalized || mode !== 'draw') return;
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -189,45 +187,47 @@ const SignatureBox: React.FC<SignatureBoxProps> = ({
   // Handle resizing with aspect ratio preservation
   const handleResize = ({ width, height, drag }: any) => {
     if (!containerRef.current) return;
-
+    
     containerRef.current.style.width = `${width}px`;
     containerRef.current.style.height = `${height}px`;
-
+    
     if (drag) {
       containerRef.current.style.left = `${box.x + drag.left}px`;
       containerRef.current.style.top = `${box.y + drag.top}px`;
     }
   };
 
-  const handleResizeEnd = ({ target, width, height, drag }: any) => {
-    if (!target) return;
+ const handleResizeEnd = ({ target, width, height, drag }: any) => {
+  if (!target) return;
+  
+  const newWidth = Math.max(100, width); // Minimum width
+  const newHeight = Math.max(50, height); // Minimum height
+  
+  onUpdateSize(box.id, newWidth, newHeight);
 
-    const newWidth = Math.max(100, width); // Minimum width
-    const newHeight = Math.max(50, height); // Minimum height
+  if (drag) {
+    onUpdatePosition(box.id, box.x + drag.left, box.y + drag.top);
+  }
 
-    onUpdateSize(box.id, newWidth, newHeight);
+  // Reset transform after resize
+  target.style.transform = 'translate(0px, 0px)';
 
-    if (drag) {
-      onUpdatePosition(box.id, box.x + drag.left, box.y + drag.top);
+  // Ensure the canvas retains the signature after resizing
+  const canvas = canvasRef.current;
+  if (canvas && signatureData) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before re-drawing
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, box.width, box.height);
+      };
+      img.src = signatureData;
     }
+  }
+};
+;
 
-    // Reset transform after resize
-    target.style.transform = 'translate(0px, 0px)';
-
-    // Ensure the canvas retains the signature after resizing
-    const canvas = canvasRef.current;
-    if (canvas && signatureData) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before re-drawing
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, box.width, box.height);
-        };
-        img.src = signatureData;
-      }
-    }
-  };
   return (
     <>
       {/* Signature Box Container */}
@@ -246,9 +246,7 @@ const SignatureBox: React.FC<SignatureBoxProps> = ({
           display: 'flex',
           flexDirection: 'column',
           zIndex: isActive ? 100 : 10,
-        }}
-        onDoubleClick={() => onDoubleClick?.(box.id)}
-      >
+        }}>
         {!isFinalized && (
           <div
             style={{
@@ -278,14 +276,11 @@ const SignatureBox: React.FC<SignatureBoxProps> = ({
             >
               Upload
             </Button>
-            <Button
-              type="primary"
-              size="small"
+            <Button 
+              type="primary" 
+              size="small" 
               onClick={finalizeSignature}
-              disabled={
-                (mode === 'draw' && !hasDrawn) ||
-                (mode === 'upload' && !uploadedUrl)
-              }
+              disabled={(mode === 'draw' && !hasDrawn) || (mode === 'upload' && !uploadedUrl)}
             >
               ✓
             </Button>
@@ -299,11 +294,9 @@ const SignatureBox: React.FC<SignatureBoxProps> = ({
               style={{
                 display: 'block',
                 touchAction: 'none',
-                backgroundColor: 'transparent',
                 cursor: isFinalized ? 'default' : 'crosshair',
                 width: '100%',
                 height: '100%',
-                border: isFinalized ? 'none' : '1px dashed #1890ff',
               }}
               onMouseDown={startDrawing}
               onMouseMove={draw}
@@ -324,20 +317,18 @@ const SignatureBox: React.FC<SignatureBoxProps> = ({
               }}
             />
           ) : (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-              }}
-            >
+            <div style={{ 
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: '100%'
+            }}>
               <Upload
                 accept="image/*"
                 showUploadList={false}
                 beforeUpload={beforeUpload}
                 customRequest={({ file, onSuccess }) => {
-                  setTimeout(() => onSuccess?.('ok'), 0);
+                  setTimeout(() => onSuccess?.("ok"), 0);
                 }}
                 onChange={handleUpload}
               >
@@ -352,45 +343,35 @@ const SignatureBox: React.FC<SignatureBoxProps> = ({
 
       {/* Delete Button */}
       {isFinalized && (
-        <div
-          style={{
-            position: 'absolute',
-            top: box.y + box.height + 5,
-            left: box.x,
-            zIndex: 100,
-          }}
-        >
-          <Button danger size="small" onClick={() => onDelete(box.id)}>
-            Delete
-          </Button>
-        </div>
-      )}
+                  <><Moveable
+                  ref={moveableRef}
+                  target={containerRef.current}
+                  draggable
+                  resizable
+                  onDrag={({ target, beforeTranslate }) => {
+                      target.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
+                  } }
+                  onDragEnd={({ target, lastEvent }) => {
+                      if (lastEvent) {
+                          const [dx, dy] = lastEvent.beforeTranslate;
+                          target.style.transform = 'translate(0,0)';
+                          onUpdatePosition(box.id, box.x + dx, box.y + dy);
+                      }
+                  } }
+                  onResize={handleResize}
+                  onResizeEnd={handleResizeEnd} />
+                  <div style={{
+                      position: 'absolute',
+                      top: box.y + box.height + 5,
+                      left: box.x,
+                      zIndex: 100,
+                  }}>
 
-      {/* Moveable Controls */}
-      {isActive && containerRef.current && (
-        <Moveable
-          ref={moveableRef}
-          target={containerRef.current}
-          draggable={true}
-          resizable={true}
-          throttleDrag={0}
-          throttleResize={0}
-          edge={false}
-          origin={false}
-          onDrag={({ target, beforeTranslate }) => {
-            target.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
-          }}
-          onDragEnd={({ target, lastEvent }) => {
-            if (lastEvent) {
-              const [dx, dy] = lastEvent.beforeTranslate;
-              target.style.transform = 'translate(0px, 0px)';
-              onUpdatePosition(box.id, box.x + dx, box.y + dy);
-            }
-          }}
-          onResize={handleResize}
-          onResizeEnd={handleResizeEnd}
-        />
-      )}
+                      <Button danger size="small" onClick={() => onDelete(box.id)}>
+                          Delete
+                      </Button>
+                  </div></>
+           )}
     </>
   );
 };

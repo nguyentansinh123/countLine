@@ -65,6 +65,9 @@ const InputBox: React.FC<InputBoxProps> = ({
     }
   };
 
+
+  
+
   // Focus input when editing
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -104,7 +107,6 @@ const InputBox: React.FC<InputBoxProps> = ({
           alignItems: 'center',
           padding: '5px',
           cursor: 'move',
-          transition: 'all 0.2s ease',
           zIndex: isActive ? 100 : 10,
           ...(isActive && {
             boxShadow: '0 0 0 2px #1890ff',
@@ -203,37 +205,40 @@ const InputBox: React.FC<InputBoxProps> = ({
 
       {isActive && containerRef.current && (
         <Moveable
-          target={containerRef.current}
-          draggable={true}
-          resizable={true}
-          keepRatio={false}
-          throttleDrag={1}
-          throttleResize={1}
-          snappable={true}
-          snapDirections={{ top: true, left: true, bottom: true, right: true }}
-          snapThreshold={5}
-          onDrag={({ target, beforeTranslate }) => {
-            target.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
-          }}
-          onDragEnd={({ target, lastEvent }) => {
-            if (lastEvent) {
-              const [dx, dy] = lastEvent.beforeTranslate;
-              target.style.transform = 'translate(0px, 0px)';
-              onUpdatePosition(box.id, box.x + dx, box.y + dy);
-            }
-          }}
-          onResize={({ width, height }) => {
-            if (containerRef.current) {
-              containerRef.current.style.width = `${width}px`;
-              containerRef.current.style.height = `${height}px`;
-            }
-          }}
-          onResizeEnd={({ lastEvent }) => {
-            if (lastEvent && onUpdateSize) {
-              onUpdateSize(box.id, lastEvent.width, lastEvent.height);
-            }
-          }}
-        />
+  target={containerRef.current}
+  draggable={true}
+  resizable={true}
+  keepRatio={false}
+  throttleDrag={1}
+  throttleResize={1}
+  snappable={true}
+  snapDirections={{ top: true, left: true, bottom: true, right: true }}
+  snapThreshold={5}
+  onDrag={({ target, beforeTranslate }) => {
+    target.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
+  }}
+  onDragEnd={({ target, lastEvent }) => {
+    if (lastEvent) {
+      const [dx, dy] = lastEvent.beforeTranslate;
+      target.style.transform = 'translate(0px, 0px)';
+      onUpdatePosition(box.id, box.x + dx, box.y + dy);
+    }
+  }}
+  onResize={({ width, height }) => {
+    if (containerRef.current) {
+      containerRef.current.style.width = `${width}px`;
+      containerRef.current.style.height = `${height}px`;
+    }
+    // DO NOT call onUpdateSize here to avoid slow re-renders
+  }}
+  onResizeEnd={({ lastEvent }) => {
+    if (lastEvent && onUpdateSize) {
+      onUpdateSize(box.id, lastEvent.width, lastEvent.height); // update state once on resize end
+    }
+  }}
+/>
+
+
       )}
     </>
   );

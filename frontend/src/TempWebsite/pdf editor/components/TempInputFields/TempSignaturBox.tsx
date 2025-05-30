@@ -59,13 +59,12 @@ useEffect(() => {
     canvas.style.width = `${box.width}px`;
     canvas.style.height = `${box.height}px`;
 
-    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.scale(scale, scale);
     ctx.lineWidth = 1;
     ctx.lineCap = 'round';
     ctx.strokeStyle = '#000000';
 
-    // Re-draw the signature after resize if it exists
     if (signatureData && mode === 'draw') {
       const img = new Image();
       img.onload = () => {
@@ -247,9 +246,7 @@ useEffect(() => {
           display: 'flex',
           flexDirection: 'column',
           zIndex: isActive ? 100 : 10,
-        }}
-        onDoubleClick={() => onDoubleClick?.(box.id)}
-      >
+        }}>
         {!isFinalized && (
           <div
             style={{
@@ -297,7 +294,6 @@ useEffect(() => {
               style={{
                 display: 'block',
                 touchAction: 'none',
-                backgroundColor:'white',
                 cursor: isFinalized ? 'default' : 'crosshair',
                 width: '100%',
                 height: '100%',
@@ -347,43 +343,35 @@ useEffect(() => {
 
       {/* Delete Button */}
       {isFinalized && (
-        <div style={{ 
-          position: 'absolute', 
-          top: box.y + box.height + 5, 
-          left: box.x,
-          zIndex: 100,
-        }}>
-          <Button danger size="small" onClick={() => onDelete(box.id)}>
-            Delete
-          </Button>
-        </div>
-      )}
+                  <><Moveable
+                  ref={moveableRef}
+                  target={containerRef.current}
+                  draggable
+                  resizable
+                  onDrag={({ target, beforeTranslate }) => {
+                      target.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
+                  } }
+                  onDragEnd={({ target, lastEvent }) => {
+                      if (lastEvent) {
+                          const [dx, dy] = lastEvent.beforeTranslate;
+                          target.style.transform = 'translate(0,0)';
+                          onUpdatePosition(box.id, box.x + dx, box.y + dy);
+                      }
+                  } }
+                  onResize={handleResize}
+                  onResizeEnd={handleResizeEnd} />
+                  <div style={{
+                      position: 'absolute',
+                      top: box.y + box.height + 5,
+                      left: box.x,
+                      zIndex: 100,
+                  }}>
 
-      {/* Moveable Controls */}
-      {isActive && containerRef.current && (
-        <Moveable
-          ref={moveableRef}
-          target={containerRef.current}
-          draggable={true}
-          resizable={true}
-          throttleDrag={0}
-          throttleResize={0}
-          edge={false}
-          origin={false}
-          onDrag={({ target, beforeTranslate }) => {
-            target.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
-          }}
-          onDragEnd={({ target, lastEvent }) => {
-            if (lastEvent) {
-              const [dx, dy] = lastEvent.beforeTranslate;
-              target.style.transform = 'translate(0px, 0px)';
-              onUpdatePosition(box.id, box.x + dx, box.y + dy);
-            }
-          }}
-          onResize={handleResize}
-          onResizeEnd={handleResizeEnd}
-        />
-      )}
+                      <Button danger size="small" onClick={() => onDelete(box.id)}>
+                          Delete
+                      </Button>
+                  </div></>
+           )}
     </>
   );
 };

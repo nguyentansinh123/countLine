@@ -104,7 +104,6 @@ const InputBox: React.FC<InputBoxProps> = ({
           alignItems: 'center',
           padding: '5px',
           cursor: 'move',
-          transition: 'all 0.2s ease',
           zIndex: isActive ? 100 : 10,
           ...(isActive && {
             boxShadow: '0 0 0 2px #1890ff',
