@@ -1,38 +1,37 @@
 # White Knight
 
-A full-stack application consisting of a high-performance front end (built with Vite, React.js, and TypeScript) and a feature-rich back end (built with Express.js, TypeScript, and AWS SDK). The front end and back end live in separate directories (`frontend/` and `backend/`) within this repository.
+A full-stack application with a high-performance front end (**Vite** + **React.js** + **TypeScript**) and a feature-rich back end (**Express.js** + **TypeScript** + **AWS SDK** + **MongoDB**). The front end and back end live in separate directories (`frontend/` and `backend/`).
 
 ---
 
 ## Table of Contents
 
-1. [Overview](#overview)  
-2. [Tech Stack](#tech-stack)  
-3. [Libraries & Dependencies](#libraries--dependencies)  
-   - [Front End](#front-end)  
-   - [Back End](#back-end)  
-4. [Environment Variables](#environment-variables)  
-   - [Front End](#front-end-env)  
-   - [Back End](#back-end-env)  
-5. [Project Structure](#project-structure)  
-6. [Available NPM Scripts](#available-npm-scripts)  
-   - [Front End](#front-end-scripts)  
-   - [Back End](#back-end-scripts)  
-7. [AWS S3 Bucket CORS Configuration](#aws-s3-bucket-cors-configuration)  
-8. [DynamoDB Tables](#dynamodb-tables)  
-9. [Contributing](#contributing)  
-10. [License](#license)  
+1. [Overview](#overview)
+2. [Tech Stack](#tech-stack)
+3. [Libraries & Dependencies](#libraries--dependencies)
+    - [Front End](#front-end)
+    - [Back End](#back-end)
+4. [Environment Variables](#environment-variables)
+    - [Front End](#front-end-env)
+    - [Back End](#back-end-env)
+5. [Project Structure](#project-structure)
+6. [Available NPM Scripts](#available-npm-scripts)
+    - [Front End](#front-end-scripts)
+    - [Back End](#back-end-scripts)
+7. [AWS S3 Bucket CORS Configuration](#aws-s3-bucket-cors-configuration)
+8. [DynamoDB Tables](#dynamodb-tables)
+9. [Getting Started](#getting-started)
+10. [Contributing](#contributing)
+11. [License](#license)
 
 ---
 
 ## Overview
 
-**White Knight** is a two-part application:
+**White Knight** is a modern two-part application:
 
-- **Front End**: A fast, responsive SPA built with Vite, React.js, and TypeScript. It uses Tailwind CSS for styling, Zustand for state management, and integrates with various third-party UI libraries (Ant Design, Syncfusion PDF Viewer, Stream Chat, etc.).  
-- **Back End**: A TypeScript-powered Express.js server that uses AWS services (DynamoDB, S3, S3 pre-signed URLs) as well as MongoDB for certain features. It handles authentication (JWT), file uploads (Multer + S3), real-time communication (Socket.io), email (Nodemailer + MJML), and third-party integrations (Stream Chat, Cloudinary).
-
-This README collects all necessary information—tech stack, dependencies, environment variables, folder structure, scripts, and AWS configurations—into a single reference.
+- **Front End**: A fast, responsive SPA built with [Vite](https://vitejs.dev/), [React.js](https://react.dev/), and [TypeScript](https://www.typescriptlang.org/), styled with [Tailwind CSS](https://tailwindcss.com/) and featuring Ant Design, Zustand, and more.
+- **Back End**: A TypeScript-powered [Express.js](https://expressjs.com/) server, using AWS DynamoDB, S3, and MongoDB, handling authentication, file uploads, real-time features, email, and third-party integrations.
 
 ---
 
@@ -40,53 +39,46 @@ This README collects all necessary information—tech stack, dependencies, envir
 
 ### Front End
 
-- **Vite**: Fast build tool with built-in HMR (Hot Module Replacement)  
-- **React.js**: Component-based UI library  
-- **TypeScript**: Static typing for safer, more predictable code  
-- **Tailwind CSS**: Utility-first CSS framework for rapid UI development  
-- **React Router v7**: Declarative client-side routing  
-- **Zustand**: Lightweight state-management library  
-- **Axios**: Promise-based HTTP client for RESTful API calls  
-- **Socket.io (client)**: Real-time communication with the back end  
-- **Ant Design**: UI component library (`antd` + `@ant-design/icons`)  
-- **Syncfusion PDF Viewer**: Embeddable PDF viewing  
-- **Stream Chat (client)**: Real-time chat SDK for React  
+- **Vite** (build tool + HMR)
+- **React.js** + **TypeScript**
+- **Tailwind CSS**
+- **React Router v7**
+- **Zustand** (state management)
+- **Axios** (HTTP)
+- **Socket.io client**
+- **Ant Design**
+- **Syncfusion PDF Viewer**
+- **Stream Chat**
+- **Framer Motion** (animation)
+- **Other libraries:** [see below](#libraries--dependencies)
 
 ### Back End
 
-- **Node.js + Express.js**: Server framework for building RESTful APIs and WebSocket endpoints  
-- **TypeScript**: Static typing and improved maintainability  
-- **AWS SDK (v3)**: Interact with DynamoDB, S3, S3 Pre-signed URLs, etc.  
-- **MongoDB + Mongoose**: Document database for user accounts and other collections  
-- **JWT (jsonwebtoken)**: Token-based authentication/authorization  
-- **bcryptjs**: Password hashing  
-- **Multer + `multer-s3`**: Handling file uploads directly to S3  
-- **Socket.io (server)**: Real-time, bi-directional communication (for notifications, chat, etc.)  
-- **Cloudinary**: Image transformation/storage (optional feature)  
-- **Nodemailer + MJML**: HTML email generation and sending (e.g., account verification)  
-- **Stream Chat (server)**: Back-end integration for real-time chat channels  
+- **Node.js** + **Express.js**
+- **TypeScript**
+- **AWS SDK (v3)** for S3/DynamoDB
+- **MongoDB** + **Mongoose**
+- **JWT** (jsonwebtoken)
+- **bcryptjs**
+- **Multer** + **multer-s3**
+- **Socket.io server**
+- **Cloudinary** (optional)
+- **Nodemailer** + **MJML**
+- **Stream Chat**
+- **uuid**
+- **Other libraries:** [see below](#libraries--dependencies)
 
 ---
 
 ## Libraries & Dependencies
 
-Below are the exact dependencies and devDependencies from each `package.json`.
-
 ### Front End
 
+<details>
+<summary>Click to expand <code>frontend/package.json</code></summary>
+
 ```jsonc
-// frontend/package.json
 {
-  "name": "my-react-app",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
     "@pdfme/common": "^5.3.15",
@@ -133,24 +125,17 @@ Below are the exact dependencies and devDependencies from each `package.json`.
     "globals": "^15.15.0",
     "prettier": "^3.5.3",
     "typescript": "~5.7.2",
-    "typescript-eslint": "^8.24.1",
+    "@typescript-eslint/eslint-plugin": "^8.24.1",
+    "@typescript-eslint/parser": "^8.24.1",
     "vite": "^6.2.0"
   }
 }
-// backend/package.json
+</details>
+
+
+<details> <summary>Click to expand <code>backend/package.json</code></summary>
+
 {
-  "name": "backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "ts-node src/index.ts",
-    "build": "tsc",
-    "serve": "node dist/index.js",
-    "dev": "nodemon ./src/index.ts"
-  },
-  "type": "commonjs",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.777.0",
     "@aws-sdk/client-s3": "^3.777.0",
@@ -187,16 +172,24 @@ Below are the exact dependencies and devDependencies from each `package.json`.
     "@types/multer-s3": "^3.0.3",
     "@types/node": "^22.13.14",
     "@types/nodemailer": "^6.4.17",
+    "eslint": "^9.23.0",
     "@typescript-eslint/eslint-plugin": "^8.28.0",
     "@typescript-eslint/parser": "^8.28.0",
-    "eslint": "^9.23.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   }
 }
+</details>
+
+Environment Variables
+Front End (frontend/.env)
+
 VITE_BACKEND_URL=https://your-backend-api.example.com
 VITE_GPT_KEY=your-openai-api-key
 VITE_STREAM_API_KEY=your-stream-chat-api-key
+
+Back End (backend/.env)
+
 AWS_REGION=your-aws-region
 AWS_ACCESS_KEY_ID=your-access-key-id
 AWS_SECRET_ACCESS_KEY=your-secret-access-key
@@ -217,81 +210,80 @@ STEAM_API_SECRET=your-steam-api-secret
 
 NODE_ENV=development
 
-# (Optional) DynamoDB table names or endpoints can be configured here if needed
-├── frontend/                  # Front End –
-│   ├── public/                # Static assets (images, fonts, favicon, etc.)
+Project Structure
+
+├── frontend/
+│   ├── public/
 │   ├── src/
-│   │   ├── assets/            # Image and font assets
-│   │   ├── components/        # Reusable React components
-│   │   ├── context/           # React Context providers
-│   │   ├── hooks/             # Custom React hooks
-│   │   ├── pages/             # Top-level page components (for routing)
-│   │   ├── services/          # API service modules (axios instances, endpoints)
-│   │   ├── store/             # Zustand stores for global state
-│   │   ├── styles/            # Global CSS / Tailwind configurations
-│   │   ├── utils/             # Utility functions and helpers
-│   │   ├── App.tsx            # Root component with router setup
-│   │   ├── main.tsx           # Entry point for React + Vite
-│   │   └── vite-env.d.ts      # TypeScript declarations for Vite
-│   ├── .env.example           # Example environment variable definitions
-│   ├── .eslintrc.js           # ESLint configuration
-│   ├── .prettierrc            # Prettier configuration
-│   ├── tsconfig.json          # TypeScript configuration
-│   ├── tailwind.config.cjs    # Tailwind CSS configuration
-│   ├── vite.config.ts         # Vite configuration
-│   └── package.json           # Front-end metadata and scripts
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── context/
+│   │   ├── hooks/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── store/
+│   │   ├── styles/
+│   │   ├── utils/
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── vite-env.d.ts
+│   ├── .env.example
+│   ├── .eslintrc.js
+│   ├── .prettierrc
+│   ├── tsconfig.json
+│   ├── tailwind.config.cjs
+│   ├── vite.config.ts
+│   └── package.json
 │
-├── backend/                   # Back End –
+├── backend/
 │   ├── src/
-│   │   ├── controllers/       # Express route handlers
-│   │   ├── middlewares/       # Custom middleware (auth, error handling, etc.)
-│   │   ├── models/            # Mongoose models or DynamoDB schema definitions
-│   │   ├── routes/            # Express router definitions
-│   │   ├── services/          # Business logic, AWS SDK wrappers, etc.
-│   │   ├── utils/             # Utility functions/helpers (email, tokens, etc.)
-│   │   ├── index.ts           # Entry point for Express app
-│   │   └── server.ts          # HTTP server configuration (Socket.io, etc.)
-│   ├── .env.example           # Example environment variable definitions
-│   └── package.json           # Back-end metadata and scripts
+│   │   ├── controllers/
+│   │   ├── middlewares/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── utils/
+│   │   ├── index.ts
+│   │   └── server.ts
+│   ├── .env.example
+│   └── package.json
 │
-├── aws-s3-cors.json           # S3 bucket CORS configuration (example)  
-├── README.md                  # ← You are here  
-└── LICENSE                    # MIT License (or your chosen license)
-// frontend/package.json (scripts)
+├── aws-s3-cors.json
+├── README.md
+└── LICENSE
+
+Available NPM Scripts
+Front End
+
 {
   "scripts": {
-    "dev": "vite",                    // Run the development server (http://localhost:3000)
-    "build": "tsc -b && vite build",  // Create a production build in frontend/dist/
-    "preview": "vite preview",        // Preview the production build locally
-    "lint": "eslint .",               // Lint all source files in src/
-    "format": "prettier --write 'src/**/*.{ts,tsx,css,md}'" // Format code
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "format": "prettier --write 'src/**/*.{ts,tsx,css,md}'"
   }
 }
-// backend/package.json (scripts)
+
+Back End
+
 {
   "scripts": {
-    "dev": "nodemon ./src/index.ts",  // Start Express with auto-reload (ts-node + nodemon)
-    "start": "ts-node src/index.ts",  // Run Express app (no reload)
-    "build": "tsc",                   // Compile TypeScript → JavaScript (into backend/dist/)
-    "serve": "node dist/index.js",    // Run compiled JavaScript server
+    "dev": "nodemon ./src/index.ts",
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "serve": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
+
+AWS S3 Bucket CORS Configuration
+
 [
   {
-    "AllowedHeaders": [
-      "*"
-    ],
-    "AllowedMethods": [
-      "GET",
-      "PUT",
-      "POST",
-      "DELETE",
-      "HEAD"
-    ],
-    "AllowedOrigins": [
-      "http://localhost:5173"
-    ],
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+    "AllowedOrigins": ["http://localhost:5173"],
     "ExposeHeaders": [
       "ETag",
       "x-amz-meta-custom-header",
@@ -300,17 +292,34 @@ NODE_ENV=development
     "MaxAgeSeconds": 3600
   }
 ]
-| **Table Name**    | **Status** | **Partition Key (PK)** | **Sort Key (SK)** | **Read Capacity Mode** | **Write Capacity Mode** | **Total Size** |
-| ----------------- | ---------- | ---------------------- | ----------------- | ---------------------- | ----------------------- | -------------- |
-| **Documents**     | Active     | `documentId` (S)       | –                 | On-demand              | On-demand               | 6.7 KB         |
-| **Notifications** | Active     | `notificationId` (S)   | –                 | On-demand              | On-demand               | 3.4 KB         |
-| **Projects**      | Active     | `projectId` (S)        | –                 | On-demand              | On-demand               | 343 B          |
-| **Teams**         | Active     | `teamId` (S)           | –                 | On-demand              | On-demand               | 314 B          |
-| **UserActivity**  | Active     | `activityId` (S)       | –                 | On-demand              | On-demand               | 48 KB          |
-| **Users**         | Active     | `user_id` (S)          | –                 | On-demand              | On-demand               | 6.9 KB         |
-git checkout -b feature/my-new-feature
+
+| Table Name    | Status | Partition Key     | Sort Key | Read Capacity | Write Capacity | Total Size |
+| ------------- | ------ | ----------------- | -------- | ------------- | -------------- | ---------- |
+| Documents     | Active | documentId (S)    | –        | On-demand     | On-demand      | 6.7 KB     |
+| Notifications | Active | notificationId(S) | –        | On-demand     | On-demand      | 3.4 KB     |
+| Projects      | Active | projectId (S)     | –        | On-demand     | On-demand      | 343 B      |
+| Teams         | Active | teamId (S)        | –        | On-demand     | On-demand      | 314 B      |
+| UserActivity  | Active | activityId (S)    | –        | On-demand     | On-demand      | 48 KB      |
+| Users         | Active | user\_id (S)      | –        | On-demand     | On-demand      | 6.9 KB     |
+
+Getting Started
+
+# Clone the repository
+git clone https://github.com/your-org/white-knight.git
+cd white-knight
+
+# Create .env files in frontend/ and backend/ based on the .env.example templates
+
+# Install dependencies
 cd frontend && npm install
 cd ../backend && npm install
-git add .
-git commit -m "feat: add awesome feature"
-git push origin feature/my-new-feature
+
+# Run back end
+cd backend
+npm run dev
+
+# In a new terminal, run front end
+cd ../frontend
+npm run dev
+
+# Open http://localhost:5173 in your browser!
