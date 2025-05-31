@@ -743,8 +743,8 @@ const Overview: React.FC = () => {
   };
 
   return (
-    <GeneralLayout title="Statistics Dashboard" noBorder={true}>
-      <div style={{ marginBottom: "20px" }}>
+    <GeneralLayout title="Statistics Dashboard" noBorder={false}>
+      <div style={{ marginBottom: "20px",boxShadow: "0px 5px 10px rgba(0, 0, 0, 0.2)" }}>
         <Row gutter={16} align="middle">
           <Col>
             <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
@@ -777,7 +777,7 @@ const Overview: React.FC = () => {
           </Col>
         </Row>
       </div>
-      
+      <div style={{height:600,overflowY:'auto', overflowX:'hidden'}}>
       {renderAdditionalStats()}
       
       <Divider />
@@ -790,7 +790,7 @@ const Overview: React.FC = () => {
       </Card>
 
       <Divider />
-
+      
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card title="Quick Overview">
@@ -859,6 +859,7 @@ const Overview: React.FC = () => {
           </Card>
         </Col>
       </Row>
+      </div>
     </GeneralLayout>
   );
 };

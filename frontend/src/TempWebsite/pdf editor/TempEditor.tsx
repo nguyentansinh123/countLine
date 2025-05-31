@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import Toolbar from './components/TempToolbar';
 import { InputBoxType } from './components/tempTypes';
 import InputBox from './components/TempInputFields/TempInputBox';
@@ -104,6 +104,33 @@ const TempEditor: React.FC<{}> = () => {
     fetchDocument();
   }, [file_id, user_id, navigate]);
 
+
+ useEffect(() => {
+    const wrapper = canvasWrapperRef.current;
+    if (!wrapper) return;
+
+    const handleScroll = () => {
+      const scrollTop = wrapper.scrollTop;
+      let visible = 1;
+      let offset = 0;
+
+      for (const page of pdfPages) {
+        const height = page.viewport.height + 20;
+        if (scrollTop < offset + height) {
+          visible = page.pageNum;
+          break;
+        }
+        offset += height;
+      }
+
+      setCurrentPage(visible);
+    };
+
+    wrapper.addEventListener('scroll', handleScroll);
+    return () => wrapper.removeEventListener('scroll', handleScroll);
+  }, [pdfPages]);
+
+
   useEffect(() => {
     if (!fileUrl) return;
 
@@ -204,66 +231,99 @@ const TempEditor: React.FC<{}> = () => {
       const scale = 1.5;
 
       // Process input boxes
-      for (const box of inputBoxes) {
-        try {
-          const page = pdfDoc.getPage(box.pageNum - 1);
-          const { width: pageWidth, height: pageHeight } = page.getSize();
+    for (const box of inputBoxes) {
+  try {
+    const page = pdfDoc.getPage(box.pageNum - 1);
+    const { width: pageWidth, height: pageHeight } = page.getSize();
 
-          const validX = Number.isFinite(box.x) ? box.x : 0;
-          const validY = Number.isFinite(box.y) ? box.y : 0;
-          const validWidth = Number.isFinite(box.width)
-            ? box.width
-            : box.type === 'signature'
-              ? 200
-              : 100;
-          const validHeight = Number.isFinite(box.height)
-            ? box.height
-            : box.type === 'signature'
-              ? 100
-              : 30;
+    const validX = Number.isFinite(box.x) ? box.x : 0;
+    const validY = Number.isFinite(box.y) ? box.y : 0;
+    const validWidth = Number.isFinite(box.width)
+      ? box.width
+      : box.type === 'signature'
+        ? 200
+        : 100;
+    const validHeight = Number.isFinite(box.height)
+      ? box.height
+      : box.type === 'signature'
+        ? 100
+        : 30;
 
-          const pdfX = validX / scale;
-          const pdfY = pageHeight - (validY + validHeight) / scale;
+    const pdfX = validX / scale;
+    const pdfY = pageHeight - (validY + validHeight) / scale;
+    const pdfW = validWidth / scale;
+    const pdfH = validHeight / scale;
 
-          if (box.type === 'signature' && box.value?.startsWith('data:image')) {
-            const base64Data = box.value.split(',')[1];
-            const byteString = atob(base64Data);
-            const byteArray = new Uint8Array(byteString.length);
-
-            for (let i = 0; i < byteString.length; i++) {
-              byteArray[i] = byteString.charCodeAt(i);
-            }
-
-            const image = box.value.startsWith('data:image/png')
-              ? await pdfDoc.embedPng(byteArray)
-              : await pdfDoc.embedJpg(byteArray);
-
-            const imgAspectRatio = image.width / image.height;
-            let drawWidth = validWidth / scale;
-            let drawHeight = drawWidth / imgAspectRatio;
-
-            if (drawHeight > validHeight / scale) {
-              drawHeight = validHeight / scale;
-              drawWidth = drawHeight * imgAspectRatio;
-            }
-
-            page.drawImage(image, {
-              x: pdfX,
-              y: pdfY,
-              width: drawWidth,
-              height: drawHeight,
-            });
-          } else if (box.value) {
-            page.drawText(box.value, {
-              x: pdfX,
-              y: pdfY + validHeight / scale - 2,
-              size: (box.fontSize || 12) / scale,
-            });
-          }
-        } catch (error) {
-          console.error(`Error processing box ${box.id}:`, error);
-        }
+    if (box.type === 'signature' && box.value?.startsWith('data:image')) {
+      const base64Data = box.value.split(',')[1];
+      const byteString = atob(base64Data);
+      const byteArray = new Uint8Array(byteString.length);
+      for (let i = 0; i < byteString.length; i++) {
+        byteArray[i] = byteString.charCodeAt(i);
       }
+
+      const image = box.value.startsWith('data:image/png')
+        ? await pdfDoc.embedPng(byteArray)
+        : await pdfDoc.embedJpg(byteArray);
+
+      const imgAspectRatio = image.width / image.height;
+      let drawWidth = pdfW;
+      let drawHeight = drawWidth / imgAspectRatio;
+
+      if (drawHeight > pdfH) {
+        drawHeight = pdfH;
+        drawWidth = drawHeight * imgAspectRatio;
+      }
+
+      page.drawImage(image, {
+        x: pdfX,
+        y: pdfY,
+        width: drawWidth,
+        height: drawHeight,
+      });
+
+    } else if (box.type === 'selection' && box.action) {
+      const { rgb } = await import('pdf-lib');
+      const tint =
+        box.action === 'edit'
+          ? rgb(1, 1, 0)           // yellow
+          : box.action === 'remove'
+          ? rgb(1, 0, 0)           // red
+          : rgb(0.68, 0.85, 0.9);  // light blue
+
+      // Draw translucent rectangle
+      page.drawRectangle({
+        x: pdfX,
+        y: pdfY,
+        width: pdfW,
+        height: pdfH,
+        color: tint,
+        opacity: 0.3,
+      });
+
+      // Label the action
+      page.drawText(box.action.toUpperCase(), {
+        x: pdfX + 2,
+        y: pdfY + 2,
+        size: 10 / scale,
+        font: helvetica,
+        color: rgb(0, 0, 0),
+      });
+
+    } else if (box.value) {
+      page.drawText(box.value, {
+        x: pdfX,
+        y: pdfY,
+        size: (box.fontSize || 12) / scale,
+        font: helvetica,
+        color: rgb(0, 0, 0),
+      });
+    }
+
+  } catch (error) {
+    console.error(`Error processing box ${box.id}:`, error);
+  }
+}
 
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -349,7 +409,7 @@ const TempEditor: React.FC<{}> = () => {
   }
 
   return (
-    <GeneralLayout title={documentData.name || 'Document Editor'}>
+    <GeneralLayout title={documentData.name || 'Document Editor'} >
       <div style={{ display: 'flex' }}>
         <Toolbar
           addInputBox={addInputBox}

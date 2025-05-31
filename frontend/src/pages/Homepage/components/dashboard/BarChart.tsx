@@ -75,7 +75,6 @@ const DocumentBarChart: React.FC<DocumentBarChartProps> = ({ data }) => {
           axisLine={{ stroke: 'white', strokeOpacity: 0.5 }}
         />
         <Tooltip
-          cursor={false}
           contentStyle={{
             backgroundColor: 'rgba(5, 5, 40, 0.9)',
             border: '1px solid rgba(100, 100, 255, 0.3)',
