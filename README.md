@@ -1,10 +1,59 @@
-# White Knight
+# White Knight (Front End)
 
-**Front End:** Vite + React.js + TypeScript
+A modern, performant front-end application for the White Knight project, built with Vite, React.js, and TypeScript. This repository contains everything needed to get the front end up and running, customize it, and contribute to its development.
 
 ---
 
-## Libraries & Dependencies
+## Table of Contents
+
+1. [Overview](#overview)  
+2. [Tech Stack](#tech-stack)  
+3. [Libraries](#libraries)  
+4. [Getting Started](#getting-started)  
+   - [Prerequisites](#prerequisites)  
+   - [Installation](#installation)  
+   - [Environment Variables](#environment-variables)  
+   - [Running in Development](#running-in-development)  
+   - [Building for Production](#building-for-production)  
+   - [Previewing a Production Build](#previewing-a-production-build)  
+5. [Project Structure](#project-structure)  
+6. [Available NPM Scripts](#available-npm-scripts)  
+7. [Contributing](#contributing)  
+8. [License](#license)  
+
+---
+
+## Overview
+
+This repository holds the front-end code for **White Knight**, a sleek and high-performance web application. The front end is built with Vite for lightning-fast development and bundling, React.js for component-driven UI, and TypeScript for type safety and maintainability. It connects to the back end (hosted in a separate repository) via RESTful APIs and WebSocket channels to deliver real-time features and dynamic content.
+
+Key features of the front end include:
+- **Responsive Layouts** using Tailwind CSS  
+- **State Management** with React Context and Zustand  
+- **Routing** powered by React Router v6  
+- **Environment Configuration** via `.env` files  
+- **Linting & Formatting** with ESLint and Prettier to ensure code quality  
+
+---
+
+## Tech Stack
+
+- **Vite**: Next-generation front-end tooling, offering fast builds and HMR (Hot Module Replacement)  
+- **React.js**: Component-based UI library for building interactive interfaces  
+- **TypeScript**: Superset of JavaScript that adds static typing for safer, more predictable code  
+- **Tailwind CSS**: Utility-first CSS framework for rapid UI development  
+- **React Router v6**: Declarative routing for React applications  
+- **Zustand**: Lightweight state-management library for React  
+- **Axios**: Promise-based HTTP client for making API requests  
+- **ESLint**: Linter for JavaScript/TypeScript to enforce code style and catch errors early  
+- **Prettier**: Opinionated code formatter to maintain consistent code style  
+- **Jest + React Testing Library**: Testing framework and utilities for unit and integration tests  
+
+---
+
+## Libraries
+
+Below is the list of libraries and tools used in the front-end application (as specified in `package.json`).
 
 ### Runtime Dependencies
 
@@ -59,11 +108,16 @@
 
 ---
 
-## Environment Variables
+## Getting Started
 
-Create a `.env` file in the front-end root and add:
+### Prerequisites
 
-```dotenv
-VITE_BACKEND_URL=https://your-backend-api.example.com
-VITE_GPT_KEY=your-openai-api-key
-VITE_STREAM_API_KEY=your-stream-chat-api-key
+- [Node.js](https://nodejs.org/) v16 or higher  
+- [npm](https://www.npmjs.com/) v7 or higher (or [Yarn](https://yarnpkg.com/) v1.22+)  
+
+### Installation
+
+1. **Clone the repository**  
+   ```bash
+   git clone https://github.com/your-username/white-knight-frontend.git
+   cd white-knight-frontend
