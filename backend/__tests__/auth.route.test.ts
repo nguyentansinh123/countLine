@@ -1,7 +1,6 @@
 import express from "express";
 import request from "supertest";
 import { router as authRouter } from "../src/routes/auth.route";
-// add these:
 import { Request, Response, NextFunction } from "express";
 
 jest.mock("../src/controller/auth.controller", () => ({
